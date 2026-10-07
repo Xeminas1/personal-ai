@@ -11,7 +11,7 @@ from app.llm import OllamaClient, OllamaError
 from app.logging_setup import setup_logging
 from app.prompts import build_system_prompt
 from app.secrets import save_ollama_api_key, clear_ollama_api_key
-from app.tools import ToolRegistry
+from app.tools import ToolRegistry, should_force_web_search
 from app.updater import check_for_update, fetch_manifest, install_update, UpdateError
 from app.version import VERSION
 
@@ -43,7 +43,8 @@ Commands
 /feedback             Show recent 0-10 chat feedback
 /rate <0-10> [note]   Give optional feedback immediately
 /tools                Show available tools
-/websetup             Enable live Ollama web search
+/websetup             Configure and validate Ollama web search
+/webtest              Test the saved web-search connection
 /webclear             Remove stored Ollama web-search key
 /end                  End the current chat and rate it
 /update               Check for and install an update
@@ -344,19 +345,35 @@ def main() -> int:
                 if command == "/websetup":
                     print(
                         "Live web search uses Ollama's Web Search API. "
-                        "Create an API key in your Ollama account, then paste it below."
+                        "Paste an Ollama API key below. It will be tested before saving."
                     )
                     key = getpass("Ollama API key (input hidden): ").strip()
                     if not key:
                         print("No key saved.")
                         continue
+
+                    ok, message = tool_registry.test_web_search_key(key)
+                    if not ok:
+                        print(f"Web search setup failed: {message}")
+                        print("The key was not saved.")
+                        continue
+
                     save_ollama_api_key(DATA_DIR, key)
                     tool_registry = ToolRegistry(
                         base_dir=DATA_DIR.parent,
                         data_dir=DATA_DIR,
                         logger=logger,
                     )
-                    print("Web search enabled. The key is stored locally in data/secrets.json.")
+                    print("Ollama web search connected successfully.")
+                    print("The key is stored locally in data/secrets.json.")
+                    continue
+
+                if command == "/webtest":
+                    ok, message = tool_registry.test_saved_web_search()
+                    if ok:
+                        print("Web search test passed: Ollama accepted the saved key.")
+                    else:
+                        print(f"Web search test failed: {message}")
                     continue
 
                 if command == "/webclear":
@@ -510,6 +527,32 @@ def main() -> int:
                     logger.debug(
                         "User content | chat_id=%s | %s",
                         current_chat["id"], user_message
+                    )
+
+                if (
+                    tool_registry.web_search_enabled
+                    and should_force_web_search(user_message)
+                ):
+                    logger.info(
+                        "Forced web search route | chat_id=%s query_chars=%d",
+                        current_chat["id"], len(user_message)
+                    )
+                    search_json = tool_registry.execute(
+                        "web_search",
+                        {"query": user_message, "max_results": 5},
+                    )
+                    messages.append(
+                        {
+                            "role": "system",
+                            "content": (
+                                "A live web search was automatically run because "
+                                "the user explicitly requested current/web information. "
+                                "Use the results below if successful. If the tool "
+                                "returned an error, state that specific error and do "
+                                "not claim that web access does not exist.\n\n"
+                                f"LIVE_WEB_SEARCH_RESULT:\n{search_json}"
+                            ),
+                        }
                     )
 
                 answer = llm.agent_chat(
