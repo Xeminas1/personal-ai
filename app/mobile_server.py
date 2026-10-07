@@ -86,7 +86,7 @@ def _row_dict(row) -> dict:
 
 
 class XemAiMobileHandler(BaseHTTPRequestHandler):
-    server_version = "XemAiMobile/0.4.1"
+    server_version = "XemAiMobile/0.4.2"
 
     def log_message(self, fmt, *args):
         logger = getattr(self.server, "xemai_logger", None)
@@ -175,9 +175,9 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
         )
         if target.name == "sw.js":
             self.send_header("Service-Worker-Allowed", "/")
-            self.send_header("Cache-Control", "no-cache")
-        elif target.suffix in {".html", ".webmanifest"}:
-            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Cache-Control", "no-store, max-age=0")
+        elif target.suffix in {".html", ".js", ".css", ".webmanifest"}:
+            self.send_header("Cache-Control", "no-store, max-age=0")
         else:
             self.send_header("Cache-Control", "public, max-age=3600")
         self.end_headers()
