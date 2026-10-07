@@ -10,6 +10,11 @@ from .llm import OllamaClient
 from .logging_setup import setup_logging
 from .prompts import build_system_prompt
 from .secrets import save_ollama_api_key
+from .self_knowledge import (
+    build_authoritative_self_context,
+    is_self_knowledge_query,
+    looks_like_stale_self_description,
+)
 from .tools import ToolRegistry, should_force_web_search
 from .updater import check_for_update, install_update
 
@@ -132,11 +137,41 @@ class ChatBackend:
                 chat_id, limit=int(self.config.get("history_messages", 30))
             )
             messages = [{"role": "system", "content": system_prompt}]
-            for row in history:
-                if row["role"] in {"user", "assistant"}:
-                    messages.append(
-                        {"role": row["role"], "content": row["content"]}
-                    )
+            self_query = is_self_knowledge_query(text)
+
+            # For self-knowledge questions, old generic model self-descriptions
+            # are not trusted. Rebuild the tail so runtime facts win.
+            for i, row in enumerate(history):
+                if row["role"] not in {"user", "assistant"}:
+                    continue
+
+                is_latest_user = (
+                    i == len(history) - 1
+                    and row["role"] == "user"
+                    and row["content"] == text
+                )
+                if self_query and is_latest_user:
+                    continue
+
+                if (
+                    self_query
+                    and row["role"] == "assistant"
+                    and looks_like_stale_self_description(row["content"])
+                ):
+                    continue
+
+                messages.append(
+                    {"role": row["role"], "content": row["content"]}
+                )
+
+            if self_query:
+                messages.append({
+                    "role": "system",
+                    "content": build_authoritative_self_context(
+                        self.config, tools
+                    ),
+                })
+                messages.append({"role": "user", "content": text})
 
             if tools.web_search_enabled and should_force_web_search(text):
                 if status_callback:
