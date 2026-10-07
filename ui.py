@@ -10,6 +10,11 @@ from tkinter import messagebox, simpledialog
 from tkinter.scrolledtext import ScrolledText
 
 from app.gui_backend import ChatBackend
+from app.mobile_runtime import (
+    mobile_local_url,
+    mobile_server_is_running,
+    start_mobile_server_process,
+)
 from app.version import VERSION
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -92,9 +97,13 @@ class XemAiApp(tk.Tk):
             bg=SIDE, fg=MUTED, relief="flat"
         ).grid(row=0, column=1, sticky="ew")
         tk.Button(
-            bottom, text=f"Update · v{VERSION}", command=self._check_update,
+            bottom, text="Mobile", command=self._mobile,
             bg=SIDE, fg=MUTED, relief="flat"
         ).grid(row=1, column=0, columnspan=2, sticky="ew", pady=(5, 0))
+        tk.Button(
+            bottom, text=f"Update · v{VERSION}", command=self._check_update,
+            bg=SIDE, fg=MUTED, relief="flat"
+        ).grid(row=2, column=0, columnspan=2, sticky="ew", pady=(5, 0))
 
         main = tk.Frame(self, bg=BG)
         main.grid(row=0, column=1, sticky="nsew")
@@ -344,7 +353,25 @@ class XemAiApp(tk.Tk):
                       row=6, column=0, sticky="e", padx=20, pady=18)
         win.grid_columnconfigure(0, weight=1)
 
+    def _mobile(self):
+        if not mobile_server_is_running():
+            start_mobile_server_process()
+        url = mobile_local_url()
+        messagebox.showinfo(
+            "XemAi Mobile",
+            "XemAi's mobile server is running locally.\n\n"
+            f"Local address on this PC:\n{url}\n\n"
+            "For Android away from home, install Tailscale on the PC and phone, "
+            "sign both into the same tailnet, then run "
+            "mobile_tailscale_setup.bat once on the PC. It will show the private "
+            "HTTPS address to open on your phone.\n\n"
+            "The phone and PC use the same XemAi database, chats, memories and feedback.",
+            parent=self,
+        )
+
     def _startup(self):
+        if self.backend.config.get("mobile_server_autostart", True):
+            start_mobile_server_process()
         err = self.backend.health_error()
         if err:
             messagebox.showerror("XemAi", err, parent=self)
