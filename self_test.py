@@ -8,6 +8,11 @@ from pathlib import Path
 from app.database import Database
 from app.gui_backend import ChatBackend, title_from_message
 from app.prompts import CONSTITUTION, build_system_prompt
+from app.self_knowledge import (
+    build_authoritative_self_context,
+    is_self_knowledge_query,
+    looks_like_stale_self_description,
+)
 from app.updater import is_newer_version
 from app.tools import ToolRegistry, should_force_web_search
 
@@ -21,9 +26,17 @@ def run() -> None:
     assert (project_root / "ui.py").exists()
     assert (project_root / "console.bat").exists()
     assert title_from_message("hello world") == "hello world"
-    assert is_newer_version("0.3.1", "0.3.0")
-    assert not is_newer_version("0.3.0", "0.3.0")
-    assert not is_newer_version("0.2.2", "0.3.0")
+    assert is_self_knowledge_query("what do you think your ai is missing?")
+    assert is_self_knowledge_query(
+        "through your iterative updates, can you recognise whats been added?"
+    )
+    assert not is_self_knowledge_query("help me design a Skyrim perk")
+    assert looks_like_stale_self_description(
+        "I have no live web search and my training ends in 2023."
+    )
+    assert is_newer_version("0.3.2", "0.3.1")
+    assert not is_newer_version("0.3.1", "0.3.1")
+    assert not is_newer_version("0.3.0", "0.3.1")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -115,6 +128,16 @@ def run() -> None:
                 pass
 
         registry = ToolRegistry(Path(temp), Path(temp) / "data", DummyLogger())
+        self_context = build_authoritative_self_context(
+            {"assistant_name": "XemAi", "model": "qwen3:8b", "auto_memory": True},
+            registry,
+        )
+        assert "AUTHORITATIVE XEMAI RUNTIME SELF-KNOWLEDGE" in self_context
+        assert "persistent chat history" in self_context.lower()
+        assert "cross-chat long-term memory" in self_context.lower()
+        assert "v0.3.0" in self_context
+        assert "Do not claim a 2023" in self_context
+
         calc = json.loads(registry.execute("calculator", {"expression": "2 + 3 * 4"}))
         assert calc["ok"] and calc["result"] == 14
 
