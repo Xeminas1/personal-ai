@@ -353,11 +353,11 @@ def main() -> int:
 
                 if command == "/ainame":
                     if not arg:
-                        print(f"AI name: {config.get(\'assistant_name\', \'XemAi\')}")
+                        print(f"AI name: {config.get('assistant_name', 'XemAi')}")
                         continue
                     config["assistant_name"] = arg.strip()
                     save_config(config)
-                    print(f"AI name changed to {config[\'assistant_name\']}.")
+                    print(f"AI name changed to {config['assistant_name']}.")
                     logger.info("Assistant name changed | name=%r", config["assistant_name"])
                     continue
 
@@ -649,7 +649,7 @@ def main() -> int:
                     current_chat["id"], answer
                 )
 
-            print(f"\n{config.get(\'assistant_name\', \'XemAi\')} > {answer}\n")
+            print(f"\n{config.get('assistant_name', 'XemAi')} > {answer}\n")
 
             if config.get("auto_memory", True):
                 extract_and_store_memories(
