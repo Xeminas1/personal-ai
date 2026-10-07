@@ -1,0 +1,71 @@
+{
+  "version": "0.1.4",
+  "notes": "GitHub update channel established. Future versions can now be installed with /update while preserving local data, logs, profile, chats, memory, feedback, and config.",
+  "files": [
+    {
+      "path": "main.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/main.py",
+      "sha256": "e9ed7d9bb6284a9376d8b91fff035d018e7f9d4ba56fa39e852dd13e2d893940"
+    },
+    {
+      "path": "run.bat",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/run.bat",
+      "sha256": "93d0935b384e5b06bff4e6efd410b938efc9b5784defd278225fe388e4d92372"
+    },
+    {
+      "path": "test.bat",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/test.bat",
+      "sha256": "ed72d1a3e5411b979858e453ad330dd8a714f720203b5e56f21a7658986e9c0e"
+    },
+    {
+      "path": "self_test.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/self_test.py",
+      "sha256": "444f9c07656d94474bd68f932c0bf773f7b029c6b7b59210cc2d73c80afe9c74"
+    },
+    {
+      "path": "app/__init__.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/app/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "app/config.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/app/config.py",
+      "sha256": "d19d904306b95363cd9fc044b157f539093c3797e284098a74515c05eddd96fb"
+    },
+    {
+      "path": "app/database.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/app/database.py",
+      "sha256": "60044537e5c8326f8ed21e2c283d86394d708bf68fd28b1a2570d1c74156fcf5"
+    },
+    {
+      "path": "app/learning.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/app/learning.py",
+      "sha256": "cdb33ce4a35885c4d4e726f19737eb45dce1087a1ae6fe2d4ca3ff9309fb9fb5"
+    },
+    {
+      "path": "app/llm.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/app/llm.py",
+      "sha256": "1c5e5e15031598aae397539e1e3e8253f6272b2020713d20f7e4c8b8820cb641"
+    },
+    {
+      "path": "app/logging_setup.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/app/logging_setup.py",
+      "sha256": "e0ca68985d496023a42566eee84bc069b42e94219c5be486ed8bdaf3ea616dbd"
+    },
+    {
+      "path": "app/prompts.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/app/prompts.py",
+      "sha256": "1e48d572f6881708c89824a00ae3d26f5a9add401f5888add28adb6756769dbb"
+    },
+    {
+      "path": "app/updater.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/app/updater.py",
+      "sha256": "8a58d6e23495db103eddd5b735b7fcdff8e4a2868ed4861ca0cd0b61a2b57fb5"
+    },
+    {
+      "path": "app/version.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/app/version.py",
+      "sha256": "af8262004c4c35ee9d144ce2971a9621de51f5d034749796ca9f1627c05f2a12"
+    }
+  ]
+}
