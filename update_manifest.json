@@ -1,16 +1,36 @@
 {
-  "version": "0.1.9",
-  "notes": "Auto-update restart validation: this is a small test release. If you are running v0.1.8, /update should install v0.1.9 and automatically relaunch Personal AI in the same command window.",
+  "version": "0.2.0",
+  "notes": "Identity update: the AI is now called XemAi by default, replies are labelled 'XemAi >', and /ainame lets you switch the display identity to Xeminas or another name.",
   "files": [
     {
+      "path": "main.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.0/main.py",
+      "sha256": "dfdce60376fbea8229550eff194045b760fd2777172f1595b6cef2ed41715d8e"
+    },
+    {
+      "path": "app/config.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.0/app/config.py",
+      "sha256": "fb86e160c799e9db9b6c0674031a89b53ad42b478b892d0c26c92f1b9968138b"
+    },
+    {
+      "path": "app/prompts.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.0/app/prompts.py",
+      "sha256": "2ef9903a6a390abf3f290a83fc770668770480f3d482700eff820d0d85f8b5d9"
+    },
+    {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.9/app/version.py",
-      "sha256": "5771bd2af5b460981717bba36fe637314f4bea72906bfa4be25f9acfd165cb4c"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.0/app/version.py",
+      "sha256": "c3d230ed056f77c9667b6c0ac046c2a392207ad56349f14138e600700fd0d0db"
     },
     {
       "path": "self_test.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.9/self_test.py",
-      "sha256": "a9b8b32fa21a6629c4fe89838d26463095539dfcb1a281783e0364334dbb1a55"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.0/self_test.py",
+      "sha256": "1323921f650275a60dadaa2cb55ecbd0d5366fa10f8c9088faa19032b50f2109"
+    },
+    {
+      "path": "README.md",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.0/README.md",
+      "sha256": "d369441625cb4f9b32f0dca8052d47846bdae789fccbab9940c606d8524f5ff7"
     }
   ]
 }
