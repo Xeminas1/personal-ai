@@ -23,6 +23,7 @@ const els = {
   input: $("input"),
   sendBtn: $("sendBtn"),
   capabilitiesBtn: $("capabilitiesBtn"),
+  updateBtn: $("updateBtn"),
   feedbackBtn: $("feedbackBtn"),
   modal: $("modal"),
   modalTitle: $("modalTitle"),
@@ -262,6 +263,110 @@ async function showCapabilities() {
   }
 }
 
+async function waitForUpdatedServer(expectedVersion) {
+  setStatus(`Restarting into v${expectedVersion}…`);
+  const deadline = Date.now() + 45000;
+  let sawOffline = false;
+
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(
+        `/api/health?t=${Date.now()}`,
+        { cache: "no-store" }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (data.version === expectedVersion && (sawOffline || data.version !== state.bootstrap.version)) {
+          window.location.reload();
+          return;
+        }
+      }
+    } catch {
+      sawOffline = true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 900));
+  }
+
+  setStatus(`Update installed · reopen XemAi if needed`);
+  showModal(
+    "Update installed",
+    `XemAi v${expectedVersion} was installed, but the phone could not reconnect automatically. Refresh the page in a moment.`
+  );
+}
+
+async function installMobileUpdate(version) {
+  try {
+    els.modal.close();
+    closeDrawer();
+    setBusy(true, `Installing v${version}…`);
+    const data = await api("/api/update/install", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+
+    if (!data.restart) {
+      setBusy(false, `Up to date · v${data.installed}`);
+      return;
+    }
+
+    state.busy = true;
+    els.thinking.classList.add("hidden");
+    await waitForUpdatedServer(data.installed);
+  } catch (err) {
+    setBusy(false, "Update failed");
+    showModal("Update failed", err.message || String(err));
+  }
+}
+
+async function checkMobileUpdate() {
+  closeDrawer();
+  setStatus("Checking for updates…");
+  try {
+    const data = await api("/api/update");
+    if (!data.enabled) {
+      showModal(
+        "Mobile updates disabled",
+        "Mobile update installation is disabled in the PC configuration."
+      );
+      setStatus(`Connected · v${state.bootstrap.version}`);
+      return;
+    }
+
+    if (!data.update) {
+      showModal(
+        "XemAi is up to date",
+        `You are running XemAi v${data.current_version}.`
+      );
+      setStatus(`Up to date · v${data.current_version}`);
+      return;
+    }
+
+    clearModal();
+    els.modalTitle.textContent = `Update to v${data.update.version}?`;
+    els.modalBody.textContent =
+      data.update.notes || "A newer XemAi release is available.";
+
+    const cancel = document.createElement("button");
+    cancel.textContent = "Not now";
+    cancel.addEventListener("click", () => {
+      els.modal.close();
+      setStatus(`Connected · v${state.bootstrap.version}`);
+    });
+
+    const install = document.createElement("button");
+    install.textContent = "Install";
+    install.addEventListener("click", () =>
+      installMobileUpdate(data.update.version)
+    );
+
+    els.modalActions.append(cancel, install);
+    els.modal.showModal();
+  } catch (err) {
+    setStatus("Update check failed");
+    showModal("Update check failed", err.message || String(err));
+  }
+}
+
 function showFeedback() {
   if (!state.chatId) return;
   clearModal();
@@ -321,6 +426,7 @@ els.scrim.addEventListener("click", closeDrawer);
 els.newBtn.addEventListener("click", createChat);
 els.drawerNewBtn.addEventListener("click", createChat);
 els.capabilitiesBtn.addEventListener("click", showCapabilities);
+els.updateBtn.addEventListener("click", checkMobileUpdate);
 els.feedbackBtn.addEventListener("click", showFeedback);
 els.composer.addEventListener("submit", sendMessage);
 els.input.addEventListener("input", autoGrow);
