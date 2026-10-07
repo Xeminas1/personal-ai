@@ -89,6 +89,17 @@ class ChatBackend:
     def web_test(self) -> tuple[bool, str]:
         return self.tools.test_saved_web_search()
 
+    def rate_chat(self, chat_id: int, score: int, note: str = "") -> None:
+        score = int(score)
+        if not 0 <= score <= 10:
+            raise ValueError("Score must be from 0 to 10.")
+        chat = self.db.get_chat(chat_id)
+        if chat is None or chat["user_id"] != self.user["id"]:
+            raise ValueError("Chat not found.")
+        self.db.add_chat_feedback(
+            self.user["id"], chat_id, score, note.strip()
+        )
+
     def check_update(self):
         url = self.config.get("update_manifest_url", "").strip()
         return check_for_update(url) if url else None
