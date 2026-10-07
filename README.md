@@ -136,3 +136,13 @@ Mobile update control:
 - the phone waits for the server to return and reloads automatically
 - API-key management, model settings and arbitrary PC configuration remain unavailable from mobile
 - if the Windows desktop app is open during a phone update, its in-memory code remains the old version until the desktop app is restarted
+
+
+## v0.4.2
+
+Android mobile cache fix:
+- fixes the mobile Update XemAi button appearing without working when Android combined new HTML with cached old JavaScript
+- version-tags mobile JavaScript and CSS URLs
+- mobile HTML, JavaScript, CSS and service-worker responses now use no-store caching
+- the service worker removes stale XemAi app caches and always fetches current same-origin UI code
+- preserves phone-based official update checking/install from v0.4.1
