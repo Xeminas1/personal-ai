@@ -122,3 +122,17 @@ Shared PC + Android release:
 - adds `mobile_tailscale_setup.bat` for private Tailscale Serve routing to the localhost server
 - mobile server remains loopback-only by default; it is not exposed to the LAN or public internet
 - mobile PWA supports home-screen installation when accessed through HTTPS (for example via Tailscale Serve)
+
+
+## v0.4.1
+
+Mobile update control:
+- adds `Update XemAi` to the Android/mobile drawer
+- phone can check the official configured XemAi update channel
+- phone can install a newer release without opening the Windows desktop UI
+- the mobile API re-checks the update manifest server-side; the phone cannot supply arbitrary update URLs or files
+- SHA verification and staged Python compile validation remain enforced by the normal updater
+- after a mobile update, the XemAi mobile server restarts itself using the newly installed code
+- the phone waits for the server to return and reloads automatically
+- API-key management, model settings and arbitrary PC configuration remain unavailable from mobile
+- if the Windows desktop app is open during a phone update, its in-memory code remains the old version until the desktop app is restarted
