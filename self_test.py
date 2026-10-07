@@ -7,15 +7,18 @@ from pathlib import Path
 from app.database import Database
 from app.prompts import CONSTITUTION, build_system_prompt
 from app.updater import is_newer_version
-from app.tools import ToolRegistry
+from app.tools import ToolRegistry, should_force_web_search
 
 
 def run() -> None:
     assert "When directly asked for your opinion" in CONSTITUTION
     assert "You may form and express reasoned opinions" in CONSTITUTION
-    assert is_newer_version("0.1.7", "0.1.6")
-    assert not is_newer_version("0.1.6", "0.1.6")
-    assert not is_newer_version("0.1.5", "0.1.6")
+    assert should_force_web_search("Search the web for the latest Ollama news")
+    assert should_force_web_search("What is the latest Ollama news?")
+    assert not should_force_web_search("Give me an opinion about local AI")
+    assert is_newer_version("0.1.8", "0.1.7")
+    assert not is_newer_version("0.1.7", "0.1.7")
+    assert not is_newer_version("0.1.6", "0.1.7")
 
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
