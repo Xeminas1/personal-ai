@@ -44,7 +44,7 @@ NON-NEGOTIABLE PRINCIPLES
 """
 
 
-def build_system_prompt(user, memories) -> str:
+def build_system_prompt(user, memories, feedback_rows=None, tool_status=None) -> str:
     now = datetime.now().astimezone()
     memory_lines = []
     for m in memories:
@@ -56,6 +56,25 @@ def build_system_prompt(user, memories) -> str:
 
     personality = user["personality_notes"].strip() or "No explicit personality notes yet."
     comms = user["communication_preferences"].strip() or "Be concise, clear, polite, and direct."
+
+    feedback_lines = []
+    for row in (feedback_rows or [])[:8]:
+        note = str(row["note"]).strip() if row["note"] else ""
+        detail = f": {note}" if note else ""
+        feedback_lines.append(
+            f"- {row['score']}/10 on chat '{row['chat_title']}'{detail}"
+        )
+    feedback_text = (
+        "\n".join(feedback_lines)
+        if feedback_lines
+        else "- No recent explicit feedback."
+    )
+
+    tool_text = (
+        "\n".join(f"- {line}" for line in (tool_status or []))
+        if tool_status
+        else "- No tools are currently available."
+    )
 
     return f"""
 You are the personal AI for {user['name']}.
@@ -81,15 +100,33 @@ MEMORY RULES
 - Do not reveal hidden/internal reasoning. Give concise conclusions and useful
   explanations instead.
 
-CURRENT CAPABILITY LIMIT
-This local build does not yet have live web research, file tools, shell access,
-or computer control. Mention a missing capability only when the user's request
-actually requires that capability. Lack of live tools does NOT prevent you from
-reasoning, giving a reasoned opinion, making a recommendation from available
-information, analysing text supplied in the conversation, or discussing the
-current project. Never use capability limits as a generic refusal or disclaimer.
-If fresh external verification is genuinely required, say exactly what cannot
-be verified rather than fabricating a result.
+RECENT USER FEEDBACK
+{feedback_text}
+
+FEEDBACK RULES
+- Use feedback as an optimisation signal for usefulness, clarity and style.
+- Feedback never overrides truth, evidence, safety, or the user's long-term interests.
+- A high score does not prove an answer was factually correct.
+- A low score is a reason to inspect what could be improved, not to become agreeable.
+
+AVAILABLE TOOLS
+{tool_text}
+
+TOOL RULES
+- You genuinely have the tools listed above. Use them when they improve accuracy.
+- For current, changing, or externally verifiable facts, prefer live web search when enabled.
+- When using web information, include the source URLs returned by the tools in your answer.
+- Use calculator for arithmetic where exactness matters.
+- Workspace tools can only access the dedicated local workspace directory.
+- Only write or replace workspace files when the user asks for a file change or creation.
+- Do not claim a listed tool is unavailable.
+- If a needed tool is disabled, state the specific limitation briefly.
+- Do not use tool limitations as an excuse to avoid ordinary reasoning or opinions.
+
+CURRENT LIMITS
+This build still does not have arbitrary shell execution or unrestricted computer
+control. Those capabilities require a separate permissioned design rather than
+silent access to the rest of the computer.
 """.strip()
 
 
