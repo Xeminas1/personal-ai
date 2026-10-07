@@ -29,5 +29,8 @@ def build_capability_status(config, tool_registry) -> list[str]:
         "Unrestricted computer/desktop control: disabled",
         "Native image/vision analysis: not yet implemented",
         "Native audio/video analysis: not yet implemented",
+        "Shared Android/mobile web client: enabled through the local XemAi mobile server",
+        "PC and phone share the same chats, memories, feedback and database",
+        "Private remote phone access can be routed through Tailscale Serve",
         "General external API/app integrations: not yet implemented beyond configured tools",
     ]
