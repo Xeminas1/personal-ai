@@ -1,36 +1,36 @@
 {
-  "version": "0.2.0",
-  "notes": "Identity update: the AI is now called XemAi by default, replies are labelled 'XemAi >', and /ainame lets you switch the display identity to Xeminas or another name.",
+  "version": "0.2.1",
+  "notes": "Self-knowledge update: XemAi now receives an explicit snapshot of its real app capabilities, adds /capabilities, and stops generic Qwen disclaimers from contradicting persistent memory, live web access, workspace tools, and other enabled features.",
   "files": [
     {
       "path": "main.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.0/main.py",
-      "sha256": "dfdce60376fbea8229550eff194045b760fd2777172f1595b6cef2ed41715d8e"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.1/main.py",
+      "sha256": "f04644befb32ab1530a3813228e1dcf133014f1ae7435c4987154670973f5d22"
     },
     {
       "path": "app/config.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.0/app/config.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.1/app/config.py",
       "sha256": "fb86e160c799e9db9b6c0674031a89b53ad42b478b892d0c26c92f1b9968138b"
     },
     {
       "path": "app/prompts.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.0/app/prompts.py",
-      "sha256": "2ef9903a6a390abf3f290a83fc770668770480f3d482700eff820d0d85f8b5d9"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.1/app/prompts.py",
+      "sha256": "10dcee007f41b247def933419f35337d587a0bd454eaef771c34da66a6006ed8"
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.0/app/version.py",
-      "sha256": "c3d230ed056f77c9667b6c0ac046c2a392207ad56349f14138e600700fd0d0db"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.1/app/version.py",
+      "sha256": "55d8ba39f7c3468acf41e5a3bd7a3630f6e2765ec2370a2bc6fce24fbf1b8e5d"
     },
     {
       "path": "self_test.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.0/self_test.py",
-      "sha256": "1323921f650275a60dadaa2cb55ecbd0d5366fa10f8c9088faa19032b50f2109"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.1/self_test.py",
+      "sha256": "fc1d00bd13b8eee2a162210c87a5d5471354d9e46de970e7e5d1d31f89a59fd7"
     },
     {
       "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.0/README.md",
-      "sha256": "d369441625cb4f9b32f0dca8052d47846bdae789fccbab9940c606d8524f5ff7"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.2.1/README.md",
+      "sha256": "b2922fecf662a542b6b3551b85bde530a6a243013d4c084f6e1e1030427356c0"
     }
   ]
 }
