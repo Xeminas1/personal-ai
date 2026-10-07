@@ -34,3 +34,10 @@ Update experience:
 - there is no need to close Command Prompt or reopen `run.bat`
 - the database is closed cleanly immediately before the process is replaced
 - the new Python process reloads all updated modules from disk
+
+
+## v0.1.9
+
+Auto-update restart validation:
+- small release intended to verify that v0.1.8 can install an update and relaunch Personal AI automatically in the same command window
+- no database, memory, profile, feedback, API-key, or configuration migration is required
