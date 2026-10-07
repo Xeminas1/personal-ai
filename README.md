@@ -13,3 +13,14 @@ Personal data stays local. The repository must not contain `data/`, local databa
 ## Updates
 
 The app includes a built-in updater. Release packages are stored under `releases/`, and `update_manifest.json` describes the current release.
+
+
+## v0.1.7
+
+Web reliability update:
+- `/websetup` now validates an Ollama API key before saving it
+- `/webtest` performs a real one-result search using the saved key
+- `/tools` now says `configured` rather than pretending an untested key is connected
+- HTTP 401 now produces a clear "API key rejected" message
+- explicit requests such as "search the web" and "latest news" are deterministically routed through web search instead of relying entirely on the local model to choose the tool
+- the model is explicitly forbidden from claiming an old training cutoff when live web search is available
