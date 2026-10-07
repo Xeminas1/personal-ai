@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from datetime import datetime
 from getpass import getpass
@@ -469,9 +470,21 @@ def main() -> int:
                             manifest=manifest,
                             logger=logger,
                         )
-                        print(
-                            f"Updated to v{installed}. "
-                            "Restart Personal AI to use the new version."
+                        print(f"Updated to v{installed}.")
+                        print("Restarting Personal AI in this window...")
+                        logger.info(
+                            "Automatic restart after update | target=%s",
+                            installed,
+                        )
+
+                        # Replace this Python process with the freshly updated
+                        # application. The command window stays open, while all
+                        # Python modules are reloaded from the new version.
+                        script = (DATA_DIR.parent / "main.py").resolve()
+                        db.close()
+                        os.execv(
+                            sys.executable,
+                            [sys.executable, str(script)],
                         )
                     except UpdateError as e:
                         logger.exception("Update failed")
