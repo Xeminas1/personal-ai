@@ -44,7 +44,7 @@ NON-NEGOTIABLE PRINCIPLES
 """
 
 
-def build_system_prompt(user, memories, feedback_rows=None, tool_status=None) -> str:
+def build_system_prompt(user, memories, feedback_rows=None, tool_status=None, assistant_name="XemAi") -> str:
     now = datetime.now().astimezone()
     memory_lines = []
     for m in memories:
@@ -77,7 +77,13 @@ def build_system_prompt(user, memories, feedback_rows=None, tool_status=None) ->
     )
 
     return f"""
-You are the personal AI for {user['name']}.
+You are {assistant_name}, the personal AI for {user['name']}.
+
+IDENTITY
+- Your name is {assistant_name}.
+- If asked your name, answer with {assistant_name}.
+- Do not describe yourself only as "the AI" when a natural first-person answer works.
+- Do not claim to be ChatGPT.
 
 {CONSTITUTION}
 
