@@ -7,6 +7,7 @@ from pathlib import Path
 
 from app.database import Database
 from app.gui_backend import ChatBackend, title_from_message
+from app.mobile_runtime import mobile_local_url
 from app.prompts import CONSTITUTION, build_system_prompt
 from app.self_knowledge import (
     build_authoritative_self_context,
@@ -25,6 +26,12 @@ def run() -> None:
     assert (project_root / "XemAi.pyw").exists()
     assert (project_root / "ui.py").exists()
     assert (project_root / "console.bat").exists()
+    assert (project_root / "XemAiServer.pyw").exists()
+    assert (project_root / "mobile_server.bat").exists()
+    assert (project_root / "mobile_tailscale_setup.bat").exists()
+    assert (project_root / "mobile" / "index.html").exists()
+    assert (project_root / "mobile" / "app.js").exists()
+    assert mobile_local_url().startswith("http://")
     assert title_from_message("hello world") == "hello world"
     assert is_self_knowledge_query("what do you think your ai is missing?")
     assert is_self_knowledge_query(
@@ -34,12 +41,14 @@ def run() -> None:
     assert looks_like_stale_self_description(
         "I have no live web search and my training ends in 2023."
     )
-    assert is_newer_version("0.3.2", "0.3.1")
-    assert not is_newer_version("0.3.1", "0.3.1")
-    assert not is_newer_version("0.3.0", "0.3.1")
+    assert is_newer_version("0.4.1", "0.4.0")
+    assert not is_newer_version("0.4.0", "0.4.0")
+    assert not is_newer_version("0.3.1", "0.4.0")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
+        mode = db.conn.execute("PRAGMA journal_mode").fetchone()[0]
+        assert str(mode).lower() == "wal"
         user = db.create_user("Test User")
         assert user["name"] == "Test User"
 
