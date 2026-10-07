@@ -72,12 +72,13 @@ class OllamaClient:
         except Exception:
             return False
 
-    def chat(
+    def chat_raw(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         *,
         json_mode: bool = False,
-    ) -> str:
+        tools: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
@@ -85,23 +86,87 @@ class OllamaClient:
         }
         if json_mode:
             payload["format"] = "json"
+        if tools:
+            payload["tools"] = tools
 
         self.logger.debug(
-            "LLM request | provider=ollama model=%s messages=%d json=%s",
-            self.model, len(messages), json_mode
+            "LLM request | provider=ollama model=%s messages=%d json=%s tools=%d",
+            self.model, len(messages), json_mode, len(tools or [])
         )
 
         response = self._request("/api/chat", payload=payload)
         message = response.get("message") or {}
-        content = message.get("content", "")
+        content = message.get("content", "") or ""
+        tool_calls = message.get("tool_calls") or []
 
         self.logger.debug(
-            "LLM response | provider=ollama model=%s chars=%d done=%s",
+            "LLM response | provider=ollama model=%s chars=%d tool_calls=%d done=%s",
             response.get("model", self.model),
             len(content),
+            len(tool_calls),
             response.get("done"),
         )
 
-        if not content:
+        if not content and not tool_calls:
             raise OllamaError("The local model returned an empty response.")
+        return response
+
+    def chat(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        json_mode: bool = False,
+    ) -> str:
+        response = self.chat_raw(messages, json_mode=json_mode)
+        message = response.get("message") or {}
+        content = message.get("content", "") or ""
+        if not content:
+            raise OllamaError("The local model returned no text.")
         return content
+
+    def agent_chat(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        tool_registry,
+        max_tool_rounds: int = 6,
+    ) -> str:
+        conversation = list(messages)
+        tools = tool_registry.definitions()
+
+        for round_index in range(max_tool_rounds + 1):
+            response = self.chat_raw(conversation, tools=tools)
+            assistant_message = response.get("message") or {}
+            tool_calls = assistant_message.get("tool_calls") or []
+
+            conversation.append(assistant_message)
+
+            if not tool_calls:
+                content = assistant_message.get("content", "") or ""
+                if content:
+                    return content
+                raise OllamaError("The agent finished without a text answer.")
+
+            if round_index >= max_tool_rounds:
+                raise OllamaError("Tool-call limit reached before a final answer.")
+
+            for call in tool_calls:
+                function = call.get("function") or {}
+                name = str(function.get("name", ""))
+                arguments = function.get("arguments") or {}
+                if isinstance(arguments, str):
+                    try:
+                        arguments = json.loads(arguments)
+                    except json.JSONDecodeError:
+                        arguments = {}
+
+                result = tool_registry.execute(name, arguments)
+                conversation.append(
+                    {
+                        "role": "tool",
+                        "content": result,
+                        "tool_name": name,
+                    }
+                )
+
+        raise OllamaError("Agent loop ended unexpectedly.")
