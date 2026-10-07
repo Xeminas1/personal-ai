@@ -15,6 +15,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.2.2", "Recovered from the v0.2.1 release error and added pre-install Python syntax validation."),
     ("0.3.0", "Added the native desktop chat frontend with sidebar chats, settings, capabilities, and graphical updates."),
     ("0.3.1", "Makes runtime self-knowledge authoritative, supplies release history, and prevents stale self-descriptions from overriding current facts."),
+    ("0.4.0", "Adds a shared mobile web/PWA client and localhost mobile server so Android and Windows use the same XemAi chats, memory, feedback and learning state."),
 ]
 
 
