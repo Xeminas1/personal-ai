@@ -14,6 +14,11 @@ from app.llm import OllamaClient, OllamaError
 from app.logging_setup import setup_logging
 from app.prompts import build_system_prompt
 from app.secrets import save_ollama_api_key, clear_ollama_api_key
+from app.self_knowledge import (
+    build_authoritative_self_context,
+    is_self_knowledge_query,
+    looks_like_stale_self_description,
+)
 from app.tools import ToolRegistry, should_force_web_search
 from app.updater import check_for_update, fetch_manifest, install_update, UpdateError
 from app.version import VERSION
@@ -552,11 +557,39 @@ def main() -> int:
             )
 
             messages = [{"role": "system", "content": system_prompt}]
-            for row in history:
-                if row["role"] in {"user", "assistant"}:
-                    messages.append(
-                        {"role": row["role"], "content": row["content"]}
-                    )
+            self_query = is_self_knowledge_query(user_message)
+
+            for i, row in enumerate(history):
+                if row["role"] not in {"user", "assistant"}:
+                    continue
+
+                is_latest_user = (
+                    i == len(history) - 1
+                    and row["role"] == "user"
+                    and row["content"] == user_message
+                )
+                if self_query and is_latest_user:
+                    continue
+
+                if (
+                    self_query
+                    and row["role"] == "assistant"
+                    and looks_like_stale_self_description(row["content"])
+                ):
+                    continue
+
+                messages.append(
+                    {"role": row["role"], "content": row["content"]}
+                )
+
+            if self_query:
+                messages.append({
+                    "role": "system",
+                    "content": build_authoritative_self_context(
+                        config, tool_registry
+                    ),
+                })
+                messages.append({"role": "user", "content": user_message})
 
             try:
                 logger.info(
