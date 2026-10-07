@@ -19,7 +19,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "log_message_content": False,
     "update_manifest_url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/main/update_manifest.json",
     "check_updates_on_startup": True,
-    "max_tool_rounds": 6
+    "max_tool_rounds": 6,
+    "mobile_server_host": "127.0.0.1",
+    "mobile_server_port": 8765,
+    "mobile_server_autostart": True
 }
 
 
