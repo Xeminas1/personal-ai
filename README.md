@@ -52,3 +52,16 @@ Identity and readability update:
 - `/ainame` shows the current AI name
 - `/ainame Xeminas` or `/ainame XemAi` changes the name without editing code
 - the chosen name is stored in local `config.json` and survives normal updates
+
+
+## v0.2.1
+
+Self-knowledge update:
+- XemAi now receives an explicit snapshot of the Personal AI app's real capabilities on every turn
+- adds `/capabilities` for a deterministic, non-model-generated capability report
+- prevents generic Qwen disclaimers from contradicting enabled features
+- explicitly identifies persistent chat history and cross-chat memory as enabled
+- explicitly identifies live web search, webpage fetching, calculator, time, feedback and workspace tools
+- explicitly identifies current limitations such as no arbitrary shell, unrestricted computer control, native vision or native audio/video analysis
+- forbids invented training-cutoff years unless a verified cutoff is actually supplied
+- distinguishes sandboxed workspace access from unrestricted filesystem access
