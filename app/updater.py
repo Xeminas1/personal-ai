@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import py_compile
 import shutil
 import ssl
 import tempfile
@@ -117,6 +118,19 @@ def _safe_relative_path(value: str) -> Path:
     return path
 
 
+def _validate_python_files(root: Path) -> None:
+    """Reject an update before install if any staged Python file has invalid syntax."""
+    failures: list[str] = []
+    for path in sorted(root.rglob("*.py")):
+        try:
+            py_compile.compile(str(path), doraise=True)
+        except py_compile.PyCompileError as e:
+            failures.append(f"{path.relative_to(root)}: {e.msg}")
+    if failures:
+        detail = " | ".join(failures[:5])
+        raise UpdateError(f"Update contains invalid Python code: {detail}")
+
+
 def _backup_program_files(base_dir: Path, backup_dir: Path) -> None:
     backup_dir.mkdir(parents=True, exist_ok=True)
     for item in base_dir.iterdir():
@@ -149,6 +163,8 @@ def _install_file_manifest(
             destination = stage / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_bytes(data)
+
+        _validate_python_files(stage)
 
         backup_dir = base_dir / ".update_backups" / f"before_{target_version.replace('.', '_')}"
         if backup_dir.exists():
@@ -220,6 +236,7 @@ def _install_zip_manifest(
         extracted.mkdir(parents=True, exist_ok=True)
         _safe_extract(package, extracted)
         release_root = _find_release_root(extracted)
+        _validate_python_files(release_root)
         backup_dir = base_dir / ".update_backups" / f"before_{target_version.replace('.', '_')}"
         if backup_dir.exists():
             shutil.rmtree(backup_dir)
