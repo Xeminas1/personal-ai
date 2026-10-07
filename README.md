@@ -41,3 +41,14 @@ Update experience:
 Auto-update restart validation:
 - small release intended to verify that v0.1.8 can install an update and relaunch Personal AI automatically in the same command window
 - no database, memory, profile, feedback, API-key, or configuration migration is required
+
+
+## v0.2.0
+
+Identity and readability update:
+- the personal AI now has a visible name: `XemAi`
+- responses are displayed as `XemAi > ...` instead of `AI > ...`
+- the system prompt gives the assistant a stable identity as XemAi
+- `/ainame` shows the current AI name
+- `/ainame Xeminas` or `/ainame XemAi` changes the name without editing code
+- the chosen name is stored in local `config.json` and survives normal updates
