@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import compileall
 import json
 import tempfile
 from pathlib import Path
@@ -11,11 +12,13 @@ from app.tools import ToolRegistry, should_force_web_search
 
 
 def run() -> None:
+    project_root = Path(__file__).resolve().parent
+    assert compileall.compile_dir(project_root, quiet=1, force=True)
     assert "When directly asked for your opinion" in CONSTITUTION
     assert "You may form and express reasoned opinions" in CONSTITUTION
-    assert is_newer_version("0.2.2", "0.2.1")
-    assert not is_newer_version("0.2.1", "0.2.1")
-    assert not is_newer_version("0.2.0", "0.2.1")
+    assert is_newer_version("0.2.3", "0.2.2")
+    assert not is_newer_version("0.2.2", "0.2.2")
+    assert not is_newer_version("0.2.1", "0.2.2")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
