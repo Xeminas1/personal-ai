@@ -31,6 +31,11 @@ def run() -> None:
     assert (project_root / "mobile_tailscale_setup.bat").exists()
     assert (project_root / "mobile" / "index.html").exists()
     assert (project_root / "mobile" / "app.js").exists()
+    mobile_js = (project_root / "mobile" / "app.js").read_text(encoding="utf-8")
+    mobile_server = (project_root / "app" / "mobile_server.py").read_text(encoding="utf-8")
+    assert "/api/update/install" in mobile_js
+    assert "/api/update/install" in mobile_server
+    assert "/api/update" in mobile_server
     assert mobile_local_url().startswith("http://")
     assert title_from_message("hello world") == "hello world"
     assert is_self_knowledge_query("what do you think your ai is missing?")
@@ -41,9 +46,9 @@ def run() -> None:
     assert looks_like_stale_self_description(
         "I have no live web search and my training ends in 2023."
     )
-    assert is_newer_version("0.4.1", "0.4.0")
-    assert not is_newer_version("0.4.0", "0.4.0")
-    assert not is_newer_version("0.3.1", "0.4.0")
+    assert is_newer_version("0.4.2", "0.4.1")
+    assert not is_newer_version("0.4.1", "0.4.1")
+    assert not is_newer_version("0.4.0", "0.4.1")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
