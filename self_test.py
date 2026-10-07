@@ -36,6 +36,11 @@ def run() -> None:
     assert "/api/update/install" in mobile_js
     assert "/api/update/install" in mobile_server
     assert "/api/update" in mobile_server
+    assert 'FRONTEND_VERSION = "0.4.2"' in mobile_js
+    mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
+    assert "/app.js?v=0.4.2" in mobile_html
+    assert "/styles.css?v=0.4.2" in mobile_html
+    assert "no-store, max-age=0" in mobile_server
     assert mobile_local_url().startswith("http://")
     assert title_from_message("hello world") == "hello world"
     assert is_self_knowledge_query("what do you think your ai is missing?")
@@ -46,9 +51,9 @@ def run() -> None:
     assert looks_like_stale_self_description(
         "I have no live web search and my training ends in 2023."
     )
-    assert is_newer_version("0.4.2", "0.4.1")
-    assert not is_newer_version("0.4.1", "0.4.1")
-    assert not is_newer_version("0.4.0", "0.4.1")
+    assert is_newer_version("0.4.3", "0.4.2")
+    assert not is_newer_version("0.4.2", "0.4.2")
+    assert not is_newer_version("0.4.1", "0.4.2")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
