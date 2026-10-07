@@ -22,7 +22,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "max_tool_rounds": 6,
     "mobile_server_host": "127.0.0.1",
     "mobile_server_port": 8765,
-    "mobile_server_autostart": True
+    "mobile_server_autostart": True,
+    "mobile_updates_enabled": True
 }
 
 
