@@ -1,4 +1,4 @@
-const CACHE = "xemai-mobile-v0.4.0";
+const CACHE = "xemai-mobile-v0.4.1";
 const SHELL = ["/", "/styles.css", "/app.js", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
