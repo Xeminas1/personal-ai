@@ -13,9 +13,9 @@ from app.tools import ToolRegistry, should_force_web_search
 def run() -> None:
     assert "When directly asked for your opinion" in CONSTITUTION
     assert "You may form and express reasoned opinions" in CONSTITUTION
-    assert is_newer_version("0.2.1", "0.2.0")
-    assert not is_newer_version("0.2.0", "0.2.0")
-    assert not is_newer_version("0.1.9", "0.2.0")
+    assert is_newer_version("0.2.2", "0.2.1")
+    assert not is_newer_version("0.2.1", "0.2.1")
+    assert not is_newer_version("0.2.0", "0.2.1")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -28,9 +28,18 @@ def run() -> None:
             feedback_rows=[],
             tool_status=["calculator: enabled"],
             assistant_name="XemAi",
+            capability_status=[
+                "Persistent chat history across restarts: enabled",
+                "Cross-chat long-term memory: enabled",
+                "Live web search: configured",
+            ],
         )
         assert "You are XemAi" in system_prompt
         assert "Your name is XemAi" in system_prompt
+        assert "SELF-KNOWLEDGE / CURRENT APP CAPABILITIES" in system_prompt
+        assert "Cross-chat long-term memory: enabled" in system_prompt
+        assert "Do NOT claim you lack live data" in system_prompt
+        assert "Never invent or state a training cutoff year" in system_prompt
         assert "AVAILABLE TOOLS" in system_prompt
         assert "calculator: enabled" in system_prompt
         assert "Do not use tool limitations as an excuse" in system_prompt
