@@ -1,32 +1,32 @@
-const CACHE = "xemai-mobile-v0.4.1";
-const SHELL = ["/", "/styles.css", "/app.js", "/manifest.webmanifest"];
+const CACHE = "xemai-mobile-v0.4.2";
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.map((key) => caches.delete(key)))
+    )
+  );
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+      Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))
     )
   );
   self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
-  const url = new URL(event.request.url);
-  if (url.pathname.startsWith("/api/")) return;
-  if (event.request.method !== "GET") return;
+  const request = event.request;
+  const url = new URL(request.url);
 
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE).then((cache) => cache.put(event.request, copy));
-        return response;
-      })
-      .catch(() => caches.match(event.request))
-  );
+  if (request.method !== "GET") return;
+
+  if (url.origin === self.location.origin) {
+    event.respondWith(
+      fetch(request, { cache: "no-store" })
+    );
+  }
 });
