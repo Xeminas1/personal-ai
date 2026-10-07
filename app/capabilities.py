@@ -32,5 +32,6 @@ def build_capability_status(config, tool_registry) -> list[str]:
         "Shared Android/mobile web client: enabled through the local XemAi mobile server",
         "PC and phone share the same chats, memories, feedback and database",
         "Private remote phone access can be routed through Tailscale Serve",
+        "Mobile update checks/install: enabled for the official configured XemAi update channel",
         "General external API/app integrations: not yet implemented beyond configured tools",
     ]
