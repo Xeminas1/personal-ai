@@ -17,7 +17,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "auto_memory": True,
     "log_message_content": False,
     "update_manifest_url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/main/update_manifest.json",
-    "check_updates_on_startup": True
+    "check_updates_on_startup": True,
+    "max_tool_rounds": 6
 }
 
 
