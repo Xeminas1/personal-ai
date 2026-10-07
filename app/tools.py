@@ -20,6 +20,41 @@ class ToolError(RuntimeError):
     pass
 
 
+def should_force_web_search(text: str) -> bool:
+    """
+    Deterministic routing for requests that clearly require live search.
+    This avoids relying entirely on a small local model to decide whether
+    to call the web_search tool.
+    """
+    lower = text.lower()
+    explicit_phrases = (
+        "search the web",
+        "search online",
+        "browse the web",
+        "browse online",
+        "look it up",
+        "look up ",
+        "check the web",
+        "check online",
+        "find online",
+    )
+    if any(phrase in lower for phrase in explicit_phrases):
+        return True
+
+    freshness_terms = (
+        "latest ",
+        "latest news",
+        "recent news",
+        "current news",
+        "today's news",
+        "todays news",
+        "up to date",
+        "up-to-date",
+        "what happened today",
+    )
+    return any(term in lower for term in freshness_terms)
+
+
 class _TextExtractor(HTMLParser):
     def __init__(self):
         super().__init__()
@@ -114,9 +149,9 @@ class ToolRegistry:
             "current_time: enabled",
             "web_fetch: enabled (direct HTTPS/HTTP page fetch)",
             (
-                "web_search: enabled (Ollama Web Search)"
+                "web_search: configured (run /webtest to verify connection)"
                 if self.web_search_enabled
-                else "web_search: disabled (run /websetup to enable)"
+                else "web_search: disabled (run /websetup to configure)"
             ),
             "workspace_list: enabled",
             "workspace_read: enabled",
@@ -307,11 +342,14 @@ class ToolRegistry:
             "timezone": str(now.tzinfo),
         }
 
-    def web_search(self, query: str, max_results: int = 5):
-        key = load_ollama_api_key(self.data_dir)
-        if not key:
-            raise ToolError("Web search is not configured. Run /websetup.")
-
+    def _ollama_web_search_request(
+        self,
+        *,
+        key: str,
+        query: str,
+        max_results: int = 5,
+        timeout: int = 45,
+    ) -> dict[str, Any]:
         query = query.strip()
         if not query:
             raise ToolError("Search query is empty.")
@@ -326,22 +364,70 @@ class ToolRegistry:
             headers={
                 "Authorization": f"Bearer {key}",
                 "Content-Type": "application/json",
-                "User-Agent": "PersonalAI/0.1.6",
+                "User-Agent": "PersonalAI/0.1.7",
             },
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=45) as response:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
                 parsed = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", errors="replace")
-            raise ToolError(f"Ollama web search HTTP {e.code}: {body[:300]}") from e
+            if e.code == 401:
+                raise ToolError(
+                    "Ollama rejected the API key (HTTP 401 Unauthorized). "
+                    "Create a valid Ollama API key and run /websetup again."
+                ) from e
+            raise ToolError(
+                f"Ollama web search HTTP {e.code}: {body[:300]}"
+            ) from e
         except urllib.error.URLError as e:
             raise ToolError(f"Web search connection failed: {e}") from e
 
+        if not isinstance(parsed, dict):
+            raise ToolError("Ollama returned an unexpected web-search response.")
+        return parsed
+
+    def test_web_search_key(self, key: str) -> tuple[bool, str]:
+        key = key.strip()
+        if not key:
+            return False, "No API key was provided."
+
+        try:
+            parsed = self._ollama_web_search_request(
+                key=key,
+                query="Ollama",
+                max_results=1,
+                timeout=30,
+            )
+        except ToolError as e:
+            return False, str(e)
+
+        results = parsed.get("results", [])
+        if not isinstance(results, list):
+            return False, "Ollama returned an unexpected response."
+        return True, "Ollama web search connection verified."
+
+    def test_saved_web_search(self) -> tuple[bool, str]:
+        key = load_ollama_api_key(self.data_dir)
+        if not key:
+            return False, "No Ollama API key is configured. Run /websetup."
+        return self.test_web_search_key(key)
+
+    def web_search(self, query: str, max_results: int = 5):
+        key = load_ollama_api_key(self.data_dir)
+        if not key:
+            raise ToolError("Web search is not configured. Run /websetup.")
+
+        parsed = self._ollama_web_search_request(
+            key=key,
+            query=query,
+            max_results=max_results,
+        )
+
         results = parsed.get("results", [])
         cleaned = []
-        for item in results[:max_results]:
+        for item in results[:max(1, min(10, int(max_results)))]:
             cleaned.append(
                 {
                     "title": item.get("title", ""),
@@ -349,7 +435,7 @@ class ToolRegistry:
                     "content": str(item.get("content", ""))[:3000],
                 }
             )
-        return {"query": query, "results": cleaned}
+        return {"query": query.strip(), "results": cleaned}
 
     def web_fetch(self, url: str):
         url = url.strip()
