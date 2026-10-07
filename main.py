@@ -1,0 +1,481 @@
+from __future__ import annotations
+
+import sys
+from datetime import datetime
+
+from app.config import DATA_DIR, LOG_DIR, load_config, save_config
+from app.database import Database
+from app.learning import extract_and_store_memories
+from app.llm import OllamaClient, OllamaError
+from app.logging_setup import setup_logging
+from app.prompts import build_system_prompt
+from app.updater import check_for_update, fetch_manifest, install_update, UpdateError
+from app.version import VERSION
+
+
+def greeting(name: str) -> str:
+    hour = datetime.now().astimezone().hour
+    if hour < 12:
+        return f"Good morning, {name}. How are you this morning?"
+    if hour < 17:
+        return f"Good afternoon, {name}. How has your day been?"
+    return f"Good evening, {name}. How has your day been?"
+
+
+def print_help() -> None:
+    print(
+        """
+Commands
+--------
+/help                 Show commands
+/new [title]          Start a new separate chat
+/chats                List chats
+/switch <id>          Switch chat
+/profile              Show local profile
+/setstyle <text>      Set how you prefer the AI to communicate
+/memory               Show long-term memories
+/remember <text>      Add a memory manually
+/forget <id>          Deactivate a memory
+/model <name>         Change Ollama model (e.g. qwen3:8b)
+/feedback             Show recent 0-10 chat feedback
+/end                  End the current chat and rate it
+/update               Check for and install an update
+/version              Show installed version
+/log                  Show log file location
+/quit                 Exit
+"""
+    )
+
+
+def ask_chat_rating(db, user_id: int, chat_id: int) -> None:
+    if not db.chat_has_messages(chat_id):
+        return
+
+    while True:
+        raw = input(
+            "\nBefore we close this chat, how helpful was I overall? "
+            "0-10 (Enter to skip): "
+        ).strip()
+
+        if not raw:
+            return
+
+        try:
+            score = int(raw)
+        except ValueError:
+            print("Please enter a number from 0 to 10, or press Enter to skip.")
+            continue
+
+        if not 0 <= score <= 10:
+            print("Please enter a number from 0 to 10.")
+            continue
+
+        note = ""
+        if score <= 5:
+            note = input("What should I have done better? (optional): ").strip()
+        elif score >= 9:
+            note = input("What worked especially well? (optional): ").strip()
+
+        db.add_chat_feedback(
+            user_id=user_id,
+            chat_id=chat_id,
+            score=score,
+            note=note,
+        )
+        print(f"Chat reward recorded: {score}/10.")
+        return
+
+
+def main() -> int:
+    config = load_config()
+    logger = setup_logging(LOG_DIR)
+    db = Database(DATA_DIR / "personal_ai.db")
+    logger.info("Application start | version=%s", VERSION)
+
+    if config.get("check_updates_on_startup") and config.get("update_manifest_url"):
+        try:
+            manifest = check_for_update(config["update_manifest_url"])
+            if manifest:
+                print(
+                    f"Update available: v{manifest['version']} "
+                    f"(installed: v{VERSION})."
+                )
+                print("Type /update after startup to install it.\n")
+        except Exception as e:
+            logger.warning("Startup update check failed: %r", e)
+
+    try:
+        user = db.get_user()
+        if user is None:
+            print("Welcome. No login is required; your profile is stored locally.")
+            while True:
+                name = input("What should I call you? ").strip()
+                if name:
+                    break
+                print("Please enter a name.")
+            user = db.create_user(name)
+            logger.info("Local user profile created | user_id=%s", user["id"])
+
+        repaired = db.repair_invalid_memory_confidence(user["id"])
+        if repaired:
+            logger.info(
+                "Memory repair | user_id=%s repaired_zero_confidence_preferences=%d",
+                user["id"], repaired
+            )
+
+        chats = db.list_chats(user["id"])
+        if chats:
+            current_chat = chats[0]
+        else:
+            current_chat = db.create_chat(user["id"], "General")
+
+        print()
+        print(f"Chat: [{current_chat['id']}] {current_chat['title']}")
+        print("-" * 50)
+        print(greeting(user["name"]))
+        print()
+
+        llm = OllamaClient(
+            base_url=config["ollama_url"],
+            model=config["model"],
+            logger=logger,
+        )
+
+        if not llm.health_check():
+            print(
+                "I can't reach Ollama yet.\n"
+                "Install/start Ollama, then run this program again.\n"
+                f"Expected local server: {config['ollama_url']}"
+            )
+            logger.error("Startup halted: Ollama unavailable")
+            return 2
+
+        if not llm.model_available():
+            print(
+                f"The configured model '{config['model']}' is not installed.\n"
+                f"Open Command Prompt and run:\n\n"
+                f"    ollama pull {config['model']}\n"
+            )
+            logger.error(
+                "Startup halted: model unavailable | model=%s", config["model"]
+            )
+            return 3
+
+        while True:
+            try:
+                raw = input(f"{user['name']} > ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print()
+                ask_chat_rating(db, user["id"], current_chat["id"])
+                print("Goodbye.")
+                break
+
+            if not raw:
+                continue
+
+            if raw.startswith("/"):
+                parts = raw.split(maxsplit=1)
+                command = parts[0].lower()
+                arg = parts[1].strip() if len(parts) > 1 else ""
+
+                if command == "/quit":
+                    ask_chat_rating(db, user["id"], current_chat["id"])
+                    print("Goodbye.")
+                    break
+
+                if command == "/help":
+                    print_help()
+                    continue
+
+                if command == "/new":
+                    ask_chat_rating(db, user["id"], current_chat["id"])
+                    title = arg or input("Chat title: ").strip() or "Untitled"
+                    current_chat = db.create_chat(user["id"], title)
+                    logger.info(
+                        "Chat created | chat_id=%s title=%r",
+                        current_chat["id"], current_chat["title"]
+                    )
+                    print(
+                        f"\nChat: [{current_chat['id']}] "
+                        f"{current_chat['title']}"
+                    )
+                    print("-" * 50)
+                    continue
+
+                if command == "/chats":
+                    rows = db.list_chats(user["id"])
+                    print("\nChats:")
+                    for row in rows:
+                        marker = "*" if row["id"] == current_chat["id"] else " "
+                        print(f"{marker} [{row['id']}] {row['title']}")
+                    print()
+                    continue
+
+                if command == "/switch":
+                    try:
+                        chat_id = int(arg)
+                    except ValueError:
+                        print("Usage: /switch <chat id>")
+                        continue
+                    row = db.get_chat(chat_id)
+                    if row is None or row["user_id"] != user["id"]:
+                        print("Chat not found.")
+                        continue
+                    if row["id"] != current_chat["id"]:
+                        ask_chat_rating(db, user["id"], current_chat["id"])
+                    current_chat = row
+                    logger.info("Chat switched | chat_id=%s", chat_id)
+                    print(f"\nChat: [{row['id']}] {row['title']}")
+                    print("-" * 50)
+                    continue
+
+                if command == "/profile":
+                    user = db.get_user()
+                    print(f"\nName: {user['name']}")
+                    print(
+                        "Communication style: "
+                        + (
+                            user["communication_preferences"]
+                            or "Default: concise, clear, polite and direct"
+                        )
+                    )
+                    print(
+                        "Personality/context notes: "
+                        + (user["personality_notes"] or "None yet")
+                    )
+                    print()
+                    continue
+
+                if command == "/setstyle":
+                    if not arg:
+                        print("Usage: /setstyle <your preference>")
+                        continue
+                    db.update_user_style(user["id"], arg)
+                    user = db.get_user()
+                    db.add_memory(
+                        user["id"],
+                        current_chat["id"],
+                        "preference",
+                        f"Communication preference: {arg}",
+                        1.0,
+                    )
+                    print("Communication preference updated.")
+                    continue
+
+                if command == "/memory":
+                    memories = db.list_memories(user["id"])
+                    if not memories:
+                        print("No long-term memories yet.")
+                    else:
+                        print("\nLong-term memory:")
+                        for m in memories:
+                            print(
+                                f"[{m['id']}] {m['kind']} "
+                                f"({m['confidence']:.2f}): {m['content']}"
+                            )
+                        print()
+                    continue
+
+                if command == "/remember":
+                    if not arg:
+                        print("Usage: /remember <text>")
+                        continue
+                    memory_id = db.add_memory(
+                        user["id"], current_chat["id"],
+                        "profile", arg, 1.0
+                    )
+                    print(f"Stored as memory [{memory_id}].")
+                    continue
+
+                if command == "/forget":
+                    try:
+                        memory_id = int(arg)
+                    except ValueError:
+                        print("Usage: /forget <memory id>")
+                        continue
+                    if db.deactivate_memory(user["id"], memory_id):
+                        print(f"Memory [{memory_id}] deactivated.")
+                    else:
+                        print("Memory not found.")
+                    continue
+
+                if command == "/model":
+                    if not arg:
+                        print(f"Current model: {config['model']}")
+                        continue
+                    config["model"] = arg
+                    save_config(config)
+                    llm = OllamaClient(
+                        base_url=config["ollama_url"],
+                        model=config["model"],
+                        logger=logger,
+                    )
+                    print(
+                        f"Model changed to '{arg}'. "
+                        "If it is not installed, run "
+                        f"'ollama pull {arg}' first."
+                    )
+                    logger.info("Model changed | model=%s", arg)
+                    continue
+
+                if command == "/end":
+                    ask_chat_rating(db, user["id"], current_chat["id"])
+                    print(
+                        "Chat ended. Start another with /new <title> "
+                        "or /switch <id>."
+                    )
+                    continue
+
+                if command == "/feedback":
+                    rows = db.recent_chat_feedback(user["id"])
+                    if not rows:
+                        print("No chat feedback recorded yet.")
+                    else:
+                        avg = sum(r["score"] for r in rows) / len(rows)
+                        print(
+                            f"Recent average chat reward: {avg:.1f}/10 "
+                            f"across {len(rows)} rated chats."
+                        )
+                        for row in rows[:10]:
+                            note = f" | {row['note']}" if row["note"] else ""
+                            print(
+                                f"- [{row['chat_id']}] {row['chat_title']}: "
+                                f"{row['score']}/10{note}"
+                            )
+                    continue
+
+                if command == "/version":
+                    print(f"Personal AI v{VERSION}")
+                    continue
+
+                if command == "/update":
+                    manifest_url = config.get("update_manifest_url", "").strip()
+                    if not manifest_url:
+                        print(
+                            "Automatic updating is installed, but no update "
+                            "channel is configured yet.\n"
+                            "Set 'update_manifest_url' in config.json to a "
+                            "permanent HTTPS manifest URL."
+                        )
+                        continue
+
+                    try:
+                        manifest = check_for_update(manifest_url)
+                        if not manifest:
+                            print(f"You're already on the latest version (v{VERSION}).")
+                            continue
+
+                        target = str(manifest["version"])
+                        notes = str(manifest.get("notes", "")).strip()
+                        print(f"Update available: v{target}")
+                        if notes:
+                            print(notes)
+
+                        answer = input("Install this update now? [y/N]: ").strip().lower()
+                        if answer not in {"y", "yes"}:
+                            print("Update cancelled.")
+                            continue
+
+                        print("Downloading and verifying update...")
+                        installed = install_update(
+                            base_dir=DATA_DIR.parent,
+                            manifest=manifest,
+                            logger=logger,
+                        )
+                        print(
+                            f"Updated to v{installed}. "
+                            "Restart Personal AI to use the new version."
+                        )
+                    except UpdateError as e:
+                        logger.exception("Update failed")
+                        print(f"Update failed: {e}")
+                    except Exception as e:
+                        logger.exception("Unexpected update failure")
+                        print(f"Unexpected update error: {e}")
+                    continue
+
+                if command == "/log":
+                    print(f"Log file: {LOG_DIR / 'personal_ai.log'}")
+                    continue
+
+                print("Unknown command. Type /help.")
+                continue
+
+            user_message = raw
+            db.add_message(current_chat["id"], "user", user_message)
+
+            memories = db.relevant_memories(
+                user["id"],
+                user_message,
+                limit=int(config.get("memory_limit", 25)),
+            )
+            user = db.get_user()
+            system_prompt = build_system_prompt(user, memories)
+
+            history = db.get_recent_messages(
+                current_chat["id"],
+                limit=int(config.get("history_messages", 30)),
+            )
+
+            messages = [{"role": "system", "content": system_prompt}]
+            for row in history:
+                if row["role"] in {"user", "assistant"}:
+                    messages.append(
+                        {"role": row["role"], "content": row["content"]}
+                    )
+
+            try:
+                logger.info(
+                    "Chat request | user_id=%s chat_id=%s model=%s chars=%d",
+                    user["id"], current_chat["id"],
+                    config["model"], len(user_message)
+                )
+                if config.get("log_message_content", False):
+                    logger.debug(
+                        "User content | chat_id=%s | %s",
+                        current_chat["id"], user_message
+                    )
+
+                answer = llm.chat(messages)
+            except OllamaError as e:
+                logger.exception(
+                    "LLM failure | chat_id=%s model=%s",
+                    current_chat["id"], config["model"]
+                )
+                print(f"\nAI error: {e}\n")
+                continue
+            except Exception as e:
+                logger.exception("Unexpected chat failure")
+                print(f"\nUnexpected error: {e}\n")
+                continue
+
+            assistant_message_id = db.add_message(
+                current_chat["id"], "assistant", answer
+            )
+
+            if config.get("log_message_content", False):
+                logger.debug(
+                    "Assistant content | chat_id=%s | %s",
+                    current_chat["id"], answer
+                )
+
+            print(f"\nAI > {answer}\n")
+
+            if config.get("auto_memory", True):
+                extract_and_store_memories(
+                    llm=llm,
+                    db=db,
+                    user_id=user["id"],
+                    chat_id=current_chat["id"],
+                    user_message=user_message,
+                    logger=logger,
+                )
+
+        logger.info("Application exit")
+        return 0
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
