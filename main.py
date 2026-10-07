@@ -4,6 +4,7 @@ import os
 import sys
 from datetime import datetime
 from getpass import getpass
+from pathlib import Path
 
 from app.capabilities import build_capability_status
 from app.config import DATA_DIR, LOG_DIR, load_config, save_config
@@ -641,4 +642,13 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    # main.py remains the compatibility entry point used by older updaters.
+    # Normal launches hand off to the windowed app; console.bat passes
+    # --console to retain the command-line interface for troubleshooting.
+    if "--console" not in sys.argv:
+        gui_script = (Path(__file__).resolve().parent / "XemAi.pyw").resolve()
+        exe = Path(sys.executable)
+        pythonw = exe.with_name("pythonw.exe")
+        chosen = pythonw if pythonw.exists() else exe
+        os.execv(str(chosen), [str(chosen), str(gui_script)])
     raise SystemExit(main())
