@@ -41,6 +41,7 @@ Commands
 /remember <text>      Add a memory manually
 /forget <id>          Deactivate a memory
 /model <name>         Change Ollama model (e.g. qwen3:8b)
+/ainame [name]        Show or change the AI's display name
 /feedback             Show recent 0-10 chat feedback
 /rate <0-10> [note]   Give optional feedback immediately
 /tools                Show available tools
@@ -313,6 +314,16 @@ def main() -> int:
                         print("Memory not found.")
                     continue
 
+                if command == "/ainame":
+                    if not arg:
+                        print(f"AI name: {config.get(\'assistant_name\', \'XemAi\')}")
+                        continue
+                    config["assistant_name"] = arg.strip()
+                    save_config(config)
+                    print(f"AI name changed to {config[\'assistant_name\']}.")
+                    logger.info("Assistant name changed | name=%r", config["assistant_name"])
+                    continue
+
                 if command == "/model":
                     if not arg:
                         print(f"Current model: {config['model']}")
@@ -516,6 +527,7 @@ def main() -> int:
                 memories,
                 feedback_rows=recent_feedback,
                 tool_status=tool_registry.status_lines(),
+                assistant_name=config.get("assistant_name", "XemAi"),
             )
 
             history = db.get_recent_messages(
@@ -595,7 +607,7 @@ def main() -> int:
                     current_chat["id"], answer
                 )
 
-            print(f"\nAI > {answer}\n")
+            print(f"\n{config.get(\'assistant_name\', \'XemAi\')} > {answer}\n")
 
             if config.get("auto_memory", True):
                 extract_and_store_memories(
