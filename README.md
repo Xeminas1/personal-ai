@@ -105,3 +105,20 @@ Authoritative self-knowledge update:
 - explicitly separates the underlying Qwen model from XemAi as the complete app + model + tools + memory + UI
 - corrects false claims such as "no web search", "no memory", "each chat is independent" and invented 2023 cutoffs
 - documents real remaining gaps such as no unrestricted shell/computer control, no native vision/audio/video, simple memory retrieval, and feedback that does not yet fine-tune model weights
+
+
+## v0.4.0
+
+Shared PC + Android release:
+- adds a local XemAi mobile HTTP server on `127.0.0.1:8765`
+- adds an Android-friendly progressive web app in `mobile/`
+- Windows and Android use the same SQLite database, chats, memories, feedback and learning state
+- mobile can create/switch chats, read shared history, message XemAi, view capabilities and rate chats
+- sensitive desktop/admin controls such as API-key management and updater installation are not exposed through the mobile API
+- adds WAL mode and SQLite busy timeouts for safer concurrent desktop/mobile access
+- adds `XemAiServer.pyw` background server and automatic server startup with the Windows app
+- closing the desktop window does not intentionally stop the separate mobile server process
+- adds a `Mobile` button to the desktop UI with connection guidance
+- adds `mobile_tailscale_setup.bat` for private Tailscale Serve routing to the localhost server
+- mobile server remains loopback-only by default; it is not exposed to the LAN or public internet
+- mobile PWA supports home-screen installation when accessed through HTTPS (for example via Tailscale Serve)
