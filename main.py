@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
+from getpass import getpass
 
 from app.config import DATA_DIR, LOG_DIR, load_config, save_config
 from app.database import Database
@@ -9,6 +10,8 @@ from app.learning import extract_and_store_memories
 from app.llm import OllamaClient, OllamaError
 from app.logging_setup import setup_logging
 from app.prompts import build_system_prompt
+from app.secrets import save_ollama_api_key, clear_ollama_api_key
+from app.tools import ToolRegistry
 from app.updater import check_for_update, fetch_manifest, install_update, UpdateError
 from app.version import VERSION
 
@@ -38,6 +41,10 @@ Commands
 /forget <id>          Deactivate a memory
 /model <name>         Change Ollama model (e.g. qwen3:8b)
 /feedback             Show recent 0-10 chat feedback
+/rate <0-10> [note]   Give optional feedback immediately
+/tools                Show available tools
+/websetup             Enable live Ollama web search
+/webclear             Remove stored Ollama web-search key
 /end                  End the current chat and rate it
 /update               Check for and install an update
 /version              Show installed version
@@ -138,6 +145,11 @@ def main() -> int:
         llm = OllamaClient(
             base_url=config["ollama_url"],
             model=config["model"],
+            logger=logger,
+        )
+        tool_registry = ToolRegistry(
+            base_dir=DATA_DIR.parent,
+            data_dir=DATA_DIR,
             logger=logger,
         )
 
@@ -318,6 +330,64 @@ def main() -> int:
                     logger.info("Model changed | model=%s", arg)
                     continue
 
+                if command == "/tools":
+                    print("\nAvailable tools:")
+                    for line in tool_registry.status_lines():
+                        print(f"- {line}")
+                    print(
+                        "\nNote: live web_search sends the search query to "
+                        "Ollama's web service. Other local workspace tools stay local."
+                    )
+                    print()
+                    continue
+
+                if command == "/websetup":
+                    print(
+                        "Live web search uses Ollama's Web Search API. "
+                        "Create an API key in your Ollama account, then paste it below."
+                    )
+                    key = getpass("Ollama API key (input hidden): ").strip()
+                    if not key:
+                        print("No key saved.")
+                        continue
+                    save_ollama_api_key(DATA_DIR, key)
+                    tool_registry = ToolRegistry(
+                        base_dir=DATA_DIR.parent,
+                        data_dir=DATA_DIR,
+                        logger=logger,
+                    )
+                    print("Web search enabled. The key is stored locally in data/secrets.json.")
+                    continue
+
+                if command == "/webclear":
+                    clear_ollama_api_key(DATA_DIR)
+                    tool_registry = ToolRegistry(
+                        base_dir=DATA_DIR.parent,
+                        data_dir=DATA_DIR,
+                        logger=logger,
+                    )
+                    print("Stored Ollama web-search key removed.")
+                    continue
+
+                if command == "/rate":
+                    if not arg:
+                        print("Usage: /rate <0-10> [optional note]")
+                        continue
+                    score_text, _, note = arg.partition(" ")
+                    try:
+                        score = int(score_text)
+                    except ValueError:
+                        print("Usage: /rate <0-10> [optional note]")
+                        continue
+                    if not 0 <= score <= 10:
+                        print("Score must be from 0 to 10.")
+                        continue
+                    db.add_chat_feedback(
+                        user["id"], current_chat["id"], score, note.strip()
+                    )
+                    print(f"Feedback recorded: {score}/10.")
+                    continue
+
                 if command == "/end":
                     ask_chat_rating(db, user["id"], current_chat["id"])
                     print(
@@ -410,7 +480,13 @@ def main() -> int:
                 limit=int(config.get("memory_limit", 25)),
             )
             user = db.get_user()
-            system_prompt = build_system_prompt(user, memories)
+            recent_feedback = db.recent_chat_feedback(user["id"], limit=8)
+            system_prompt = build_system_prompt(
+                user,
+                memories,
+                feedback_rows=recent_feedback,
+                tool_status=tool_registry.status_lines(),
+            )
 
             history = db.get_recent_messages(
                 current_chat["id"],
@@ -436,7 +512,11 @@ def main() -> int:
                         current_chat["id"], user_message
                     )
 
-                answer = llm.chat(messages)
+                answer = llm.agent_chat(
+                    messages,
+                    tool_registry=tool_registry,
+                    max_tool_rounds=int(config.get("max_tool_rounds", 6)),
+                )
             except OllamaError as e:
                 logger.exception(
                     "LLM failure | chat_id=%s model=%s",
