@@ -96,67 +96,83 @@ class ChatBackend:
         )
 
     def send(self, chat_id: int, text: str, status_callback=None) -> str:
-        was_empty = not self.db.chat_has_messages(chat_id)
-        self.db.add_message(chat_id, "user", text)
+        # Tkinter stays on the UI thread. Use a separate SQLite connection for
+        # response generation so the UI remains responsive and thread-safe.
+        worker_db = Database(DATA_DIR / "personal_ai.db")
+        try:
+            was_empty = not worker_db.chat_has_messages(chat_id)
+            worker_db.add_message(chat_id, "user", text)
 
-        chat = self.db.get_chat(chat_id)
-        if was_empty and chat["title"] in {"New chat", "Untitled"}:
-            self.db.rename_chat(chat_id, title_from_message(text))
+            chat = worker_db.get_chat(chat_id)
+            if was_empty and chat["title"] in {"New chat", "Untitled"}:
+                worker_db.rename_chat(chat_id, title_from_message(text))
 
-        user = self.db.get_user()
-        memories = self.db.relevant_memories(
-            user["id"], text, limit=int(self.config.get("memory_limit", 25))
-        )
-        feedback = self.db.recent_chat_feedback(user["id"], limit=8)
-        system_prompt = build_system_prompt(
-            user,
-            memories,
-            feedback_rows=feedback,
-            tool_status=self.tools.status_lines(),
-            assistant_name=self.config.get("assistant_name", "XemAi"),
-            capability_status=build_capability_status(self.config, self.tools),
-        )
-        history = self.db.get_recent_messages(
-            chat_id, limit=int(self.config.get("history_messages", 30))
-        )
-        messages = [{"role": "system", "content": system_prompt}]
-        for row in history:
-            if row["role"] in {"user", "assistant"}:
-                messages.append({"role": row["role"], "content": row["content"]})
-
-        if self.tools.web_search_enabled and should_force_web_search(text):
-            if status_callback:
-                status_callback("Searching the web...")
-            result = self.tools.execute(
-                "web_search", {"query": text, "max_results": 5}
+            user = worker_db.get_user()
+            memories = worker_db.relevant_memories(
+                user["id"], text, limit=int(self.config.get("memory_limit", 25))
             )
-            messages.append({
-                "role": "system",
-                "content": (
-                    "A live web search was automatically run. Use the results if "
-                    "successful. If it returned an error, state that error and do "
-                    "not claim web access does not exist.\n\n"
-                    f"LIVE_WEB_SEARCH_RESULT:\n{result}"
-                ),
-            })
+            feedback = worker_db.recent_chat_feedback(user["id"], limit=8)
 
-        answer = self.llm.agent_chat(
-            messages,
-            tool_registry=self.tools,
-            max_tool_rounds=int(self.config.get("max_tool_rounds", 6)),
-        )
-        self.db.add_message(chat_id, "assistant", answer)
-
-        if self.config.get("auto_memory", True):
-            extract_and_store_memories(
-                llm=self.llm,
-                db=self.db,
-                user_id=user["id"],
-                chat_id=chat_id,
-                user_message=text,
+            tools = ToolRegistry(BASE_DIR, DATA_DIR, self.logger)
+            llm = OllamaClient(
+                base_url=self.config["ollama_url"],
+                model=self.config["model"],
                 logger=self.logger,
             )
-        return answer
+
+            system_prompt = build_system_prompt(
+                user,
+                memories,
+                feedback_rows=feedback,
+                tool_status=tools.status_lines(),
+                assistant_name=self.config.get("assistant_name", "XemAi"),
+                capability_status=build_capability_status(self.config, tools),
+            )
+            history = worker_db.get_recent_messages(
+                chat_id, limit=int(self.config.get("history_messages", 30))
+            )
+            messages = [{"role": "system", "content": system_prompt}]
+            for row in history:
+                if row["role"] in {"user", "assistant"}:
+                    messages.append(
+                        {"role": row["role"], "content": row["content"]}
+                    )
+
+            if tools.web_search_enabled and should_force_web_search(text):
+                if status_callback:
+                    status_callback("Searching the web...")
+                result = tools.execute(
+                    "web_search", {"query": text, "max_results": 5}
+                )
+                messages.append({
+                    "role": "system",
+                    "content": (
+                        "A live web search was automatically run. Use the results if "
+                        "successful. If it returned an error, state that error and do "
+                        "not claim web access does not exist.\n\n"
+                        f"LIVE_WEB_SEARCH_RESULT:\n{result}"
+                    ),
+                })
+
+            answer = llm.agent_chat(
+                messages,
+                tool_registry=tools,
+                max_tool_rounds=int(self.config.get("max_tool_rounds", 6)),
+            )
+            worker_db.add_message(chat_id, "assistant", answer)
+
+            if self.config.get("auto_memory", True):
+                extract_and_store_memories(
+                    llm=llm,
+                    db=worker_db,
+                    user_id=user["id"],
+                    chat_id=chat_id,
+                    user_message=text,
+                    logger=self.logger,
+                )
+            return answer
+        finally:
+            worker_db.close()
 
     def close(self):
         self.db.close()
