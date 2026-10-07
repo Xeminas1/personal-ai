@@ -1,19 +1,21 @@
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 
 from app.database import Database
 from app.prompts import CONSTITUTION, build_system_prompt
 from app.updater import is_newer_version
+from app.tools import ToolRegistry
 
 
 def run() -> None:
     assert "When directly asked for your opinion" in CONSTITUTION
     assert "You may form and express reasoned opinions" in CONSTITUTION
-    assert is_newer_version("0.1.6", "0.1.5")
-    assert not is_newer_version("0.1.5", "0.1.5")
-    assert not is_newer_version("0.1.4", "0.1.5")
+    assert is_newer_version("0.1.7", "0.1.6")
+    assert not is_newer_version("0.1.6", "0.1.6")
+    assert not is_newer_version("0.1.5", "0.1.6")
 
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
@@ -21,9 +23,15 @@ def run() -> None:
         user = db.create_user("Test User")
         assert user["name"] == "Test User"
 
-        system_prompt = build_system_prompt(user, [])
-        assert "Lack of live tools does NOT prevent you from" in system_prompt
-        assert "generic refusal or disclaimer" in system_prompt
+        system_prompt = build_system_prompt(
+            user,
+            [],
+            feedback_rows=[],
+            tool_status=["calculator: enabled"],
+        )
+        assert "AVAILABLE TOOLS" in system_prompt
+        assert "calculator: enabled" in system_prompt
+        assert "Do not use tool limitations as an excuse" in system_prompt
 
         chat_a = db.create_chat(user["id"], "Skyrim")
         chat_b = db.create_chat(user["id"], "Research")
@@ -78,6 +86,28 @@ def run() -> None:
             row["id"] != memory_id
             for row in db.list_memories(user["id"])
         )
+
+        class DummyLogger:
+            def info(self, *args, **kwargs):
+                pass
+            def warning(self, *args, **kwargs):
+                pass
+
+        registry = ToolRegistry(Path(temp), Path(temp) / "data", DummyLogger())
+        calc = json.loads(registry.execute("calculator", {"expression": "2 + 3 * 4"}))
+        assert calc["ok"] and calc["result"] == 14
+
+        wrote = json.loads(
+            registry.execute(
+                "workspace_write",
+                {"path": "test.txt", "content": "hello tools"},
+            )
+        )
+        assert wrote["ok"]
+        read = json.loads(
+            registry.execute("workspace_read", {"path": "test.txt"})
+        )
+        assert read["ok"] and "hello tools" in read["result"]["content"]
 
         db.close()
 
