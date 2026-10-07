@@ -24,3 +24,13 @@ Web reliability update:
 - HTTP 401 now produces a clear "API key rejected" message
 - explicit requests such as "search the web" and "latest news" are deterministically routed through web search instead of relying entirely on the local model to choose the tool
 - the model is explicitly forbidden from claiming an old training cutoff when live web search is available
+
+
+## v0.1.8
+
+Update experience:
+- successful `/update` installs now restart Personal AI automatically
+- the existing command window is reused
+- there is no need to close Command Prompt or reopen `run.bat`
+- the database is closed cleanly immediately before the process is replaced
+- the new Python process reloads all updated modules from disk
