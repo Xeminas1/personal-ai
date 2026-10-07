@@ -1,3 +1,5 @@
+const FRONTEND_VERSION = "0.4.2";
+
 const state = {
   bootstrap: null,
   chats: [],
@@ -319,8 +321,8 @@ async function installMobileUpdate(version) {
 }
 
 async function checkMobileUpdate() {
-  closeDrawer();
   setStatus("Checking for updates…");
+  closeDrawer();
   try {
     const data = await api("/api/update");
     if (!data.enabled) {
@@ -441,7 +443,9 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js").catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=0.4.2")
+    .then((registration) => registration.update())
+    .catch(() => {});
 }
 
 bootstrap();
