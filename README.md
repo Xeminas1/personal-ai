@@ -65,3 +65,13 @@ Self-knowledge update:
 - explicitly identifies current limitations such as no arbitrary shell, unrestricted computer control, native vision or native audio/video analysis
 - forbids invented training-cutoff years unless a verified cutoff is actually supplied
 - distinguishes sandboxed workspace access from unrestricted filesystem access
+
+
+## v0.2.2
+
+Recovery and update-safety release:
+- repairs the malformed `/ainame` f-strings published in v0.2.1
+- verifies every staged Python file compiles before replacing any live application file
+- ZIP-based updates receive the same pre-install Python syntax validation
+- self-test now compiles the full project, including `main.py`, before reporting success
+- preserves the XemAi identity and self-knowledge features introduced in v0.2.1
