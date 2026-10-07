@@ -45,6 +45,7 @@ Commands
 /feedback             Show recent 0-10 chat feedback
 /rate <0-10> [note]   Give optional feedback immediately
 /tools                Show available tools
+/capabilities         Show XemAi's actual current capabilities
 /websetup             Configure and validate Ollama web search
 /webtest              Test the saved web-search connection
 /webclear             Remove stored Ollama web-search key
@@ -94,6 +95,42 @@ def ask_chat_rating(db, user_id: int, chat_id: int) -> None:
         )
         print(f"Chat reward recorded: {score}/10.")
         return
+
+
+def build_capability_status(config, tool_registry) -> list[str]:
+    web_state = (
+        "configured; use /webtest to verify the saved Ollama key"
+        if tool_registry.web_search_enabled
+        else "not configured"
+    )
+    return [
+        f"Identity: {config.get('assistant_name', 'XemAi')}",
+        "Persistent local user profile: enabled",
+        "Persistent chat history across restarts: enabled",
+        "Cross-chat long-term memory: enabled",
+        "Automatic memory extraction: enabled" if config.get("auto_memory", True)
+        else "Automatic memory extraction: disabled",
+        "Recent 0-10 feedback is available as a future-response optimisation signal",
+        f"Live web search: {web_state}",
+        "Direct HTTP/HTTPS webpage fetching: enabled",
+        "Calculator: enabled",
+        "Current date/time lookup: enabled",
+        "Sandboxed local workspace file listing/reading/writing: enabled",
+        f"Underlying local model: {config.get('model', 'unknown')}",
+        "Arbitrary shell/command execution: disabled",
+        "Unrestricted filesystem access: disabled",
+        "Unrestricted computer/desktop control: disabled",
+        "Native image/vision analysis: not yet implemented",
+        "Native audio/video analysis: not yet implemented",
+        "General external API/app integrations: not yet implemented beyond configured tools",
+    ]
+
+
+def print_capabilities(config, tool_registry) -> None:
+    print("\nXemAi capabilities:")
+    for line in build_capability_status(config, tool_registry):
+        print(f"- {line}")
+    print()
 
 
 def main() -> int:
@@ -343,6 +380,10 @@ def main() -> int:
                     logger.info("Model changed | model=%s", arg)
                     continue
 
+                if command == "/capabilities":
+                    print_capabilities(config, tool_registry)
+                    continue
+
                 if command == "/tools":
                     print("\nAvailable tools:")
                     for line in tool_registry.status_lines():
@@ -528,6 +569,7 @@ def main() -> int:
                 feedback_rows=recent_feedback,
                 tool_status=tool_registry.status_lines(),
                 assistant_name=config.get("assistant_name", "XemAi"),
+                capability_status=build_capability_status(config, tool_registry),
             )
 
             history = db.get_recent_messages(
