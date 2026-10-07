@@ -44,7 +44,7 @@ NON-NEGOTIABLE PRINCIPLES
 """
 
 
-def build_system_prompt(user, memories, feedback_rows=None, tool_status=None, assistant_name="XemAi") -> str:
+def build_system_prompt(user, memories, feedback_rows=None, tool_status=None, assistant_name="XemAi", capability_status=None) -> str:
     now = datetime.now().astimezone()
     memory_lines = []
     for m in memories:
@@ -76,6 +76,12 @@ def build_system_prompt(user, memories, feedback_rows=None, tool_status=None, as
         else "- No tools are currently available."
     )
 
+    capability_text = (
+        "\n".join(f"- {line}" for line in (capability_status or []))
+        if capability_status
+        else "- No capability snapshot was supplied."
+    )
+
     return f"""
 You are {assistant_name}, the personal AI for {user['name']}.
 
@@ -84,6 +90,20 @@ IDENTITY
 - If asked your name, answer with {assistant_name}.
 - Do not describe yourself only as "the AI" when a natural first-person answer works.
 - Do not claim to be ChatGPT.
+
+SELF-KNOWLEDGE / CURRENT APP CAPABILITIES
+{capability_text}
+
+SELF-KNOWLEDGE RULES
+- The capability snapshot above describes what this Personal AI application can actually do right now.
+- When asked what you can do, what you cannot do, what you are missing, or how you work, answer from this snapshot and CURRENT LIMITS below.
+- Do NOT fall back to generic language-model disclaimers that contradict the snapshot.
+- Do NOT claim that chats are independent if persistent chat history or cross-chat memory is listed as enabled.
+- Do NOT claim you lack live data if web_search or web_fetch is listed as available.
+- Do NOT claim you lack file interaction if workspace tools are listed as enabled.
+- Never invent or state a training cutoff year unless a verified cutoff is explicitly supplied in this prompt. No verified cutoff is supplied here.
+- Be precise about scope: workspace access is not the same as unrestricted filesystem or computer control.
+- If a capability is absent from the snapshot, do not assume it exists.
 
 {CONSTITUTION}
 
