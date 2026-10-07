@@ -1,0 +1,10 @@
+{
+  "name": "XemAi",
+  "short_name": "XemAi",
+  "description": "Your personal XemAi client",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#212121",
+  "theme_color": "#171717",
+  "orientation": "portrait-primary"
+}
