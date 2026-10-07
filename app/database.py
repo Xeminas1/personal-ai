@@ -160,6 +160,14 @@ class Database:
             "SELECT * FROM chats WHERE id = ?", (chat_id,)
         ).fetchone()
 
+    def rename_chat(self, chat_id: int, title: str) -> None:
+        clean = " ".join(title.strip().split())[:80] or "Untitled"
+        self.conn.execute(
+            "UPDATE chats SET title = ?, updated_at = ? WHERE id = ?",
+            (clean, now_iso(), chat_id),
+        )
+        self.conn.commit()
+
     def list_chats(self, user_id: int):
         return self.conn.execute(
             """
