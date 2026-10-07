@@ -75,3 +75,21 @@ Recovery and update-safety release:
 - ZIP-based updates receive the same pre-install Python syntax validation
 - self-test now compiles the full project, including `main.py`, before reporting success
 - preserves the XemAi identity and self-knowledge features introduced in v0.2.1
+
+
+## v0.3.0
+
+Desktop frontend release:
+- adds a native dark-mode XemAi desktop chat interface
+- launches from `run.bat` without leaving a command console open
+- `XemAi.pyw` can also be opened directly
+- left sidebar lists persistent chats and supports creating/switching chats
+- central conversation view shows Reece and XemAi labels clearly
+- ChatGPT-style composer with Enter-to-send and Shift+Enter for new lines
+- settings window for AI name, Ollama model and web-search API key
+- capabilities dialog
+- graphical update checks/install flow with automatic GUI restart
+- background response generation keeps the window responsive
+- new chats are automatically titled from the first message
+- `console.bat` keeps the old command-line interface available for troubleshooting
+- adds shared capability reporting in `app/capabilities.py`
