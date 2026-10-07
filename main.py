@@ -5,6 +5,7 @@ import sys
 from datetime import datetime
 from getpass import getpass
 
+from app.capabilities import build_capability_status
 from app.config import DATA_DIR, LOG_DIR, load_config, save_config
 from app.database import Database
 from app.learning import extract_and_store_memories
@@ -96,34 +97,6 @@ def ask_chat_rating(db, user_id: int, chat_id: int) -> None:
         print(f"Chat reward recorded: {score}/10.")
         return
 
-
-def build_capability_status(config, tool_registry) -> list[str]:
-    web_state = (
-        "configured; use /webtest to verify the saved Ollama key"
-        if tool_registry.web_search_enabled
-        else "not configured"
-    )
-    return [
-        f"Identity: {config.get('assistant_name', 'XemAi')}",
-        "Persistent local user profile: enabled",
-        "Persistent chat history across restarts: enabled",
-        "Cross-chat long-term memory: enabled",
-        "Automatic memory extraction: enabled" if config.get("auto_memory", True)
-        else "Automatic memory extraction: disabled",
-        "Recent 0-10 feedback is available as a future-response optimisation signal",
-        f"Live web search: {web_state}",
-        "Direct HTTP/HTTPS webpage fetching: enabled",
-        "Calculator: enabled",
-        "Current date/time lookup: enabled",
-        "Sandboxed local workspace file listing/reading/writing: enabled",
-        f"Underlying local model: {config.get('model', 'unknown')}",
-        "Arbitrary shell/command execution: disabled",
-        "Unrestricted filesystem access: disabled",
-        "Unrestricted computer/desktop control: disabled",
-        "Native image/vision analysis: not yet implemented",
-        "Native audio/video analysis: not yet implemented",
-        "General external API/app integrations: not yet implemented beyond configured tools",
-    ]
 
 
 def print_capabilities(config, tool_registry) -> None:
