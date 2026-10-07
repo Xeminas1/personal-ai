@@ -4,19 +4,26 @@ import tempfile
 from pathlib import Path
 
 from app.database import Database
+from app.prompts import CONSTITUTION, build_system_prompt
 from app.updater import is_newer_version
 
 
 def run() -> None:
-    assert is_newer_version("0.1.5", "0.1.4")
-    assert not is_newer_version("0.1.4", "0.1.4")
-    assert not is_newer_version("0.1.3", "0.1.4")
+    assert "When directly asked for your opinion" in CONSTITUTION
+    assert "You may form and express reasoned opinions" in CONSTITUTION
+    assert is_newer_version("0.1.6", "0.1.5")
+    assert not is_newer_version("0.1.5", "0.1.5")
+    assert not is_newer_version("0.1.4", "0.1.5")
 
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
         user = db.create_user("Test User")
         assert user["name"] == "Test User"
+
+        system_prompt = build_system_prompt(user, [])
+        assert "Lack of live tools does NOT prevent you from" in system_prompt
+        assert "generic refusal or disclaimer" in system_prompt
 
         chat_a = db.create_chat(user["id"], "Skyrim")
         chat_b = db.create_chat(user["id"], "Research")
