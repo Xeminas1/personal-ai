@@ -13,9 +13,9 @@ from app.tools import ToolRegistry, should_force_web_search
 def run() -> None:
     assert "When directly asked for your opinion" in CONSTITUTION
     assert "You may form and express reasoned opinions" in CONSTITUTION
-    assert is_newer_version("0.2.0", "0.1.9")
-    assert not is_newer_version("0.1.9", "0.1.9")
-    assert not is_newer_version("0.1.8", "0.1.9")
+    assert is_newer_version("0.2.1", "0.2.0")
+    assert not is_newer_version("0.2.0", "0.2.0")
+    assert not is_newer_version("0.1.9", "0.2.0")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -27,7 +27,10 @@ def run() -> None:
             [],
             feedback_rows=[],
             tool_status=["calculator: enabled"],
+            assistant_name="XemAi",
         )
+        assert "You are XemAi" in system_prompt
+        assert "Your name is XemAi" in system_prompt
         assert "AVAILABLE TOOLS" in system_prompt
         assert "calculator: enabled" in system_prompt
         assert "Do not use tool limitations as an excuse" in system_prompt
