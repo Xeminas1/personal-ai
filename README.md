@@ -93,3 +93,15 @@ Desktop frontend release:
 - new chats are automatically titled from the first message
 - `console.bat` keeps the old command-line interface available for troubleshooting
 - adds shared capability reporting in `app/capabilities.py`
+
+
+## v0.3.1
+
+Authoritative self-knowledge update:
+- detects questions about XemAi's own capabilities, limitations, version and iterative updates
+- injects authoritative runtime self-data immediately before those questions
+- supplies a concise release history so XemAi can genuinely recognise what has been added over time
+- removes known-stale assistant self-descriptions from context for self-knowledge questions
+- explicitly separates the underlying Qwen model from XemAi as the complete app + model + tools + memory + UI
+- corrects false claims such as "no web search", "no memory", "each chat is independent" and invented 2023 cutoffs
+- documents real remaining gaps such as no unrestricted shell/computer control, no native vision/audio/video, simple memory retrieval, and feedback that does not yet fine-tune model weights
