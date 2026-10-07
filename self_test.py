@@ -6,6 +6,7 @@ import tempfile
 from pathlib import Path
 
 from app.database import Database
+from app.gui_backend import ChatBackend, title_from_message
 from app.prompts import CONSTITUTION, build_system_prompt
 from app.updater import is_newer_version
 from app.tools import ToolRegistry, should_force_web_search
@@ -16,9 +17,13 @@ def run() -> None:
     assert compileall.compile_dir(project_root, quiet=1, force=True)
     assert "When directly asked for your opinion" in CONSTITUTION
     assert "You may form and express reasoned opinions" in CONSTITUTION
-    assert is_newer_version("0.2.3", "0.2.2")
-    assert not is_newer_version("0.2.2", "0.2.2")
-    assert not is_newer_version("0.2.1", "0.2.2")
+    assert (project_root / "XemAi.pyw").exists()
+    assert (project_root / "ui.py").exists()
+    assert (project_root / "console.bat").exists()
+    assert title_from_message("hello world") == "hello world"
+    assert is_newer_version("0.3.1", "0.3.0")
+    assert not is_newer_version("0.3.0", "0.3.0")
+    assert not is_newer_version("0.2.2", "0.3.0")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -50,6 +55,8 @@ def run() -> None:
         chat_a = db.create_chat(user["id"], "Skyrim")
         chat_b = db.create_chat(user["id"], "Research")
         assert chat_a["id"] != chat_b["id"]
+        db.rename_chat(chat_b["id"], "Renamed chat")
+        assert db.get_chat(chat_b["id"])["title"] == "Renamed chat"
 
         db.add_message(chat_a["id"], "user", "The scope sway needs work.")
         db.add_message(chat_a["id"], "assistant", "Understood.")
