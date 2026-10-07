@@ -5,7 +5,7 @@
     {
       "path": "main.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/main.py",
-      "sha256": "e9ed7d9bb6284a9376d8b91fff035d018e7f9d4ba56fa39e852dd13e2d893940"
+      "sha256": "2ceb59f0b2ed7e4429d4cc175ed2de0e386789f9e1a74d9053d3b0f4d09acfba"
     },
     {
       "path": "run.bat",
@@ -20,7 +20,7 @@
     {
       "path": "self_test.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/self_test.py",
-      "sha256": "444f9c07656d94474bd68f932c0bf773f7b029c6b7b59210cc2d73c80afe9c74"
+      "sha256": "5aab084da4e4036855790962049939a95905f8174237fa7761b2ce8ad0526b73"
     },
     {
       "path": "app/__init__.py",
@@ -35,17 +35,17 @@
     {
       "path": "app/database.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/app/database.py",
-      "sha256": "60044537e5c8326f8ed21e2c283d86394d708bf68fd28b1a2570d1c74156fcf5"
+      "sha256": "75e6fcd08d4c1211b616e69586802722ff2406bc6cf4acbbf6611336d3f1ef6f"
     },
     {
       "path": "app/learning.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/app/learning.py",
-      "sha256": "cdb33ce4a35885c4d4e726f19737eb45dce1087a1ae6fe2d4ca3ff9309fb9fb5"
+      "sha256": "ec1d9238278f87d2f1987f5a3ce36e0b830d50ec701f415b4f559bfa334bda17"
     },
     {
       "path": "app/llm.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.1.4/app/llm.py",
-      "sha256": "1c5e5e15031598aae397539e1e3e8253f6272b2020713d20f7e4c8b8820cb641"
+      "sha256": "0e728acc2c1cd18a736a13b9a3b894573692151f0d995d0bf33986fe8161743c"
     },
     {
       "path": "app/logging_setup.py",
