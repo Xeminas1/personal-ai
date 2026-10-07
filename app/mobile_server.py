@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
 import re
+import subprocess
+import sys
 import threading
+import time
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -21,12 +25,68 @@ MOBILE_DIR = BASE_DIR / "mobile"
 MAX_BODY = 256_000
 
 
+def _pythonw_executable() -> Path:
+    exe = Path(sys.executable)
+    if os.name == "nt":
+        candidate = exe.with_name("pythonw.exe")
+        if candidate.exists():
+            return candidate
+    return exe
+
+
+def _schedule_mobile_server_restart() -> None:
+    """
+    Launch a tiny detached helper that waits for this server process to exit,
+    then starts the freshly updated XemAi mobile server.
+    """
+    executable = _pythonw_executable()
+    script = BASE_DIR / "XemAiServer.pyw"
+    helper_code = (
+        "import subprocess,sys,time;"
+        "time.sleep(1.5);"
+        "subprocess.Popen([sys.argv[1],sys.argv[2]],"
+        "cwd=sys.argv[3],stdin=subprocess.DEVNULL,"
+        "stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,"
+        "close_fds=True)"
+    )
+    kwargs = {
+        "cwd": str(BASE_DIR),
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+        "close_fds": True,
+    }
+    if os.name == "nt":
+        detached = getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+        new_group = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+        no_window = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        kwargs["creationflags"] = detached | new_group | no_window
+
+    subprocess.Popen(
+        [
+            str(executable),
+            "-c",
+            helper_code,
+            str(executable),
+            str(script),
+            str(BASE_DIR),
+        ],
+        **kwargs,
+    )
+
+    def stop_current():
+        time.sleep(0.5)
+        os._exit(0)
+
+    threading.Thread(target=stop_current, daemon=True).start()
+
+
 def _row_dict(row) -> dict:
     return {key: row[key] for key in row.keys()}
 
 
 class XemAiMobileHandler(BaseHTTPRequestHandler):
-    server_version = "XemAiMobile/0.4.0"
+    server_version = "XemAiMobile/0.4.1"
 
     def log_message(self, fmt, *args):
         logger = getattr(self.server, "xemai_logger", None)
@@ -192,6 +252,42 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     backend.close()
             return
 
+        if path == "/api/update":
+            backend = None
+            try:
+                backend = self._backend()
+                enabled = bool(
+                    backend.config.get("mobile_updates_enabled", True)
+                )
+                if not enabled:
+                    self._json({
+                        "ok": True,
+                        "enabled": False,
+                        "current_version": VERSION,
+                        "update": None,
+                    })
+                    return
+
+                manifest = backend.check_update()
+                self._json({
+                    "ok": True,
+                    "enabled": True,
+                    "current_version": VERSION,
+                    "update": (
+                        {
+                            "version": str(manifest["version"]),
+                            "notes": str(manifest.get("notes", "")),
+                        }
+                        if manifest else None
+                    ),
+                })
+            except Exception as e:
+                self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
+            finally:
+                if backend:
+                    backend.close()
+            return
+
         if path == "/api/capabilities":
             backend = None
             try:
@@ -280,6 +376,46 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                 self._json({"ok": True})
             except (TypeError, ValueError) as e:
                 self._error(e)
+            except Exception as e:
+                self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
+            finally:
+                if backend:
+                    backend.close()
+            return
+
+        if path == "/api/update/install":
+            backend = None
+            try:
+                backend = self._backend()
+                if not backend.config.get("mobile_updates_enabled", True):
+                    self._error(
+                        "Mobile updates are disabled.",
+                        HTTPStatus.FORBIDDEN,
+                    )
+                    return
+
+                manifest = backend.check_update()
+                if not manifest:
+                    self._json({
+                        "ok": True,
+                        "installed": VERSION,
+                        "restart": False,
+                        "message": "XemAi is already up to date.",
+                    })
+                    return
+
+                installed = backend.install_update(manifest)
+                self._json({
+                    "ok": True,
+                    "installed": installed,
+                    "restart": True,
+                    "message": (
+                        f"Updated to v{installed}. "
+                        "The mobile server is restarting."
+                    ),
+                })
+                self.wfile.flush()
+                _schedule_mobile_server_restart()
             except Exception as e:
                 self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
             finally:
