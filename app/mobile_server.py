@@ -3,12 +3,14 @@ from __future__ import annotations
 import json
 import mimetypes
 import re
+import threading
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .config import LOG_DIR, load_config
+from .config import DATA_DIR, LOG_DIR, load_config
+from .database import Database
 from .gui_backend import ChatBackend
 from .logging_setup import setup_logging
 from .version import VERSION
@@ -73,18 +75,19 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
         return backend
 
     def _serve_static(self, request_path: str):
-        relative = Path("index.html") if request_path in {"", "/"} else Path(request_path.lstrip("/"))
+        if request_path in {"", "/"}:
+            relative = Path("index.html")
+        else:
+            relative = Path(request_path.lstrip("/"))
 
         if ".." in relative.parts or relative.is_absolute():
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
-        mobile_root = MOBILE_DIR.resolve()
         target = (MOBILE_DIR / relative).resolve()
-        if mobile_root not in target.parents and target != mobile_root:
+        if MOBILE_DIR.resolve() not in target.parents and target != MOBILE_DIR.resolve():
             self.send_error(HTTPStatus.NOT_FOUND)
             return
-
         if not target.is_file():
             if "." not in relative.name:
                 target = MOBILE_DIR / "index.html"
@@ -103,8 +106,11 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header(
             "Content-Security-Policy",
-            "default-src 'self'; style-src 'self' 'unsafe-inline'; "
-            "script-src 'self'; img-src 'self' data:; connect-src 'self'; "
+            "default-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "script-src 'self'; "
+            "img-src 'self' data:; "
+            "connect-src 'self'; "
             "base-uri 'none'; frame-ancestors 'none'"
         )
         if target.name == "sw.js":
@@ -118,7 +124,8 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
-        path = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        path = parsed.path
 
         if path == "/api/health":
             self._json({"ok": True, "version": VERSION})
@@ -132,7 +139,10 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     "ok": True,
                     "version": VERSION,
                     "assistant_name": backend.config.get("assistant_name", "XemAi"),
-                    "user": {"id": backend.user["id"], "name": backend.user["name"]},
+                    "user": {
+                        "id": backend.user["id"],
+                        "name": backend.user["name"],
+                    },
                     "capabilities": backend.capabilities(),
                 })
             except Exception as e:
@@ -146,7 +156,8 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             backend = None
             try:
                 backend = self._backend()
-                self._json({"ok": True, "chats": [_row_dict(row) for row in backend.chats()]})
+                chats = [_row_dict(row) for row in backend.chats()]
+                self._json({"ok": True, "chats": chats})
             except Exception as e:
                 self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
             finally:
@@ -169,7 +180,11 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     for row in backend.messages(chat_id)
                     if row["role"] in {"user", "assistant"}
                 ]
-                self._json({"ok": True, "chat": _row_dict(chat), "messages": messages})
+                self._json({
+                    "ok": True,
+                    "chat": _row_dict(chat),
+                    "messages": messages,
+                })
             except Exception as e:
                 self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
             finally:
@@ -181,7 +196,10 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             backend = None
             try:
                 backend = self._backend()
-                self._json({"ok": True, "capabilities": backend.capabilities()})
+                self._json({
+                    "ok": True,
+                    "capabilities": backend.capabilities(),
+                })
             except Exception as e:
                 self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
             finally:
@@ -192,7 +210,8 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
         self._serve_static(path)
 
     def do_POST(self):
-        path = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        path = parsed.path
 
         try:
             body = self._read_json()
@@ -205,7 +224,10 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             try:
                 backend = self._backend()
                 chat = backend.create_chat()
-                self._json({"ok": True, "chat": _row_dict(chat)}, HTTPStatus.CREATED)
+                self._json(
+                    {"ok": True, "chat": _row_dict(chat)},
+                    HTTPStatus.CREATED,
+                )
             except Exception as e:
                 self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
             finally:
@@ -234,7 +256,11 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
 
                 answer = backend.send(chat_id, text)
                 updated_chat = backend.get_chat(chat_id)
-                self._json({"ok": True, "answer": answer, "chat": _row_dict(updated_chat)})
+                self._json({
+                    "ok": True,
+                    "answer": answer,
+                    "chat": _row_dict(updated_chat),
+                })
             except Exception as e:
                 self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
             finally:
@@ -285,11 +311,17 @@ def run_mobile_server() -> int:
     try:
         server = XemAiMobileServer((host, port), XemAiMobileHandler)
     except OSError as e:
-        logger.info("Mobile server not started | host=%s port=%s reason=%r", host, port, e)
+        logger.info(
+            "Mobile server not started | host=%s port=%s reason=%r",
+            host, port, e
+        )
         return 0
 
     server.xemai_logger = logger
-    logger.info("Mobile server start | version=%s host=%s port=%s", VERSION, host, port)
+    logger.info(
+        "Mobile server start | version=%s host=%s port=%s",
+        VERSION, host, port
+    )
     try:
         server.serve_forever(poll_interval=0.5)
     except KeyboardInterrupt:
