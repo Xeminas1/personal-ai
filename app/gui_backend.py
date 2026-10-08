@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from .capabilities import build_capability_status
@@ -24,6 +25,134 @@ from .updater import check_for_update, install_update
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPLY_ERROR_PREFIX = "⚠️ XemAi couldn't complete that reply."
+
+ATTACHMENT_MARKER_PREFIX = "[[XEMAI_ATTACHMENT:"
+ATTACHMENT_TEXT_BUDGET = 8_000
+TEXT_ATTACHMENT_EXTENSIONS = {
+    ".txt", ".log", ".md", ".markdown", ".json", ".jsonl", ".csv", ".tsv",
+    ".xml", ".yaml", ".yml", ".ini", ".cfg", ".conf", ".toml",
+    ".py", ".pyw", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx",
+    ".html", ".htm", ".css", ".scss", ".less", ".java", ".c", ".h",
+    ".cpp", ".hpp", ".cs", ".go", ".rs", ".php", ".rb", ".swift",
+    ".kt", ".kts", ".sql", ".sh", ".bat", ".cmd", ".ps1", ".vbs",
+    ".lua", ".psc", ".pex.txt",
+}
+
+
+def _attachment_marker(item: dict) -> str:
+    payload = {
+        "name": str(item.get("name", "attachment"))[:160],
+        "path": str(item.get("path", "")).replace("\\", "/"),
+        "mime": str(item.get("mime", "application/octet-stream"))[:120],
+        "size": int(item.get("size", 0) or 0),
+    }
+    return ATTACHMENT_MARKER_PREFIX + json.dumps(
+        payload, ensure_ascii=False, separators=(",", ":")
+    ) + "]]"
+
+
+def _parse_attachment_markers(content: str) -> tuple[list[dict], str]:
+    attachments = []
+    visible_lines = []
+    for line in str(content).splitlines():
+        stripped = line.strip()
+        if stripped.startswith(ATTACHMENT_MARKER_PREFIX) and stripped.endswith("]]"):
+            raw = stripped[len(ATTACHMENT_MARKER_PREFIX):-2]
+            try:
+                item = json.loads(raw)
+            except json.JSONDecodeError:
+                visible_lines.append(line)
+                continue
+            if isinstance(item, dict):
+                attachments.append(item)
+                continue
+        visible_lines.append(line)
+    return attachments, "\n".join(visible_lines).strip()
+
+
+def _normalise_attachments(chat_id: int, attachments) -> list[dict]:
+    if not attachments:
+        return []
+    if not isinstance(attachments, list):
+        raise ValueError("Attachments must be a list.")
+
+    root = (DATA_DIR / "attachments" / f"chat_{int(chat_id)}").resolve()
+    normalised = []
+    for item in attachments[:3]:
+        if not isinstance(item, dict):
+            continue
+        relative = str(item.get("path", "")).replace("\\", "/").strip()
+        target = (DATA_DIR / relative).resolve()
+        if root != target.parent and root not in target.parents:
+            raise ValueError("Attachment is outside this chat.")
+        if not target.is_file():
+            raise ValueError("Attached file could not be found.")
+        normalised.append({
+            "name": Path(str(item.get("name", target.name))).name[:160],
+            "path": str(target.relative_to(DATA_DIR)).replace("\\", "/"),
+            "mime": str(item.get("mime", "application/octet-stream"))[:120],
+            "size": int(target.stat().st_size),
+        })
+    return normalised
+
+
+def _expand_attachment_message(content: str) -> str:
+    attachments, visible = _parse_attachment_markers(content)
+    if not attachments:
+        return str(content)
+
+    sections = []
+    remaining = ATTACHMENT_TEXT_BUDGET
+    attachment_root = (DATA_DIR / "attachments").resolve()
+
+    for item in attachments:
+        name = Path(str(item.get("name", "attachment"))).name
+        relative = str(item.get("path", "")).replace("\\", "/")
+        mime = str(item.get("mime", "application/octet-stream"))
+        size = int(item.get("size", 0) or 0)
+        target = (DATA_DIR / relative).resolve()
+
+        header = f"ATTACHED FILE: {name} ({mime}, {size} bytes)"
+        if (
+            attachment_root != target.parent
+            and attachment_root not in target.parents
+        ) or not target.is_file():
+            sections.append(header + "\n[Attachment unavailable on host.]")
+            continue
+
+        is_text = (
+            mime.lower().startswith("text/")
+            or target.suffix.lower() in TEXT_ATTACHMENT_EXTENSIONS
+        )
+        if not is_text:
+            sections.append(
+                header
+                + "\n[Binary attachment stored on the XemAi host. "
+                "The current text-only model cannot inspect its contents yet.]"
+            )
+            continue
+
+        if remaining <= 0:
+            sections.append(header + "\n[Text omitted: attachment context budget reached.]")
+            continue
+
+        raw = target.read_bytes()
+        decoded = raw.decode("utf-8", errors="replace")
+        snippet = decoded[:remaining]
+        remaining -= len(snippet)
+        truncated = len(decoded) > len(snippet)
+        body = header + "\n--- FILE CONTENT ---\n" + snippet
+        if truncated:
+            body += "\n[File content truncated for model context.]"
+        sections.append(body)
+
+    parts = []
+    if visible:
+        parts.append(visible)
+    parts.extend(sections)
+    if not visible:
+        parts.insert(0, "Please review the attached file(s).")
+    return "\n\n".join(parts).strip()
 
 
 def title_from_message(text: str) -> str:
@@ -116,7 +245,15 @@ class ChatBackend:
             logger=self.logger,
         )
 
-    def send(self, chat_id: int, text: str, status_callback=None, *, record_user: bool = True) -> str:
+    def send(
+        self,
+        chat_id: int,
+        text: str,
+        status_callback=None,
+        *,
+        record_user: bool = True,
+        attachments=None,
+    ) -> str:
         # Tkinter stays on the UI thread. Use a separate SQLite connection for
         # response generation so the UI remains responsive and thread-safe.
         worker_db = Database(DATA_DIR / "personal_ai.db")
@@ -125,18 +262,47 @@ class ChatBackend:
         try:
             was_empty = not worker_db.chat_has_messages(chat_id)
             if record_user:
-                worker_db.add_message(chat_id, "user", text)
+                normalised_attachments = _normalise_attachments(
+                    chat_id, attachments
+                )
+                marker_lines = [
+                    _attachment_marker(item)
+                    for item in normalised_attachments
+                ]
+                stored_user_text = "\n".join(
+                    marker_lines + ([text.strip()] if text.strip() else [])
+                ).strip()
+                worker_db.add_message(chat_id, "user", stored_user_text)
                 user_recorded = True
             else:
+                stored_user_text = str(text)
+                normalised_attachments = []
                 user_recorded = True
+
+            parsed_attachments, visible_text = _parse_attachment_markers(
+                stored_user_text
+            )
+            query_text = visible_text or (
+                "Attached file: "
+                + ", ".join(
+                    str(item.get("name", "attachment"))
+                    for item in parsed_attachments
+                )
+            )
+            model_user_text = _expand_attachment_message(stored_user_text)
 
             chat = worker_db.get_chat(chat_id)
             if record_user and was_empty and chat["title"] in {"New chat", "Untitled"}:
-                worker_db.rename_chat(chat_id, title_from_message(text))
+                title_seed = visible_text
+                if not title_seed and parsed_attachments:
+                    title_seed = "Attached " + str(
+                        parsed_attachments[0].get("name", "file")
+                    )
+                worker_db.rename_chat(chat_id, title_from_message(title_seed))
 
             user = worker_db.get_user()
             memories = worker_db.relevant_memories(
-                user["id"], text, limit=int(self.config.get("memory_limit", 25))
+                user["id"], query_text, limit=int(self.config.get("memory_limit", 25))
             )
             feedback = worker_db.recent_chat_feedback(user["id"], limit=8)
 
@@ -159,8 +325,8 @@ class ChatBackend:
                 chat_id, limit=int(self.config.get("history_messages", 30))
             )
             messages = [{"role": "system", "content": system_prompt}]
-            comparison_query = is_ai_comparison_query(text)
-            self_query = is_self_knowledge_query(text)
+            comparison_query = is_ai_comparison_query(query_text)
+            self_query = is_self_knowledge_query(query_text)
 
             # For self-knowledge questions, old generic model self-descriptions
             # are not trusted. Rebuild the tail so runtime facts win.
@@ -171,7 +337,7 @@ class ChatBackend:
                 is_latest_user = (
                     i == len(history) - 1
                     and row["role"] == "user"
-                    and row["content"] == text
+                    and row["content"] == stored_user_text
                 )
                 if self_query and is_latest_user:
                     continue
@@ -189,8 +355,11 @@ class ChatBackend:
                 ):
                     continue
 
+                row_content = str(row["content"])
+                if row["role"] == "user":
+                    row_content = _expand_attachment_message(row_content)
                 messages.append(
-                    {"role": row["role"], "content": row["content"]}
+                    {"role": row["role"], "content": row_content}
                 )
 
             if self_query:
@@ -200,13 +369,13 @@ class ChatBackend:
                         self.config, tools
                     ),
                 })
-                messages.append({"role": "user", "content": text})
+                messages.append({"role": "user", "content": model_user_text})
 
-            if tools.web_search_enabled and should_force_web_search(text):
+            if tools.web_search_enabled and should_force_web_search(query_text):
                 if status_callback:
                     status_callback("Searching the web...")
                 result = tools.execute(
-                    "web_search", {"query": text, "max_results": 5}
+                    "web_search", {"query": query_text, "max_results": 5}
                 )
                 messages.append({
                     "role": "system",
@@ -227,7 +396,7 @@ class ChatBackend:
             invalid_self_answer = False
             if self_query:
                 invalid_self_answer = (
-                    comparison_answer_needs_retry(text, answer)
+                    comparison_answer_needs_retry(query_text, answer)
                     if comparison_query
                     else looks_like_stale_self_description(answer)
                 )
@@ -274,10 +443,10 @@ class ChatBackend:
                         chat_id,
                     )
                     if comparison_query:
-                        answer = build_ai_comparison_fallback(text, self.config)
+                        answer = build_ai_comparison_fallback(query_text, self.config)
                     else:
                         answer = build_self_knowledge_fallback(
-                            text, self.config, tools
+                            query_text, self.config, tools
                         )
 
             worker_db.add_message(chat_id, "assistant", answer)
@@ -290,7 +459,7 @@ class ChatBackend:
                         db=worker_db,
                         user_id=user["id"],
                         chat_id=chat_id,
-                        user_message=text,
+                        user_message=query_text,
                         logger=self.logger,
                     )
                 except Exception as e:
