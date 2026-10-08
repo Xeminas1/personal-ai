@@ -1,4 +1,4 @@
-const CACHE = "xemai-mobile-v0.4.3";
+const CACHE = "xemai-mobile-v0.5.0";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -24,6 +24,8 @@ self.addEventListener("fetch", (event) => {
 
   if (request.method !== "GET") return;
 
+  // XemAi requires its PC server to be online anyway, so stale cached app code
+  // is more harmful than useful. Always fetch current UI/API content.
   if (url.origin === self.location.origin) {
     event.respondWith(
       fetch(request, { cache: "no-store" })
