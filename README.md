@@ -1,18 +1,246 @@
-# Personal AI
+# Personal AI v0.1
 
-Local-first personal AI project.
+A local-first prototype of your independent personal AI.
 
-Current prototype: **v0.1.3**.
+## What this version already does
 
-Core goals include truth-first reasoning, anti-sycophancy, persistent cross-chat memory, user profiles, local logging, 0-10 chat-level feedback, continual learning, swappable model backends, and an eventual capability target comparable to frontier GPT/Codex systems.
+- No ChatGPT login.
+- Uses a local Ollama model.
+- Asks for your name on first launch and creates a local profile.
+- Time-aware greeting (morning / afternoon / evening).
+- Separate persistent chat threads.
+- Cross-chat structured long-term memory.
+- Conservative automatic memory extraction.
+- 0-10 happiness/helpfulness reward when ending/leaving a chat.
+- Local SQLite database.
+- Rotating troubleshooting logs.
+- Truth-first / anti-sycophancy constitution.
+- Swappable local model.
+- Does not silently expose API keys because v0.1 needs none.
+- Does not give itself shell, internet or computer-control authority yet.
 
-## Privacy
+## Important v0.1 limitation
 
-Personal data stays local. The repository must not contain `data/`, local databases, conversation logs, API keys, or user-specific configuration.
+This build does **not** yet have live research, file tools, shell access, vision,
+or computer control. It is explicitly instructed to admit those limits instead
+of pretending it verified something.
 
-## Updates
+The goal of v0.1 is to prove the core identity, memory, reward, profile, chat,
+logging and local-model architecture first.
 
-The app includes a built-in updater. Release packages are stored under `releases/`, and `update_manifest.json` describes the current release.
+## Windows setup
+
+### 1. Install Python
+
+Install a current Python 3 release and make sure `python` works in Command Prompt.
+
+Check:
+
+    python --version
+
+### 2. Install Ollama
+
+Install Ollama for Windows and make sure it is running.
+
+Check:
+
+    ollama --version
+
+### 3. Download the starter model
+
+The default is:
+
+    ollama pull qwen3:8b
+
+This model is only a starter model for proving that the system works. It is not
+our final capability target.
+
+### 4. Test the non-AI parts
+
+Double-click:
+
+    test.bat
+
+You should see:
+
+    SELF-TEST PASSED
+
+### 5. Start your AI
+
+Double-click:
+
+    run.bat
+
+On first launch it will ask:
+
+    What should I call you?
+
+That creates a local profile in:
+
+    data\personal_ai.db
+
+The main troubleshooting log is:
+
+    logs\personal_ai.log
+
+## Useful commands
+
+    /help
+    /new Skyrim Modding
+    /chats
+    /switch 2
+    /profile
+    /setstyle Be direct and concise
+    /memory
+    /remember <something>
+    /forget <memory id>
+    /model <ollama model name>
+    /feedback
+    /end
+    /log
+    /quit
+
+## Reward design
+
+The 0-10 rating is saved as a chat-level reward signal when you leave or end a chat.
+
+It does NOT currently fine-tune model weights. That is intentional. We first
+collect clean feedback and outcomes; later we can build a learning layer that
+uses the reward history without accidentally training the AI to flatter you.
+
+## Memory design
+
+Long-term memory is stored separately from individual chats.
+
+Automatic learning is conservative:
+- preferences
+- project requirements
+- stable non-sensitive profile context
+- user beliefs labelled as beliefs
+
+The AI is instructed not to treat memories as unquestionable facts.
+
+## Logging
+
+By default logs include:
+- startup/shutdown
+- model used
+- chat IDs
+- request sizes
+- errors
+- memory-update events
+- model changes
+
+Full message text is NOT written to the log by default.
+
+To enable full-content debug logging, change in `config.json`:
+
+    "log_message_content": true
+
+Use that only when needed because logs would then contain conversation text.
+
+## Next milestones
+
+1. Hardware-aware model selection.
+2. Stronger retrieval / embeddings.
+3. Research and source-verification pipeline.
+4. File and codebase tools.
+5. Build/test agent for programming.
+6. Vision.
+7. Controlled computer-use permissions.
+8. Objective outcome tracking alongside 0-10 reward.
+9. Model routing: local model first, frontier model only when chosen.
+10. Evaluation suite against GPT-level and Codex-level benchmarks.
+
+
+## Confidence handling
+
+Memory confidence is now controlled by the application rather than invented by
+the language model:
+
+- Explicit preference: 1.00
+- Explicit project requirement: 0.98
+- Explicit profile detail: 0.95
+- Explicit user belief: 0.85 (this means confidence that the user stated/holds
+  the belief, not that the belief is objectively true)
+- Inferred memories receive lower confidence.
+
+Older explicit preferences accidentally stored at 0.00 are repaired to 1.00 on
+startup.
+
+
+## Automatic updates
+
+Version 0.1.3 includes a built-in updater.
+
+Commands:
+
+    /version
+    /update
+
+The updater:
+- checks a permanent HTTPS manifest URL
+- downloads the new release
+- verifies its SHA-256 checksum
+- backs up the current program files
+- installs the new program files
+- preserves `data/`, `logs/`, and `config.json`
+- asks you to restart after installation
+
+Your chats, memory, profile, feedback and logs are therefore not wiped by an
+update.
+
+### One-time setup for a permanent update channel
+
+The updater needs one stable place where future releases are published. A GitHub
+repository/releases page is a practical option.
+
+In `config.json`, set:
+
+    "update_manifest_url": "https://YOUR-DOMAIN-OR-RAW-GITHUB-URL/update_manifest.json",
+    "check_updates_on_startup": true
+
+After that, the normal workflow is simply:
+
+    /update
+
+No manual unzipping/replacing files is required.
+
+The manifest format is shown in `update_manifest.example.json`.
+
+For security, the updater only accepts HTTPS and checks the downloaded ZIP
+against the SHA-256 hash in the manifest before installing it.
+
+
+## v0.1.5
+
+Behaviour update:
+- permits clear, reasoned AI opinions and recommendations
+- distinguishes reasoned judgments from human feelings or lived experience
+- requires direct answers when asked for an opinion
+- prevents lack-of-tools disclaimers from being used for ordinary reasoning
+- discourages generic assistant boilerplate when a substantive answer is possible
+
+
+## v0.1.6
+
+Tools and live-data update:
+- native Ollama tool-calling agent loop
+- live web search through Ollama Web Search when configured
+- direct webpage fetching
+- current time tool
+- safe calculator
+- sandboxed local workspace list/read/write tools
+- `/tools` status command
+- `/websetup` and `/webclear` for an Ollama web-search API key
+- `/rate` for optional immediate feedback without interrupting every reply
+- recent 0-10 feedback is injected into future prompts as an optimisation signal
+
+Security/privacy:
+- web search is opt-in and requires an Ollama API key
+- the key is stored only in local `data/secrets.json`, which remains outside GitHub
+- workspace file tools cannot escape the dedicated `workspace/` directory
+- arbitrary shell/computer control is still intentionally disabled
 
 
 ## v0.1.7
@@ -86,6 +314,7 @@ Desktop frontend release:
 - left sidebar lists persistent chats and supports creating/switching chats
 - central conversation view shows Reece and XemAi labels clearly
 - ChatGPT-style composer with Enter-to-send and Shift+Enter for new lines
+- basic Markdown-friendly rendering for headings, lists and code blocks
 - settings window for AI name, Ollama model and web-search API key
 - capabilities dialog
 - graphical update checks/install flow with automatic GUI restart
@@ -141,11 +370,13 @@ Mobile update control:
 ## v0.4.2
 
 Android mobile cache fix:
-- fixes the mobile Update XemAi button appearing without working when Android combined new HTML with cached old JavaScript
-- version-tags mobile JavaScript and CSS URLs
-- mobile HTML, JavaScript, CSS and service-worker responses now use no-store caching
-- the service worker removes stale XemAi app caches and always fetches current same-origin UI code
-- preserves phone-based official update checking/install from v0.4.1
+- fixes the `Update XemAi` button appearing without working because Android could combine the new HTML with a cached old `app.js`
+- version-tags the mobile JavaScript and CSS URLs so every XemAi release requests fresh frontend assets
+- mobile JavaScript/CSS/HTML/service-worker responses now use `Cache-Control: no-store`
+- service worker no longer serves stale XemAi application code from its cache
+- old mobile caches are deleted during service-worker installation
+- service-worker registration explicitly requests an update
+- keeps the v0.4.1 phone update workflow and automatic mobile-server restart
 
 
 ## v0.4.3
@@ -179,3 +410,15 @@ Exact-source republish:
 - publishes the exact locally tested mobile-server lifecycle source
 - keeps SHA verification mandatory
 - freezes release content first, then computes the live manifest hashes from that frozen GitHub branch
+
+
+## v0.5.0
+
+Visual redesign release:
+- redesigns the Windows desktop XemAi interface to match the new dark blue bubble-chat concept
+- redesigns the Android/mobile XemAi interface to the matching mobile concept
+- uses sender chat bubbles for both parties with the sender name shown inside each bubble at the lower left
+- adds the new dark gradient blue background styling to both desktop and mobile
+- upgrades the desktop chat area from plain transcript text to a scrollable bubble-based conversation layout
+- upgrades the sidebar and composer to the new rounded card / pill layout
+- preserves the shared database, chats, updater, mobile sync, memory and tool systems
