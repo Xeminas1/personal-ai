@@ -430,3 +430,12 @@ Desktop startup hotfix:
 - fixes a Windows desktop crash in the v0.5.0 recent-chat timestamp renderer when stored timestamps include timezone offsets
 - keeps the v0.5.0 desktop/mobile visual redesign unchanged
 - adds `logs/desktop_startup_error.log` for otherwise invisible early GUI startup exceptions
+
+
+## v0.5.2
+
+Visual refinement update:
+- adds a proper dark glass-like header bar to the mobile app so scrolling messages no longer overlap the top title area
+- corrects the mobile background mood so the blue glow rises from the bottom rather than reading as the wrong-direction wash
+- refines the Windows desktop layout with an integrated status/header area, wider composer, styled scrollbars, stronger sidebar proportions, and corrected lower background glow
+- keeps the same chats, memories, updater, tools, and shared mobile/desktop data
