@@ -173,7 +173,44 @@ class ChatBackend:
             model=self.config["model"],
             logger=self.logger,
         )
+        self.runtime_model_info = {
+            "model": self.config.get("model", "unknown"),
+            "source": "configured_fallback",
+            "installed_qwen": [],
+            "running_qwen": [],
+        }
         self.tools = ToolRegistry(BASE_DIR, DATA_DIR, self.logger)
+
+    def refresh_runtime_model(self, client=None) -> dict:
+        llm = client or self.llm
+        fallback = str(self.config.get("model", "qwen3:8b")).strip()
+        info = {
+            "model": fallback or "unknown",
+            "source": "configured_fallback",
+            "installed_qwen": [],
+            "running_qwen": [],
+        }
+
+        if not self.config.get("auto_detect_ollama_model", True):
+            llm.model = info["model"]
+            if client is None:
+                self.runtime_model_info = info
+            return info
+
+        try:
+            info = llm.discover_runtime_model(preferred=fallback)
+        except Exception as e:
+            self.logger.warning(
+                "Ollama runtime model discovery failed; using fallback | "
+                "fallback=%s error=%r",
+                fallback,
+                e,
+            )
+            llm.model = info["model"]
+
+        if client is None:
+            self.runtime_model_info = info
+        return info
 
     def ensure_user(self, name: str):
         if self.user is None:
@@ -184,9 +221,15 @@ class ChatBackend:
     def health_error(self) -> str | None:
         if not self.llm.health_check():
             return "XemAi cannot reach Ollama. Start Ollama, then reopen XemAi."
-        if not self.llm.model_available():
-            model = self.config["model"]
-            return f"The model '{model}' is not installed.\n\nRun: ollama pull {model}"
+        info = self.refresh_runtime_model()
+        model = str(info.get("model", "unknown"))
+        if not self.llm.model_available(model):
+            return (
+                f"No usable Ollama model was found for XemAi. "
+                f"Runtime selection resolved to '{model}'.\n\n"
+                "Install a Qwen model with Ollama, for example: "
+                "ollama pull qwen3:1.7b"
+            )
         return None
 
     def chats(self):
@@ -202,7 +245,10 @@ class ChatBackend:
         return self.db.get_recent_messages(chat_id, limit=500)
 
     def capabilities(self) -> list[str]:
-        return build_capability_status(self.config, self.tools)
+        info = self.refresh_runtime_model()
+        return build_capability_status(
+            self.config, self.tools, info
+        )
 
     def save_settings(self, *, assistant_name: str, model: str, api_key: str = ""):
         self.config["assistant_name"] = assistant_name.strip() or "XemAi"
@@ -218,6 +264,12 @@ class ChatBackend:
             model=self.config["model"],
             logger=self.logger,
         )
+        self.runtime_model_info = {
+            "model": self.config.get("model", "unknown"),
+            "source": "configured_fallback",
+            "installed_qwen": [],
+            "running_qwen": [],
+        }
         self.tools = ToolRegistry(BASE_DIR, DATA_DIR, self.logger)
 
     def web_test(self) -> tuple[bool, str]:
@@ -312,6 +364,7 @@ class ChatBackend:
                 model=self.config["model"],
                 logger=self.logger,
             )
+            runtime_model_info = self.refresh_runtime_model(llm)
 
             system_prompt = build_system_prompt(
                 user,
@@ -319,7 +372,9 @@ class ChatBackend:
                 feedback_rows=feedback,
                 tool_status=tools.status_lines(),
                 assistant_name=self.config.get("assistant_name", "XemAi"),
-                capability_status=build_capability_status(self.config, tools),
+                capability_status=build_capability_status(
+                    self.config, tools, runtime_model_info
+                ),
             )
             history = worker_db.get_recent_messages(
                 chat_id, limit=int(self.config.get("history_messages", 30))
@@ -366,7 +421,7 @@ class ChatBackend:
                 messages.append({
                     "role": "system",
                     "content": build_authoritative_self_context(
-                        self.config, tools
+                        self.config, tools, runtime_model_info
                     ),
                 })
                 messages.append({"role": "user", "content": model_user_text})
@@ -433,7 +488,7 @@ class ChatBackend:
                 )
 
                 second_invalid = (
-                    comparison_answer_needs_retry(text, answer)
+                    comparison_answer_needs_retry(query_text, answer)
                     if comparison_query
                     else looks_like_stale_self_description(answer)
                 )
@@ -443,10 +498,15 @@ class ChatBackend:
                         chat_id,
                     )
                     if comparison_query:
-                        answer = build_ai_comparison_fallback(query_text, self.config)
+                        answer = build_ai_comparison_fallback(
+                            query_text, self.config, runtime_model_info
+                        )
                     else:
                         answer = build_self_knowledge_fallback(
-                            query_text, self.config, tools
+                            query_text,
+                            self.config,
+                            tools,
+                            runtime_model_info,
                         )
 
             worker_db.add_message(chat_id, "assistant", answer)
@@ -474,7 +534,11 @@ class ChatBackend:
             self.logger.error(
                 "Reply generation failed | chat_id=%s model=%s error=%r",
                 chat_id,
-                self.config.get("model", "unknown"),
+                (
+                    locals().get("llm").model
+                    if locals().get("llm") is not None
+                    else self.config.get("model", "unknown")
+                ),
                 e,
             )
             if user_recorded and not assistant_recorded:
