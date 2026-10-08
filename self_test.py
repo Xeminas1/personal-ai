@@ -225,7 +225,7 @@ def run() -> None:
         assert "ChatGPT" in comparison_fallback
         assert "qwen3:8b" in comparison_fallback
         assert "without evidence" in comparison_fallback
-        assert "training-cutoff" in comparison_fallback
+        assert "training cutoffs" in comparison_fallback
 
         safe_fallback = build_self_knowledge_fallback(
             "what can you do?",
