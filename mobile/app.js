@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.5.2";
+const FRONTEND_VERSION = "0.6.0";
 
 const state = {
   bootstrap: null,
@@ -474,7 +474,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.5.2")
+  navigator.serviceWorker.register("/sw.js?v=0.6.0")
     .then((registration) => registration.update())
     .catch(() => {});
 }
