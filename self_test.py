@@ -108,6 +108,9 @@ def run() -> None:
     assert "appendMessage(\"assistant\", data.answer" not in mobile_js
     assert "data.status || \"XemAi is thinking\"" in mobile_js
     assert "Connection interrupted · checking XemAi" in mobile_js
+    assert "function isNetworkFetchError(" in mobile_js
+    assert "Message not accepted" in mobile_js
+    assert "Retry not started" in mobile_js
     assert "Reply failed" not in mobile_js
     assert "uploadSelectedFiles" in mobile_js
     assert "pendingAttachments" in mobile_js
