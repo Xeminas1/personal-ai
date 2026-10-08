@@ -102,17 +102,56 @@ class OllamaClient:
         installed_qwen = self._qwen_models(installed)
         running_qwen = self._qwen_models(running)
 
-        if running_qwen:
-            selected = max(
+        running_selected = (
+            max(
                 running_qwen,
                 key=lambda item: str(item.get("expires_at", "")),
             )
-            source = "ollama_running"
-        elif installed_qwen:
-            selected = max(
+            if running_qwen
+            else None
+        )
+        installed_selected = (
+            max(
                 installed_qwen,
                 key=lambda item: str(item.get("modified_at", "")),
             )
+            if installed_qwen
+            else None
+        )
+
+        running_name = (
+            self._model_name(running_selected)
+            if running_selected
+            else ""
+        )
+        installed_name = (
+            self._model_name(installed_selected)
+            if installed_selected
+            else ""
+        )
+
+        # A model that is running only because the old config launched it
+        # should not permanently trap auto-detection on that stale value.
+        # If a different Qwen build was installed more recently, prefer it.
+        if (
+            running_selected
+            and running_name
+            and running_name != preferred
+        ):
+            selected = running_selected
+            source = "ollama_running"
+        elif (
+            installed_selected
+            and installed_name
+            and installed_name != preferred
+        ):
+            selected = installed_selected
+            source = "ollama_installed_recent"
+        elif running_selected:
+            selected = running_selected
+            source = "ollama_running"
+        elif installed_selected:
+            selected = installed_selected
             source = "ollama_installed_recent"
         else:
             selected = None
