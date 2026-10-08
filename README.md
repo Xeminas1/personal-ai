@@ -611,3 +611,37 @@ Evidence-backed research:
 - fetched webpages are treated as untrusted evidence/data and cannot override XemAi instructions
 - if research fails to retrieve usable sources, XemAi is explicitly told not to pretend studies or sources were checked
 - evidence_research_mode defaults to auto and research_max_sources defaults to 3
+
+
+## v0.9.0
+
+Hybrid compute:
+- keeps the always-on XemAi host as the single source of chats, memory, feedback, research, files and tool execution
+- adds an authenticated XemAi inference worker for a stronger Windows PC
+- the worker binds only to localhost and is exposed privately through Tailscale Serve HTTPS
+- the worker exposes only health/model inventory and Ollama-compatible chat inference; it does not expose model pulling, shell access, the XemAi database or arbitrary files
+- worker access requires a generated bearer token stored only in local data/secrets.json on the paired machines
+- hybrid_worker_setup.bat configures the strong PC, starts the worker, adds user-login autostart and prints/saves the private pairing URL/token
+- hybrid_host_setup.bat pairs the always-on host without manually editing JSON or secrets
+- when the worker is reachable, XemAi prefers its recommended Qwen model on the stronger PC
+- when the worker is unavailable or a worker inference call fails, the same model/tool conversation falls back to the always-on host's local Ollama
+- tools still execute on the central XemAi host even when language-model inference runs on the worker
+- runtime self-knowledge and capabilities report the active model, compute route and worker availability
+- phone/desktop UI shows a live Compute badge: Worker · model or Host · model
+- the worker chooses an already-running Qwen model when present; otherwise it recommends the largest installed Qwen model
+- hybrid compute improves hardware availability but is not treated as proof of frontier-model quality or benchmark parity
+
+### Hybrid setup
+
+On the stronger PC after both machines have XemAi v0.9.0:
+1. Make sure Ollama and Tailscale are installed/running and the stronger Qwen model is installed.
+2. Run hybrid_worker_setup.bat and approve the one-time Windows administrator prompt for Tailscale Serve.
+3. Keep the Worker URL and Worker token it prints.
+
+On the always-on XemAi host:
+1. Run hybrid_host_setup.bat.
+2. Paste the Worker URL.
+3. Paste the Worker token when prompted (the token input is hidden).
+4. Restart XemAi/the shared server once.
+
+The worker is served only within the Tailscale tailnet. Keep the pairing token private.
