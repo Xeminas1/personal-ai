@@ -422,3 +422,11 @@ Visual redesign release:
 - upgrades the desktop chat area from plain transcript text to a scrollable bubble-based conversation layout
 - upgrades the sidebar and composer to the new rounded card / pill layout
 - preserves the shared database, chats, updater, mobile sync, memory and tool systems
+
+
+## v0.5.1
+
+Desktop startup hotfix:
+- fixes a Windows desktop crash in the v0.5.0 recent-chat timestamp renderer when stored timestamps include timezone offsets
+- keeps the v0.5.0 desktop/mobile visual redesign unchanged
+- adds `logs/desktop_startup_error.log` for otherwise invisible early GUI startup exceptions
