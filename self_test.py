@@ -41,13 +41,21 @@ def run() -> None:
     assert (project_root / "mobile" / "app.js").exists()
     mobile_js = (project_root / "mobile" / "app.js").read_text(encoding="utf-8")
     mobile_server = (project_root / "app" / "mobile_server.py").read_text(encoding="utf-8")
+    config_source = (project_root / "app" / "config.py").read_text(encoding="utf-8")
+    assert '"auto_install_updates": True' in config_source
+    assert '"auto_update_interval_seconds": 60' in config_source
+    assert "def _auto_update_loop(server)" in mobile_server
+    assert "XemAiAutoUpdater" in mobile_server
+    assert "active_chat_requests" in mobile_server
+    assert "update_restarting" in mobile_server
+    assert 'time.sleep(2.5)' in mobile_server
     assert "/api/update/install" in mobile_js
     assert "/api/update/install" in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.6.5"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.6.6"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.6.5" in mobile_html
-    assert "/styles.css?v=0.6.5" in mobile_html
+    assert "/app.js?v=0.6.6" in mobile_html
+    assert "/styles.css?v=0.6.6" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
@@ -61,6 +69,11 @@ def run() -> None:
     assert "brand-ai" in mobile_html
     assert "function setBrand(name)" in mobile_js
     assert 'versionBadge: $("versionBadge")' in mobile_js
+    assert "function syncSharedState()" in mobile_js
+    assert "window.setInterval(syncSharedState, 1500)" in mobile_js
+    assert "health.version !== state.bootstrap.version" in mobile_js
+    assert "state.lastMessageSignature" in mobile_js
+    assert "state.lastChatSignature" in mobile_js
     assert 'els.versionBadge.textContent = `v${data.version}`;' in mobile_js
     assert 'id="versionBadge"' in mobile_html
     assert ".version-badge" in mobile_css
@@ -119,9 +132,9 @@ def run() -> None:
         "I think XemAi currently lacks arbitrary shell/command execution, "
         "unrestricted filesystem access, and native image/audio analysis."
     )
-    assert is_newer_version("0.6.6", "0.6.5")
-    assert not is_newer_version("0.6.5", "0.6.5")
-    assert not is_newer_version("0.6.4", "0.6.5")
+    assert is_newer_version("0.6.7", "0.6.6")
+    assert not is_newer_version("0.6.6", "0.6.6")
+    assert not is_newer_version("0.6.5", "0.6.6")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -222,6 +235,8 @@ def run() -> None:
         assert "AUTHORITATIVE XEMAI RUNTIME SELF-KNOWLEDGE" in self_context
         assert "persistent chat history" in self_context.lower()
         assert "cross-chat long-term memory" in self_context.lower()
+        assert "Cross-device live chat refresh" in self_context
+        assert "Automatic official-channel updates" in self_context
         assert "v0.3.0" in self_context
         assert "bubble-based" in self_context.lower()
         assert "Do not claim a 2023" in self_context
@@ -243,7 +258,7 @@ def run() -> None:
             registry,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.6.5" in safe_fallback
+        assert "v0.6.6" in safe_fallback
 
         calc = json.loads(registry.execute("calculator", {"expression": "2 + 3 * 4"}))
         assert calc["ok"] and calc["result"] == 14
