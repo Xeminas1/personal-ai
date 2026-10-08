@@ -59,22 +59,31 @@ def run() -> None:
     assert 'r"/api/chats/(\\d+)/attachments"' in mobile_server
     assert "_validated_attachment_refs" in mobile_server
     assert "base64.b64decode" in mobile_server
+    do_get_source, do_post_source = mobile_server.split("    def do_POST", 1)
+    attachment_route = 'r"/api/chats/(\\d+)/attachments"'
+    assert attachment_route not in do_get_source
+    assert attachment_route in do_post_source
     llm_source = (project_root / "app" / "llm.py").read_text(encoding="utf-8")
     assert "def discover_runtime_model" in llm_source
     assert '"/api/ps"' in llm_source
     assert '"/api/tags"' in llm_source
     assert "def _set_chat_activity" in mobile_server
     assert "def _get_chat_activity" in mobile_server
+    assert "def _run_chat_generation" in mobile_server
+    assert "def _start_chat_generation" in mobile_server
+    assert "HTTPStatus.ACCEPTED" in mobile_server
+    assert '"accepted": True' in mobile_server
+    assert "XemAiReply-" in mobile_server
     assert 'r"/api/chats/(\\d+)/activity"' in mobile_server
     assert "server.chat_activity = {}" in mobile_server
     assert '"runtime_model"' in mobile_server
     assert '"model_source"' in mobile_server
     assert '"installed_qwen"' in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.7.0"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.7.1"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.7.0" in mobile_html
-    assert "/styles.css?v=0.7.0" in mobile_html
+    assert "/app.js?v=0.7.1" in mobile_html
+    assert "/styles.css?v=0.7.1" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
@@ -96,6 +105,10 @@ def run() -> None:
     assert "REPLY_ERROR_PREFIX" in mobile_js
     assert "retry-reply-btn" in mobile_js
     assert "async function retryLastMessage()" in mobile_js
+    assert "appendMessage(\"assistant\", data.answer" not in mobile_js
+    assert "data.status || \"XemAi is thinking\"" in mobile_js
+    assert "Connection interrupted · checking XemAi" in mobile_js
+    assert "Reply failed" not in mobile_js
     assert "uploadSelectedFiles" in mobile_js
     assert "pendingAttachments" in mobile_js
     assert "function formatMessageTime(" in mobile_js
@@ -141,6 +154,7 @@ def run() -> None:
     assert "refresh_runtime_model" in gui_backend_source
     assert "attachments=None" in gui_backend_source
     assert "Automatic memory extraction failed after successful reply" in gui_backend_source
+    assert "status_callback(None)" in gui_backend_source
     assert "Tap Retry to try the same message again." in gui_backend_source
     assert "explicitly naming or addressing" in gui_backend_source
     desktop_ui = (project_root / "ui.py").read_text(encoding="utf-8")
@@ -191,9 +205,9 @@ def run() -> None:
         "I think XemAi currently lacks arbitrary shell/command execution, "
         "unrestricted filesystem access, and native image/audio analysis."
     )
-    assert is_newer_version("0.7.1", "0.7.0")
-    assert not is_newer_version("0.7.0", "0.7.0")
-    assert not is_newer_version("0.6.9", "0.7.0")
+    assert is_newer_version("0.7.2", "0.7.1")
+    assert not is_newer_version("0.7.1", "0.7.1")
+    assert not is_newer_version("0.7.0", "0.7.1")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -338,7 +352,7 @@ def run() -> None:
             runtime_info,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.7.0" in safe_fallback
+        assert "v0.7.1" in safe_fallback
         assert "qwen3:1.7b" in safe_fallback
 
         ollama_probe = OllamaClient(
