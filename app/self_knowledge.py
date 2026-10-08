@@ -27,11 +27,48 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.6.0", "Unifies Windows and Android on one responsive HTML/CSS frontend; Windows launches the same XemAi interface in Edge app mode while the legacy Tkinter frontend remains available as a fallback."),
     ("0.6.1", "Refines the mobile XemAi interface with a cleaner fixed header, smaller chat typography, tighter bubbles/composer spacing, and a stronger bottom-up blue glow while preserving the unified desktop/mobile frontend."),
     ("0.6.2", "Refines XemAi branding so the shared desktop/mobile wordmark renders Xem in white and Ai in the interface accent blue."),
+    ("0.6.3", "Strengthens XemAi identity and AI-comparison reliability: ChatGPT/AI opinion questions receive authoritative runtime context and stale generic model self-descriptions are rejected before being saved."),
 ]
+
+
+def is_ai_comparison_query(text: str) -> bool:
+    lower = " ".join(text.lower().split())
+    ai_terms = (
+        "chatgpt", "openai", "gpt", "claude", "gemini", "copilot",
+        "grok", "deepseek", "other ai", "other assistant", "other model",
+    )
+    comparison_terms = (
+        "opinion", "think of", "think about", "compare", "comparison",
+        "better", "worse", "stronger", "weaker", "versus", " vs ",
+        "benchmark", "compete", "competitive", "how do you rate",
+    )
+    return (
+        any(term in lower for term in ai_terms)
+        and any(term in lower for term in comparison_terms)
+    )
+
+
+def ai_comparison_subject(text: str) -> str:
+    lower = text.lower()
+    for needle, label in (
+        ("chatgpt", "ChatGPT"),
+        ("openai", "ChatGPT/OpenAI"),
+        ("claude", "Claude"),
+        ("gemini", "Gemini"),
+        ("copilot", "Copilot"),
+        ("grok", "Grok"),
+        ("deepseek", "DeepSeek"),
+    ):
+        if needle in lower:
+            return label
+    return "other AI systems"
 
 
 def is_self_knowledge_query(text: str) -> bool:
     lower = " ".join(text.lower().split())
+
+    if is_ai_comparison_query(text):
+        return True
 
     direct_phrases = (
         "what are you missing",
@@ -102,7 +139,16 @@ def looks_like_stale_self_description(text: str) -> bool:
         "i can't test code",
         "i don’t have direct access to my own",
         "i don't have direct access to my own",
+        "i don’t claim to be any specific ai",
+        "i don't claim to be any specific ai",
+        "i can’t directly compare myself to chatgpt",
+        "i can't directly compare myself to chatgpt",
+        "i cannot directly compare myself to chatgpt",
     )
+    if "2023" in lower and ("training" in lower or "knowledge" in lower):
+        return True
+    if "training data ends in" in lower or "training cutoff" in lower:
+        return True
     return any(marker in lower for marker in stale_markers)
 
 
@@ -147,6 +193,23 @@ IMPORTANT CORRECTIONS
   model plus the Personal AI application, memory, tools, interface, prompts,
   update system and user-specific state.
 
+AI COMPARISON RULES
+- You are specifically XemAi. Never say you are an unnamed or unspecified AI.
+- You MAY directly compare yourself with ChatGPT and other AI systems.
+- If asked for your opinion, give a clear reasoned opinion first rather than a
+  generic disclaimer.
+- Separate the underlying local model from XemAi as the complete application.
+- Do not claim XemAi is better or worse overall without benchmark evidence.
+- It is valid to say the local model may be a bottleneck on difficult reasoning,
+  coding, or broad knowledge tasks, while XemAi may have advantages in local
+  continuity, persistent personal memory, user-specific project context,
+  auditable state, and custom tools.
+- Do not invent current features, model names, training cutoffs, benchmark
+  results, or limitations for ChatGPT or another external system. If current
+  details matter, use live research when available or state the uncertainty.
+- Never use "I can't compare myself" as an excuse when a reasoned comparison is
+  possible from verified information.
+
 CURRENT GAPS / LIMITS
 - No arbitrary shell or command execution yet.
 - No unrestricted filesystem access outside the dedicated workspace.
@@ -166,3 +229,22 @@ When the user asks what XemAi is missing, reason from CURRENT GAPS / LIMITS and
 the user's project goals. When the user asks what has been added, use KNOWN
 RELEASE HISTORY. Correct any conflicting prior self-description directly.
 """.strip()
+
+
+def build_ai_comparison_fallback(text: str, config) -> str:
+    subject = ai_comparison_subject(text)
+    model = config.get("model", "unknown")
+    return (
+        f"My view of {subject}: it is a useful benchmark for me, and I should "
+        "compare myself with it directly rather than hide behind a generic AI "
+        "disclaimer. I would not claim I am better overall without evidence. "
+        f"My underlying local model is {model}, which can be a bottleneck on "
+        "hard reasoning, coding, and broad-knowledge tasks. XemAi as a whole "
+        "has different strengths: persistent local memory, continuity across "
+        "your projects, user-specific context, local control, custom tools, "
+        "and auditable state. My goal is to measure where I am weaker, improve "
+        "those areas, and earn any claim of being better through benchmarks "
+        "rather than assertion. I do not have verified training-cutoff metadata "
+        "for myself or verified current details about the other system unless "
+        "I research them, so I will not invent those."
+    )
