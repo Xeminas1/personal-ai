@@ -57,11 +57,15 @@ def run() -> None:
     assert 'r"/api/chats/(\\d+)/attachments"' in mobile_server
     assert "_validated_attachment_refs" in mobile_server
     assert "base64.b64decode" in mobile_server
+    assert "def _set_chat_activity" in mobile_server
+    assert "def _get_chat_activity" in mobile_server
+    assert 'r"/api/chats/(\\d+)/activity"' in mobile_server
+    assert "server.chat_activity = {}" in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.6.8"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.6.9"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.6.8" in mobile_html
-    assert "/styles.css?v=0.6.8" in mobile_html
+    assert "/app.js?v=0.6.9" in mobile_html
+    assert "/styles.css?v=0.6.9" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
@@ -85,6 +89,13 @@ def run() -> None:
     assert "async function retryLastMessage()" in mobile_js
     assert "uploadSelectedFiles" in mobile_js
     assert "pendingAttachments" in mobile_js
+    assert "function formatMessageTime(" in mobile_js
+    assert "msg.created_at" in mobile_js
+    assert '"Sent"' in mobile_js
+    assert "XemAi is still thinking" in mobile_js
+    assert "XemAi is still working" in mobile_js
+    assert "function setRemoteActivity(" in mobile_js
+    assert "/activity" in mobile_js
     assert "fileToBase64" in mobile_js
     assert "els.fileInput.click()" in mobile_js
     assert 'els.newBtn.addEventListener("click", createChat)' not in mobile_js
@@ -94,11 +105,17 @@ def run() -> None:
     assert ".attachment-tray" in mobile_css
     assert ".attachment-chip" in mobile_css
     assert ".message-attachment" in mobile_css
+    assert ".message-meta" in mobile_css
+    assert ".message.user .message-meta" in mobile_css
+    assert "justify-content: flex-end" in mobile_css
+    assert "@keyframes thinkingPulse" in mobile_css
     assert 'els.versionBadge.textContent = `v${data.version}`;' in mobile_js
     assert 'id="versionBadge"' in mobile_html
     assert 'id="fileInput"' in mobile_html
     assert 'id="attachmentTray"' in mobile_html
     assert 'aria-label="Attach file"' in mobile_html
+    assert "thinking-dots" in mobile_html
+    assert "thinking-label" in mobile_html
     assert ".version-badge" in mobile_css
     assert "rgba(15, 79, 132, 0.78)" in mobile_css
     assert 'chatTitle: $("chatTitle")' not in mobile_js
@@ -163,9 +180,9 @@ def run() -> None:
         "I think XemAi currently lacks arbitrary shell/command execution, "
         "unrestricted filesystem access, and native image/audio analysis."
     )
-    assert is_newer_version("0.6.9", "0.6.8")
-    assert not is_newer_version("0.6.8", "0.6.8")
-    assert not is_newer_version("0.6.7", "0.6.8")
+    assert is_newer_version("0.7.0", "0.6.9")
+    assert not is_newer_version("0.6.9", "0.6.9")
+    assert not is_newer_version("0.6.8", "0.6.9")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -293,7 +310,7 @@ def run() -> None:
             registry,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.6.8" in safe_fallback
+        assert "v0.6.9" in safe_fallback
 
         calc = json.loads(registry.execute("calculator", {"expression": "2 + 3 * 4"}))
         assert calc["ok"] and calc["result"] == 14
