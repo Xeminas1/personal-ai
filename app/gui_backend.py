@@ -23,6 +23,7 @@ from .tools import ToolRegistry, should_force_web_search
 from .updater import check_for_update, install_update
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+REPLY_ERROR_PREFIX = "⚠️ XemAi couldn't complete that reply."
 
 
 def title_from_message(text: str) -> str:
@@ -115,16 +116,22 @@ class ChatBackend:
             logger=self.logger,
         )
 
-    def send(self, chat_id: int, text: str, status_callback=None) -> str:
+    def send(self, chat_id: int, text: str, status_callback=None, *, record_user: bool = True) -> str:
         # Tkinter stays on the UI thread. Use a separate SQLite connection for
         # response generation so the UI remains responsive and thread-safe.
         worker_db = Database(DATA_DIR / "personal_ai.db")
+        user_recorded = False
+        assistant_recorded = False
         try:
             was_empty = not worker_db.chat_has_messages(chat_id)
-            worker_db.add_message(chat_id, "user", text)
+            if record_user:
+                worker_db.add_message(chat_id, "user", text)
+                user_recorded = True
+            else:
+                user_recorded = True
 
             chat = worker_db.get_chat(chat_id)
-            if was_empty and chat["title"] in {"New chat", "Untitled"}:
+            if record_user and was_empty and chat["title"] in {"New chat", "Untitled"}:
                 worker_db.rename_chat(chat_id, title_from_message(text))
 
             user = worker_db.get_user()
@@ -167,6 +174,12 @@ class ChatBackend:
                     and row["content"] == text
                 )
                 if self_query and is_latest_user:
+                    continue
+
+                if (
+                    row["role"] == "assistant"
+                    and str(row["content"]).startswith(REPLY_ERROR_PREFIX)
+                ):
                     continue
 
                 if (
@@ -268,17 +281,53 @@ class ChatBackend:
                         )
 
             worker_db.add_message(chat_id, "assistant", answer)
+            assistant_recorded = True
 
             if self.config.get("auto_memory", True):
-                extract_and_store_memories(
-                    llm=llm,
-                    db=worker_db,
-                    user_id=user["id"],
-                    chat_id=chat_id,
-                    user_message=text,
-                    logger=self.logger,
-                )
+                try:
+                    extract_and_store_memories(
+                        llm=llm,
+                        db=worker_db,
+                        user_id=user["id"],
+                        chat_id=chat_id,
+                        user_message=text,
+                        logger=self.logger,
+                    )
+                except Exception as e:
+                    self.logger.warning(
+                        "Automatic memory extraction failed after successful reply | "
+                        "chat_id=%s error=%r",
+                        chat_id,
+                        e,
+                    )
             return answer
+        except Exception as e:
+            self.logger.error(
+                "Reply generation failed | chat_id=%s model=%s error=%r",
+                chat_id,
+                self.config.get("model", "unknown"),
+                e,
+            )
+            if user_recorded and not assistant_recorded:
+                detail = " ".join(str(e).strip().split())
+                if not detail:
+                    detail = type(e).__name__
+                if len(detail) > 500:
+                    detail = detail[:497] + "..."
+                error_message = (
+                    f"{REPLY_ERROR_PREFIX}\n\n"
+                    f"{detail}\n\n"
+                    "Tap Retry to try the same message again."
+                )
+                try:
+                    worker_db.add_message(chat_id, "assistant", error_message)
+                except Exception as save_error:
+                    self.logger.error(
+                        "Could not persist reply failure | chat_id=%s error=%r",
+                        chat_id,
+                        save_error,
+                    )
+            raise
         finally:
             worker_db.close()
 
