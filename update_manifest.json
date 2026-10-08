@@ -1,36 +1,41 @@
 {
-  "version": "0.5.1",
-  "notes": "Desktop startup hotfix: fixes the v0.5.0 Windows UI crash caused by timezone-aware chat timestamps in the redesigned Recent Chats sidebar. Keeps the new desktop/mobile appearance unchanged and adds desktop startup crash logging.",
+  "version": "0.5.2",
+  "notes": "Visual refinement: adds a themed dark mobile header so scrolling text no longer overlaps XemAi, corrects the blue background glow so it rises from the bottom, and improves the Windows desktop layout with an integrated status/header area, a properly expanding composer, stronger sidebar proportions, styled scrollbars, and corrected lower blue glow.",
   "files": [
     {
       "path": "ui.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.1/ui.py",
-      "sha256": "6b9b234088fad852162501e16d533047a7016e1a09323ecd66904aaa2ba20336"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.2/ui.py",
+      "sha256": "730a55923ce669ff47fe85ee4c25fedb7fc84a270e1912c4a314932eab64c9c4"
     },
     {
-      "path": "XemAi.pyw",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.1/XemAi.pyw",
-      "sha256": "2ca94226f42e8d76129d780306790a3d7c04ffee6e70dad50ecba650bc6d4053"
+      "path": "mobile/styles.css",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.2/mobile/styles.css",
+      "sha256": "1959e77a5c792bcb74466e793ca81c24e7299e865a399c2f98109c6e162d1730"
+    },
+    {
+      "path": "mobile/index.html",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.2/mobile/index.html",
+      "sha256": "e45faabaea14d09f7be763a9bb31a0b8bf2921375e632aeda10868a67a286232"
+    },
+    {
+      "path": "mobile/app.js",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.2/mobile/app.js",
+      "sha256": "0789735a52009fd9be926b57254be7d92b2995eb327301d1afdd16ddfd8186aa"
+    },
+    {
+      "path": "mobile/sw.js",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.2/mobile/sw.js",
+      "sha256": "5720b40cab26a93d93c8e1428a0f079f89cf1c6b5d133770ca71cb728af0c88c"
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.1/app/version.py",
-      "sha256": "466fed3174a241ed6870338250a28893e23b6442f6d4d5d2241692297d68a02b"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.2/app/version.py",
+      "sha256": "1ffdb0ce4c2de4feeef7329208e9d0af2e0d592f432777c26d7e74087b0532d0"
     },
     {
       "path": "app/self_knowledge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.1/app/self_knowledge.py",
-      "sha256": "7d583b3010a02b9c95a3d2d10f07a7102f732dec5c0afdb564ec7aa09c715cdf"
-    },
-    {
-      "path": "self_test.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.1/self_test.py",
-      "sha256": "f31728310818918bd6ddcc95c34fab1e5cd7345f0c4b5b8c00edf7c0d1e2f32f"
-    },
-    {
-      "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.1/README.md",
-      "sha256": "8e8c32af220f41f220a0cfc9d3530b5938196b01fff765a4adfb1ed8f69f783c"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.2/app/self_knowledge.py",
+      "sha256": "d998811a1fa52b44eced4e780b4295cf42cfbf0eb6d009e060947733010f524d"
     }
   ]
 }
