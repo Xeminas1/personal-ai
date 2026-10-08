@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.6.8";
+const FRONTEND_VERSION = "0.6.9";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
@@ -12,6 +12,8 @@ const state = {
   syncCounter: 0,
   pendingAttachments: [],
   uploadingAttachments: 0,
+  thinkingTimer: null,
+  thinkingStartedAt: 0,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -242,7 +244,16 @@ function setBusy(value, label = null) {
   els.newBtn.disabled = value || state.uploadingAttachments > 0;
   els.drawerNewBtn.disabled = value;
   els.thinking.classList.toggle("hidden", !value);
-  setStatus(label || (value ? "Thinking…" : "Ready"));
+
+  if (value) {
+    startThinkingProgress(
+      label && label.startsWith("XemAi") ? label.replace(/…$/, "") : "XemAi is thinking"
+    );
+  } else {
+    stopThinkingProgress();
+  }
+
+  setStatus(label || (value ? "XemAi is thinking…" : "Ready"));
 }
 
 function escapeHtml(text) {
@@ -297,6 +308,43 @@ function relativeTime(isoText) {
   return `${d} day${d === 1 ? "" : "s"} ago`;
 }
 
+function formatMessageTime(isoText) {
+  const date = isoText ? new Date(isoText) : new Date();
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+function setThinkingText(text) {
+  const label = els.thinking?.querySelector(".thinking-label");
+  if (label) label.textContent = text;
+}
+
+function stopThinkingProgress() {
+  if (state.thinkingTimer) {
+    window.clearInterval(state.thinkingTimer);
+    state.thinkingTimer = null;
+  }
+  state.thinkingStartedAt = 0;
+}
+
+function startThinkingProgress(initial = "XemAi is thinking") {
+  stopThinkingProgress();
+  state.thinkingStartedAt = Date.now();
+  setThinkingText(initial);
+  state.thinkingTimer = window.setInterval(() => {
+    const elapsed = Date.now() - state.thinkingStartedAt;
+    if (elapsed >= 60000) {
+      setThinkingText("XemAi is still working");
+    } else if (elapsed >= 20000) {
+      setThinkingText("XemAi is still thinking");
+    }
+  }, 1000);
+}
+
 function renderBody(text) {
   const parts = String(text).split(/```/);
   return parts.map((part, index) => {
@@ -313,7 +361,7 @@ function renderBody(text) {
   }).join("");
 }
 
-function appendMessage(role, text) {
+function appendMessage(role, text, createdAt = null, delivery = null) {
   const wrap = document.createElement("article");
   wrap.className = `message ${role}`;
   const name = role === "user"
@@ -342,7 +390,16 @@ function appendMessage(role, text) {
         ${attachmentHtml}
         ${parsed.text ? `<div class="message-body">${renderBody(parsed.text)}</div>` : ""}
         ${retryable ? '<button type="button" class="retry-reply-btn">Retry</button>' : ''}
-        <div class="message-name">${escapeHtml(name)}</div>
+        <div class="message-meta">
+          ${role === "user" ? `
+            <span class="message-delivery">${escapeHtml(delivery || "Sent")}</span>
+            <span class="message-time">${escapeHtml(formatMessageTime(createdAt))}</span>
+            <span class="message-name">${escapeHtml(name)}</span>
+          ` : `
+            <span class="message-name">${escapeHtml(name)}</span>
+            <span class="message-time">${escapeHtml(formatMessageTime(createdAt))}</span>
+          `}
+        </div>
       </div>
       ${role === "user" ? '<div class="tail"></div>' : ''}
     </div>
@@ -355,7 +412,7 @@ function appendMessage(role, text) {
 async function retryLastMessage() {
   if (state.busy || !state.chatId) return;
 
-  setBusy(true, "Retrying…");
+  setBusy(true, "XemAi is thinking…");
   try {
     await api(`/api/chats/${state.chatId}/retry`, {
       method: "POST",
@@ -383,10 +440,16 @@ function scrollBottom() {
 function renderMessageList(messages) {
   els.messages.innerHTML = "";
   if (!messages.length) {
-    appendMessage("assistant", `Hi ${state.bootstrap.user.name}. What would you like to work on?`);
+    appendMessage(
+      "assistant",
+      `Hi ${state.bootstrap.user.name}. What would you like to work on?`,
+      new Date().toISOString()
+    );
     return;
   }
-  for (const msg of messages) appendMessage(msg.role, msg.content);
+  for (const msg of messages) {
+    appendMessage(msg.role, msg.content, msg.created_at);
+  }
 }
 
 async function syncSharedState() {
@@ -541,9 +604,14 @@ async function sendMessage(event) {
   const localAttachments = state.pendingAttachments.map((item) =>
     `[[XEMAI_ATTACHMENT:${JSON.stringify(item)}]]`
   ).join("\n");
-  appendMessage("user", [localAttachments, text].filter(Boolean).join("\n"));
+  appendMessage(
+    "user",
+    [localAttachments, text].filter(Boolean).join("\n"),
+    new Date().toISOString(),
+    "Sent"
+  );
   scrollBottom();
-  setBusy(true);
+  setBusy(true, "XemAi is thinking…");
 
   try {
     const data = await api(`/api/chats/${state.chatId}/messages`, {
@@ -555,7 +623,7 @@ async function sendMessage(event) {
     });
     state.pendingAttachments = [];
     renderAttachmentTray();
-    appendMessage("assistant", data.answer);
+    appendMessage("assistant", data.answer, new Date().toISOString());
     setBusy(false, `Connected · v${state.bootstrap.version}`);
     await refreshChats(state.chatId);
     scrollBottom();
@@ -780,7 +848,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.6.8")
+  navigator.serviceWorker.register("/sw.js?v=0.6.9")
     .then((registration) => registration.update())
     .catch(() => {});
 }
