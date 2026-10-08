@@ -181,6 +181,8 @@ def _start_chat_generation(
     attachments=None,
     record_user: bool = True,
 ) -> None:
+    if _active_chat_requests(server) > 0:
+        raise RuntimeError("XemAi is already working on another reply.")
     if _get_chat_activity(server, chat_id).get("active"):
         raise RuntimeError("XemAi is already working on a reply in this chat.")
 
