@@ -647,6 +647,12 @@ On the always-on XemAi host:
 The worker is served only within the Tailscale tailnet. Keep the pairing token private.
 
 
+## v0.9.2
+
+Hybrid worker startup fix:
+- fixes the worker launcher so Windows can start the background worker process
+- verifies both `.py` and `.pyw` source files before installing future updates
+
 ## v0.9.1
 
 Hybrid setup automation:

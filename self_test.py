@@ -4,6 +4,7 @@ import compileall
 import io
 import json
 import os
+import py_compile
 import threading
 import tempfile
 from http import HTTPStatus
@@ -179,6 +180,7 @@ def test_hybrid_auto_discovery() -> None:
 def run() -> None:
     project_root = Path(__file__).resolve().parent
     assert compileall.compile_dir(project_root, quiet=1, force=True)
+    py_compile.compile(str(project_root / "XemAiWorker.pyw"), doraise=True)
     assert "When directly asked for your opinion" in CONSTITUTION
     assert "You may form and express reasoned opinions" in CONSTITUTION
     assert (project_root / "XemAi.pyw").exists()
@@ -283,10 +285,10 @@ def run() -> None:
     assert '"compute_name"' in mobile_server
     assert '"worker_available"' in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.9.1"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.9.2"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.9.1" in mobile_html
-    assert "/styles.css?v=0.9.1" in mobile_html
+    assert "/app.js?v=0.9.2" in mobile_html
+    assert "/styles.css?v=0.9.2" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
@@ -452,7 +454,7 @@ def run() -> None:
         "I think XemAi currently lacks arbitrary shell/command execution, "
         "unrestricted filesystem access, and native image/audio analysis."
     )
-    assert is_newer_version("0.9.1", "0.9.0")
+    assert is_newer_version("0.9.2", "0.9.0")
     assert not is_newer_version("0.9.0", "0.9.0")
     assert not is_newer_version("0.8.0", "0.9.0")
     with tempfile.TemporaryDirectory() as temp:
@@ -675,7 +677,7 @@ def run() -> None:
             runtime_info,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.9.1" in safe_fallback
+        assert "v0.9.2" in safe_fallback
         assert "qwen3:1.7b" in safe_fallback
 
         hybrid_local = OllamaClient(

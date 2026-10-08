@@ -40,6 +40,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.8.0", "Adds automatic evidence-backed research for factual queries: XemAi ranks reputable sources, fetches the strongest pages, extracts short verified verbatim quotes, cites numbered sources, and appends the evidence it actually checked."),
     ("0.9.0", "Adds authenticated hybrid compute: the always-on host remains the single source of chats/memory/tools while a paired stronger PC can perform model inference over private Tailscale HTTPS, with automatic local fallback when the worker is unavailable."),
     ("0.9.1", "Adds automatic hybrid-worker startup and private-tailnet discovery/pairing, removing manual scripts and token copying when both PCs are online and prerequisites are ready."),
+    ("0.9.2", "Fixes the hybrid worker launcher so Python can start it, and validates .pyw launchers before an update is installed."),
 ]
 
 

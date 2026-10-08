@@ -121,7 +121,11 @@ def _safe_relative_path(value: str) -> Path:
 def _validate_python_files(root: Path) -> None:
     """Reject an update before install if any staged Python file has invalid syntax."""
     failures: list[str] = []
-    for path in sorted(root.rglob("*.py")):
+    python_sources = [
+        path for path in root.rglob("*")
+        if path.is_file() and path.suffix.lower() in {".py", ".pyw"}
+    ]
+    for path in sorted(python_sources):
         try:
             py_compile.compile(str(path), doraise=True)
         except py_compile.PyCompileError as e:

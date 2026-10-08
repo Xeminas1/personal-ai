@@ -1,1 +1,3 @@
-from app.worker_server import run_worker_server\n\nraise SystemExit(run_worker_server())\n
+from app.worker_server import run_worker_server
+
+raise SystemExit(run_worker_server())
