@@ -505,3 +505,17 @@ Mobile version visibility and comparison relevance:
 - AI opinion/comparison answers must address the named external system in the first sentence
 - rejects answers to ChatGPT questions that drift into an unrelated list of XemAi limitations before actually discussing ChatGPT
 - retry instructions now explicitly require staying on the requested comparison target
+
+
+## v0.6.6
+
+Live cross-device sync and automatic updates:
+- open phone and desktop clients refresh the shared chat automatically about every 1.5 seconds
+- messages sent on one device appear on the other without manually reloading the chat
+- recent-chat titles/timestamps also refresh across devices
+- clients detect a restarted server with a newer XemAi version and reload themselves automatically
+- the shared XemAi server checks the official configured update channel periodically and installs verified updates automatically when XemAi is idle
+- automatic installs still use HTTPS, SHA-256 verification, staged Python compile validation, and the existing backup process
+- auto-update installation waits for active AI responses to finish and temporarily rejects new generations while files are being replaced/restarted
+- manual and automatic installs share one update lock to avoid concurrent installs
+- automatic update defaults can be controlled with `auto_install_updates` and `auto_update_interval_seconds` in local config
