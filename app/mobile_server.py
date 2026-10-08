@@ -86,7 +86,7 @@ def _row_dict(row) -> dict:
 
 
 class XemAiMobileHandler(BaseHTTPRequestHandler):
-    server_version = "XemAiMobile/0.4.2"
+    server_version = "XemAiMobile/0.4.3"
 
     def log_message(self, fmt, *args):
         logger = getattr(self.server, "xemai_logger", None)
@@ -188,7 +188,12 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
         path = parsed.path
 
         if path == "/api/health":
-            self._json({"ok": True, "version": VERSION})
+            self._json({
+                "ok": True,
+                "version": VERSION,
+                "pid": os.getpid(),
+                "server": "XemAiMobile",
+            })
             return
 
         if path == "/api/bootstrap":
@@ -301,6 +306,10 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             finally:
                 if backend:
                     backend.close()
+            return
+
+        if path.startswith("/api/"):
+            self._error("Unknown API endpoint.", HTTPStatus.NOT_FOUND)
             return
 
         self._serve_static(path)
@@ -454,9 +463,24 @@ def run_mobile_server() -> int:
         return 0
 
     server.xemai_logger = logger
+    state_path = DATA_DIR / "mobile_server.json"
+    state = {
+        "pid": os.getpid(),
+        "version": VERSION,
+        "host": host,
+        "port": port,
+    }
+    try:
+        state_path.write_text(
+            json.dumps(state, indent=2),
+            encoding="utf-8",
+        )
+    except OSError:
+        pass
+
     logger.info(
-        "Mobile server start | version=%s host=%s port=%s",
-        VERSION, host, port
+        "Mobile server start | version=%s host=%s port=%s pid=%s",
+        VERSION, host, port, os.getpid()
     )
     try:
         server.serve_forever(poll_interval=0.5)
@@ -464,5 +488,12 @@ def run_mobile_server() -> int:
         pass
     finally:
         server.server_close()
+        try:
+            if state_path.exists():
+                current = json.loads(state_path.read_text(encoding="utf-8"))
+                if int(current.get("pid", -1)) == os.getpid():
+                    state_path.unlink()
+        except Exception:
+            pass
         logger.info("Mobile server stop")
     return 0
