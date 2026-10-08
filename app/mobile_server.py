@@ -312,6 +312,10 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             self._error("Unknown API endpoint.", HTTPStatus.NOT_FOUND)
             return
 
+        if path.startswith("/api/"):
+            self._error("Unknown API endpoint.", HTTPStatus.NOT_FOUND)
+            return
+
         self._serve_static(path)
 
     def do_POST(self):
