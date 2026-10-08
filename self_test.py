@@ -5,9 +5,10 @@ import json
 import tempfile
 from pathlib import Path
 
+from app.capabilities import build_capability_status
 from app.database import Database
 from app.gui_backend import ChatBackend, title_from_message
-from app.mobile_runtime import mobile_local_url
+from app.mobile_runtime import mobile_local_url, mobile_server_version
 from app.prompts import CONSTITUTION, build_system_prompt
 from app.self_knowledge import (
     build_authoritative_self_context,
@@ -36,24 +37,24 @@ def run() -> None:
     assert "/api/update/install" in mobile_js
     assert "/api/update/install" in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.4.2"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.4.3"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.4.2" in mobile_html
-    assert "/styles.css?v=0.4.2" in mobile_html
+    assert "/app.js?v=0.4.3" in mobile_html
+    assert "/styles.css?v=0.4.3" in mobile_html
     assert "no-store, max-age=0" in mobile_server
     assert mobile_local_url().startswith("http://")
+    assert (project_root / "restart_mobile_server.bat").exists()
+    runtime_source = (project_root / "app" / "mobile_runtime.py").read_text(encoding="utf-8")
+    assert "ensure_mobile_server_current" in runtime_source
+    assert "XemAiServer.pyw" in runtime_source
     assert title_from_message("hello world") == "hello world"
     assert is_self_knowledge_query("what do you think your ai is missing?")
-    assert is_self_knowledge_query(
-        "through your iterative updates, can you recognise whats been added?"
-    )
+    assert is_self_knowledge_query("through your iterative updates, can you recognise whats been added?")
     assert not is_self_knowledge_query("help me design a Skyrim perk")
-    assert looks_like_stale_self_description(
-        "I have no live web search and my training ends in 2023."
-    )
-    assert is_newer_version("0.4.3", "0.4.2")
-    assert not is_newer_version("0.4.2", "0.4.2")
-    assert not is_newer_version("0.4.1", "0.4.2")
+    assert looks_like_stale_self_description("I have no live web search and my training ends in 2023.")
+    assert is_newer_version("0.2.1", "0.2.0")
+    assert not is_newer_version("0.2.0", "0.2.0")
+    assert not is_newer_version("0.1.9", "0.2.0")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
