@@ -37,10 +37,14 @@ def run() -> None:
     assert "/api/update/install" in mobile_js
     assert "/api/update/install" in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.4.3"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.5.0"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.4.3" in mobile_html
-    assert "/styles.css?v=0.4.3" in mobile_html
+    assert "/app.js?v=0.5.0" in mobile_html
+    assert "/styles.css?v=0.5.0" in mobile_html
+    assert 'chatTitle: $("chatTitle")' not in mobile_js
+    desktop_ui = (project_root / "ui.py").read_text(encoding="utf-8")
+    assert 'row["updated_at"]' in desktop_ui
+    assert 'row.get("updated_at")' not in desktop_ui
     assert "no-store, max-age=0" in mobile_server
     assert mobile_local_url().startswith("http://")
     assert (project_root / "restart_mobile_server.bat").exists()
@@ -52,9 +56,9 @@ def run() -> None:
     assert is_self_knowledge_query("through your iterative updates, can you recognise whats been added?")
     assert not is_self_knowledge_query("help me design a Skyrim perk")
     assert looks_like_stale_self_description("I have no live web search and my training ends in 2023.")
-    assert is_newer_version("0.2.1", "0.2.0")
-    assert not is_newer_version("0.2.0", "0.2.0")
-    assert not is_newer_version("0.1.9", "0.2.0")
+    assert is_newer_version("0.5.1", "0.5.0")
+    assert not is_newer_version("0.5.0", "0.5.0")
+    assert not is_newer_version("0.4.5", "0.5.0")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -156,6 +160,7 @@ def run() -> None:
         assert "persistent chat history" in self_context.lower()
         assert "cross-chat long-term memory" in self_context.lower()
         assert "v0.3.0" in self_context
+        assert "bubble-based" in self_context.lower()
         assert "Do not claim a 2023" in self_context
 
         calc = json.loads(registry.execute("calculator", {"expression": "2 + 3 * 4"}))
