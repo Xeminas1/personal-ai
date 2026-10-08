@@ -10,14 +10,14 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>XemAi</title>
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="stylesheet" href="/styles.css?v=0.6.1">
+  <link rel="stylesheet" href="/styles.css?v=0.6.2">
 </head>
 <body>
   <div id="app">
     <header class="topbar">
       <button id="menuBtn" class="icon-btn" aria-label="Chats">☰</button>
       <div class="brand-wrap">
-        <div id="brand" class="brand">XemAi</div>
+        <div id="brand" class="brand"><span class="brand-xem">Xem</span><span class="brand-ai">Ai</span></div>
         <div id="status" class="status">Connecting…</div>
       </div>
       <button id="moreBtn" class="icon-btn" aria-label="More">⋯</button>
@@ -25,7 +25,7 @@
 
     <aside id="drawer" class="drawer">
       <div class="drawer-head">
-        <div class="drawer-title">XemAi</div>
+        <div class="drawer-title"><span class="brand-xem">Xem</span><span class="brand-ai">Ai</span></div>
         <button id="closeDrawerBtn" class="icon-btn" aria-label="Close">×</button>
       </div>
       <button id="drawerNewBtn" class="new-chat">＋ New chat</button>
@@ -58,6 +58,6 @@
     <div id="modalActions" class="modal-actions"></div>
   </dialog>
 
-  <script src="/app.js?v=0.6.1" defer></script>
+  <script src="/app.js?v=0.6.2" defer></script>
 </body>
 </html>
