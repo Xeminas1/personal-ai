@@ -556,3 +556,17 @@ Message metadata and activity feedback:
 - long-running requests progress from XemAi is thinking to XemAi is still thinking and XemAi is still working
 - active reply state is shared by chat, so another open phone/desktop viewing the same chat can see that XemAi is working
 - does not fake a typing state before true token streaming exists
+
+
+## v0.7.0
+
+Ollama runtime model discovery:
+- XemAi no longer treats the model name in config.json as authoritative self-knowledge
+- queries Ollama /api/ps for currently running models and /api/tags for installed models
+- automatically discovers Qwen models at runtime before generating a reply
+- prefers a deliberately running Qwen model; otherwise uses the most recently installed/updated Qwen model
+- avoids being trapped on an old configured model merely because that stale model is still temporarily loaded in Ollama
+- config.json model remains only a fallback if Ollama cannot report a usable Qwen model
+- capabilities and authoritative self-knowledge report the actual runtime-selected model, selection source and Qwen models discovered by Ollama
+- mobile/desktop bootstrap exposes runtime_model, model_source and installed_qwen for diagnostics
+- auto-detection can be disabled with auto_detect_ollama_model=false for a future explicit/manual model override
