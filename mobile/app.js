@@ -1,10 +1,14 @@
-const FRONTEND_VERSION = "0.6.5";
+const FRONTEND_VERSION = "0.6.6";
 
 const state = {
   bootstrap: null,
   chats: [],
   chatId: null,
   busy: false,
+  lastMessageSignature: "",
+  lastChatSignature: "",
+  syncInFlight: false,
+  syncCounter: 0,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -118,6 +122,30 @@ function linkify(text) {
   );
 }
 
+function messageSignature(messages) {
+  return (messages || [])
+    .map((msg) => `${msg.id ?? ""}:${msg.role ?? ""}`)
+    .join("|");
+}
+
+function chatSignature(chats) {
+  return (chats || [])
+    .map((chat) => `${chat.id}:${chat.title}:${chat.updated_at ?? ""}`)
+    .join("|");
+}
+
+function scrollContainer() {
+  if (window.matchMedia("(min-width: 1000px)").matches) {
+    return els.messages;
+  }
+  return document.scrollingElement || document.documentElement;
+}
+
+function isNearBottom() {
+  const target = scrollContainer();
+  return target.scrollHeight - target.scrollTop - target.clientHeight < 140;
+}
+
 function relativeTime(isoText) {
   const date = new Date(isoText);
   if (Number.isNaN(date.getTime())) return "";
@@ -168,7 +196,74 @@ function appendMessage(role, text) {
 }
 
 function scrollBottom() {
-  requestAnimationFrame(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }));
+  requestAnimationFrame(() => {
+    const target = scrollContainer();
+    target.scrollTo({ top: target.scrollHeight, behavior: "smooth" });
+  });
+}
+
+function renderMessageList(messages) {
+  els.messages.innerHTML = "";
+  if (!messages.length) {
+    appendMessage("assistant", `Hi ${state.bootstrap.user.name}. What would you like to work on?`);
+    return;
+  }
+  for (const msg of messages) appendMessage(msg.role, msg.content);
+}
+
+async function syncSharedState() {
+  if (!state.bootstrap || state.syncInFlight || state.busy || document.hidden) {
+    return;
+  }
+
+  state.syncInFlight = true;
+  try {
+    const chatsData = await api("/api/chats");
+    const nextChats = chatsData.chats || [];
+    const nextChatSignature = chatSignature(nextChats);
+    if (nextChatSignature !== state.lastChatSignature) {
+      state.chats = nextChats;
+      state.lastChatSignature = nextChatSignature;
+      renderChats();
+    }
+
+    if (state.chatId) {
+      const wasNearBottom = isNearBottom();
+      const messageData = await api(`/api/chats/${state.chatId}/messages`);
+      const nextMessageSignature = messageSignature(messageData.messages || []);
+      if (nextMessageSignature !== state.lastMessageSignature) {
+        state.lastMessageSignature = nextMessageSignature;
+        renderMessageList(messageData.messages || []);
+        if (wasNearBottom) scrollBottom();
+      }
+    }
+
+    state.syncCounter += 1;
+    if (state.syncCounter % 3 === 0) {
+      const health = await api(`/api/health?t=${Date.now()}`);
+      if (health.version && health.version !== state.bootstrap.version) {
+        window.location.reload();
+        return;
+      }
+    }
+
+    if (!state.busy) {
+      setStatus(`Connected · v${state.bootstrap.version}`);
+    }
+  } catch {
+    // The shared server may be restarting for an automatic update. The next
+    // sync tick will reconnect and reload once the new version is available.
+    setStatus("Reconnecting…");
+  } finally {
+    state.syncInFlight = false;
+  }
+}
+
+function startBackgroundSync() {
+  window.setInterval(syncSharedState, 1500);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) syncSharedState();
+  });
 }
 
 async function bootstrap() {
@@ -180,6 +275,7 @@ async function bootstrap() {
     document.title = data.assistant_name;
     await refreshChats();
     setStatus(`Connected · v${data.version}`);
+    startBackgroundSync();
   } catch (err) {
     setStatus("Disconnected");
     showModal("Connection problem", String(err.message || err));
@@ -189,6 +285,7 @@ async function bootstrap() {
 async function refreshChats(preferredId = null) {
   const data = await api("/api/chats");
   state.chats = data.chats || [];
+  state.lastChatSignature = chatSignature(state.chats);
   renderChats();
 
   if (!state.chats.length) {
@@ -197,6 +294,7 @@ async function refreshChats(preferredId = null) {
       body: JSON.stringify({}),
     });
     state.chats = [created.chat];
+    state.lastChatSignature = chatSignature(state.chats);
     renderChats();
   }
 
@@ -228,13 +326,8 @@ function renderChats() {
 async function loadChat(chatId) {
   const data = await api(`/api/chats/${chatId}/messages`);
   state.chatId = chatId;
-  els.messages.innerHTML = "";
-
-  if (!data.messages.length) {
-    appendMessage("assistant", `Hi ${state.bootstrap.user.name}. What would you like to work on?`);
-  } else {
-    for (const msg of data.messages) appendMessage(msg.role, msg.content);
-  }
+  state.lastMessageSignature = messageSignature(data.messages || []);
+  renderMessageList(data.messages || []);
   renderChats();
   scrollBottom();
 }
@@ -269,13 +362,8 @@ async function sendMessage(event) {
       body: JSON.stringify({ text }),
     });
     appendMessage("assistant", data.answer);
-    await fetch("/api/chats").then((r) => r.json()).then((d) => {
-      if (d.ok) {
-        state.chats = d.chats || state.chats;
-        renderChats();
-      }
-    });
     setBusy(false, `Connected · v${state.bootstrap.version}`);
+    await refreshChats(state.chatId);
     scrollBottom();
   } catch (err) {
     setBusy(false, "Error");
@@ -490,7 +578,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.6.5")
+  navigator.serviceWorker.register("/sw.js?v=0.6.6")
     .then((registration) => registration.update())
     .catch(() => {});
 }
