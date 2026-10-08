@@ -14,6 +14,7 @@ const state = {
   uploadingAttachments: 0,
   thinkingTimer: null,
   thinkingStartedAt: 0,
+  remoteActivity: false,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -247,10 +248,13 @@ function setBusy(value, label = null) {
 
   if (value) {
     startThinkingProgress(
-      label && label.startsWith("XemAi") ? label.replace(/…$/, "") : "XemAi is thinking"
+      label ? label.replace(/…$/, "") : "XemAi is thinking"
     );
   } else {
     stopThinkingProgress();
+    if (!state.remoteActivity) {
+      els.thinking.classList.add("hidden");
+    }
   }
 
   setStatus(label || (value ? "XemAi is thinking…" : "Ready"));
@@ -344,6 +348,21 @@ function startThinkingProgress(initial = "XemAi is thinking") {
     }
   }, 1000);
 }
+
+function setRemoteActivity(active, status = "XemAi is thinking") {
+  state.remoteActivity = Boolean(active);
+  if (state.busy) return;
+
+  if (state.remoteActivity) {
+    els.thinking.classList.remove("hidden");
+    setThinkingText(String(status || "XemAi is thinking").replace(/…$/, ""));
+    setStatus(String(status || "XemAi is thinking") + "…");
+  } else {
+    els.thinking.classList.add("hidden");
+    setStatus(`Connected · v${state.bootstrap.version}`);
+  }
+}
+
 
 function renderBody(text) {
   const parts = String(text).split(/```/);
@@ -479,6 +498,11 @@ async function syncSharedState() {
       }
     }
 
+    if (state.chatId && !state.busy) {
+      const activity = await api(`/api/chats/${state.chatId}/activity`);
+      setRemoteActivity(activity.active, activity.status);
+    }
+
     state.syncCounter += 1;
     if (state.syncCounter % 3 === 0) {
       const health = await api(`/api/health?t=${Date.now()}`);
@@ -488,7 +512,7 @@ async function syncSharedState() {
       }
     }
 
-    if (!state.busy) {
+    if (!state.busy && !state.remoteActivity) {
       setStatus(`Connected · v${state.bootstrap.version}`);
     }
   } catch {
@@ -568,6 +592,7 @@ async function loadChat(chatId) {
   if (state.chatId !== chatId) {
     state.pendingAttachments = [];
     renderAttachmentTray();
+    setRemoteActivity(false);
   }
   const data = await api(`/api/chats/${chatId}/messages`);
   state.chatId = chatId;
