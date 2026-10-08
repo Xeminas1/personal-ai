@@ -31,6 +31,12 @@ def build_capability_status(config, tool_registry) -> list[str]:
         "Native audio/video analysis: not yet implemented",
         "Shared Android/mobile web client: enabled through the local XemAi mobile server",
         "PC and phone share the same chats, memories, feedback and database",
+        "Cross-device live chat refresh: enabled while clients are open",
+        (
+            "Automatic official-channel updates: enabled"
+            if config.get("auto_install_updates", True)
+            else "Automatic official-channel updates: disabled"
+        ),
         "Private remote phone access can be routed through Tailscale Serve",
         "Mobile update checks/install: enabled for the official configured XemAi update channel",
         "Desktop and mobile visual redesign: enabled with bubble-based chat UI",
