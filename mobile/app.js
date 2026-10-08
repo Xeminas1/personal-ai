@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.6.2";
+const FRONTEND_VERSION = "0.6.5";
 
 const state = {
   bootstrap: null,
@@ -11,6 +11,7 @@ const $ = (id) => document.getElementById(id);
 const els = {
   brand: $("brand"),
   status: $("status"),
+  versionBadge: $("versionBadge"),
   menuBtn: $("menuBtn"),
   newBtn: $("newBtn"),
   moreBtn: $("moreBtn"),
@@ -175,6 +176,7 @@ async function bootstrap() {
     const data = await api("/api/bootstrap");
     state.bootstrap = data;
     setBrand(data.assistant_name);
+    if (els.versionBadge) els.versionBadge.textContent = `v${data.version}`;
     document.title = data.assistant_name;
     await refreshChats();
     setStatus(`Connected · v${data.version}`);
@@ -488,7 +490,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.6.2")
+  navigator.serviceWorker.register("/sw.js?v=0.6.5")
     .then((registration) => registration.update())
     .catch(() => {});
 }
