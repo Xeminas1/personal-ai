@@ -121,18 +121,21 @@ def _test_worker(url: str, token: str) -> dict:
     return data
 
 
-def setup_worker() -> int:
-    print("XemAi Hybrid Worker setup")
-    print("-------------------------")
+def setup_worker(*, silent: bool = False) -> int:
+    if not silent:
+        print("XemAi Hybrid Worker setup")
+        print("-------------------------")
     models = _ollama_qwen_models()
     if not models:
-        print("No Qwen model is installed in Ollama on this PC.")
-        print("Install the model you want this stronger PC to run, then try again.")
+        if not silent:
+            print("No Qwen model is installed in Ollama on this PC.")
+            print("Install the model you want this stronger PC to run, then try again.")
         return 1
 
-    print("Qwen models found:")
-    for name in models:
-        print(f"  - {name}")
+    if not silent:
+        print("Qwen models found:")
+        for name in models:
+            print(f"  - {name}")
 
     token = ensure_hybrid_worker_server_token(DATA_DIR)
     config = load_config()
@@ -141,8 +144,9 @@ def setup_worker() -> int:
     _start_worker()
     ts = _tailscale_exe()
 
-    print()
-    print(f"Configuring private Tailscale HTTPS worker on port {port}...")
+    if not silent:
+        print()
+        print(f"Configuring private Tailscale HTTPS worker on port {port}...")
     serve = subprocess.run(
         [
             ts,
@@ -166,28 +170,28 @@ def setup_worker() -> int:
     startup = _install_worker_startup()
 
     health = _test_worker(url, token)
-    pairing = DATA_DIR / "hybrid_pairing.txt"
-    pairing.write_text(
-        "XemAi Hybrid Pairing\n"
-        f"Worker URL: {url}\n"
-        f"Worker token: {token}\n"
-        f"Worker PC: {health.get('machine_name', 'Powerful PC')}\n"
-        f"Recommended model: {health.get('recommended_model', 'unknown')}\n",
-        encoding="utf-8",
-    )
-
-    print()
-    print("Hybrid worker is ready.")
-    print(f"Worker URL:   {url}")
-    print(f"Worker token: {token}")
-    print(f"Model:        {health.get('recommended_model', 'unknown')}")
-    print()
-    print("Keep that token private. On the always-on XemAi laptop, run:")
-    print("  hybrid_host_setup.bat")
-    print("and paste the URL and token above.")
-    print()
-    print(f"A pairing copy was saved locally to: {pairing}")
-    print(f"Worker autostart entry: {startup}")
+    if not silent:
+        pairing = DATA_DIR / "hybrid_pairing.txt"
+        pairing.write_text(
+            "XemAi Hybrid Pairing\n"
+            f"Worker URL: {url}\n"
+            f"Worker token: {token}\n"
+            f"Worker PC: {health.get('machine_name', 'Powerful PC')}\n"
+            f"Recommended model: {health.get('recommended_model', 'unknown')}\n",
+            encoding="utf-8",
+        )
+        print()
+        print("Hybrid worker is ready.")
+        print(f"Worker URL:   {url}")
+        print(f"Worker token: {token}")
+        print(f"Model:        {health.get('recommended_model', 'unknown')}")
+        print()
+        print("Keep that token private. On the always-on XemAi laptop, run:")
+        print("  hybrid_host_setup.bat")
+        print("and paste the URL and token above.")
+        print()
+        print(f"A pairing copy was saved locally to: {pairing}")
+        print(f"Worker autostart entry: {startup}")
     return 0
 
 
@@ -228,9 +232,10 @@ def setup_host() -> int:
 
 def main() -> int:
     mode = (sys.argv[1] if len(sys.argv) > 1 else "").strip().lower()
+    silent = "--silent" in sys.argv[2:]
     try:
         if mode == "worker":
-            return setup_worker()
+            return setup_worker(silent=silent)
         if mode == "host":
             return setup_host()
         print("Usage: python hybrid_setup.py worker|host")

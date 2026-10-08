@@ -12,7 +12,11 @@ from pathlib import Path
 from .config import DATA_DIR, LOG_DIR, load_config
 from .llm import OllamaClient
 from .logging_setup import setup_logging
-from .secrets import ensure_hybrid_worker_server_token
+from .secrets import (
+    claim_hybrid_worker_pairing,
+    ensure_hybrid_worker_server_token,
+    load_hybrid_pairing_state,
+)
 from .version import VERSION
 
 MAX_BODY = 8_000_000
@@ -121,6 +125,24 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
         return value
 
     def do_GET(self):
+        if self.path == "/api/pair/status":
+            client = self.server.ollama_client
+            try:
+                model, installed, running = _recommended_model(client)
+                pairing = load_hybrid_pairing_state(DATA_DIR)
+                self._json({
+                    "ok": bool(model),
+                    "role": "xemai_hybrid_worker",
+                    "pairing_available": not bool(pairing["host_id"]),
+                    "machine_name": platform.node() or "Powerful PC",
+                    "recommended_model": model,
+                    "installed_qwen": installed,
+                    "running_qwen": running,
+                })
+            except Exception as e:
+                self._error(e, HTTPStatus.SERVICE_UNAVAILABLE)
+            return
+
         if not self._require_auth():
             return
 
@@ -168,6 +190,41 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
             self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
 
     def do_POST(self):
+        if self.path == "/api/pair/claim":
+            try:
+                payload = self._read_json()
+                host_id = str(payload.get("host_id") or "").strip()
+                token = str(payload.get("token") or "").strip()
+                with self.server.pairing_lock:
+                    if not claim_hybrid_worker_pairing(
+                        DATA_DIR, host_id=host_id, token=token
+                    ):
+                        self._error(
+                            "Pairing was rejected. This worker may already be paired.",
+                            HTTPStatus.CONFLICT,
+                        )
+                        return
+                    self.server.worker_token = token
+                try:
+                    (DATA_DIR / "hybrid_pairing.txt").unlink()
+                except OSError:
+                    pass
+                model, installed, running = _recommended_model(
+                    self.server.ollama_client
+                )
+                self._json({
+                    "ok": True,
+                    "machine_name": platform.node() or "Powerful PC",
+                    "recommended_model": model,
+                    "installed_qwen": installed,
+                    "running_qwen": running,
+                })
+            except ValueError as e:
+                self._error(e, HTTPStatus.BAD_REQUEST)
+            except Exception as e:
+                self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
+            return
+
         if not self._require_auth():
             return
         if self.path != "/api/chat":
@@ -244,6 +301,7 @@ def run_worker_server() -> int:
     server.worker_token = token
     server.ollama_client = ollama
     server.generation_lock = threading.Lock()
+    server.pairing_lock = threading.Lock()
 
     state_path = DATA_DIR / "hybrid_worker.json"
     try:

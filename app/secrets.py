@@ -83,3 +83,53 @@ def ensure_hybrid_worker_server_token(data_dir: Path) -> str:
     payload["hybrid_worker_server_token"] = token
     _save_secret_data(data_dir, payload)
     return token
+
+
+def load_hybrid_pairing_state(data_dir: Path) -> dict:
+    payload = _load_secret_data(data_dir)
+    return {
+        "host_id": str(payload.get("hybrid_worker_paired_host_id", "")).strip(),
+        "client_host_id": str(payload.get("hybrid_host_id", "")).strip(),
+        "pending_token": str(payload.get("hybrid_worker_pending_token", "")).strip(),
+    }
+
+
+def claim_hybrid_worker_pairing(
+    data_dir: Path, *, host_id: str, token: str
+) -> bool:
+    """Claim an unpaired worker, or confirm the same host's existing claim."""
+    host_id = host_id.strip()[:255]
+    token = token.strip()
+    if not host_id or len(token) < 32:
+        return False
+    # An explicit environment override is an intentional administrator choice;
+    # the automatic pairing path must not silently replace or bypass it.
+    if os.environ.get("XEMAI_WORKER_SERVER_TOKEN", "").strip():
+        return False
+    payload = _load_secret_data(data_dir)
+    existing_host = str(payload.get("hybrid_worker_paired_host_id", "")).strip()
+    existing_token = str(payload.get("hybrid_worker_server_token", "")).strip()
+    if existing_host and existing_host != host_id:
+        return False
+    if existing_host == host_id:
+        return secrets.compare_digest(existing_token, token)
+    payload["hybrid_worker_paired_host_id"] = host_id
+    payload["hybrid_worker_server_token"] = token
+    _save_secret_data(data_dir, payload)
+    return True
+
+
+def save_hybrid_worker_client_pairing(
+    data_dir: Path, *, host_id: str, token: str
+) -> None:
+    payload = _load_secret_data(data_dir)
+    payload["hybrid_worker_client_token"] = token.strip()
+    payload["hybrid_worker_pending_token"] = token.strip()
+    payload["hybrid_host_id"] = host_id.strip()[:255]
+    _save_secret_data(data_dir, payload)
+
+
+def complete_hybrid_worker_client_pairing(data_dir: Path) -> None:
+    payload = _load_secret_data(data_dir)
+    payload.pop("hybrid_worker_pending_token", None)
+    _save_secret_data(data_dir, payload)
