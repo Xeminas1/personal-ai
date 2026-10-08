@@ -362,15 +362,20 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             backend = None
             try:
                 backend = self._backend()
+                capabilities = backend.capabilities()
+                runtime_model_info = dict(backend.runtime_model_info)
                 self._json({
                     "ok": True,
                     "version": VERSION,
                     "assistant_name": backend.config.get("assistant_name", "XemAi"),
+                    "runtime_model": runtime_model_info.get("model", "unknown"),
+                    "model_source": runtime_model_info.get("source", "unknown"),
+                    "installed_qwen": runtime_model_info.get("installed_qwen", []),
                     "user": {
                         "id": backend.user["id"],
                         "name": backend.user["name"],
                     },
-                    "capabilities": backend.capabilities(),
+                    "capabilities": capabilities,
                 })
             except Exception as e:
                 self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
