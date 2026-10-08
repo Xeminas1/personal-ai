@@ -476,6 +476,63 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     backend.close()
             return
 
+        match = re.fullmatch(r"/api/chats/(\d+)/retry", path)
+        if match:
+            backend = None
+            active_request = False
+            try:
+                update_lock = getattr(self.server, "update_lock", None)
+                if (
+                    getattr(self.server, "update_restarting", False)
+                    or (update_lock is not None and update_lock.locked())
+                ):
+                    self._error(
+                        "XemAi is updating. Please retry in a moment.",
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                    )
+                    return
+
+                chat_id = int(match.group(1))
+                backend = self._backend()
+                chat = backend.get_chat(chat_id)
+                if chat is None or chat["user_id"] != backend.user["id"]:
+                    self._error("Chat not found.", HTTPStatus.NOT_FOUND)
+                    return
+
+                recent = list(backend.messages(chat_id))
+                last_user = next(
+                    (
+                        row for row in reversed(recent)
+                        if row["role"] == "user"
+                    ),
+                    None,
+                )
+                if last_user is None:
+                    self._error("No user message is available to retry.")
+                    return
+
+                _change_active_chat_requests(self.server, 1)
+                active_request = True
+                answer = backend.send(
+                    chat_id,
+                    str(last_user["content"]),
+                    record_user=False,
+                )
+                updated_chat = backend.get_chat(chat_id)
+                self._json({
+                    "ok": True,
+                    "answer": answer,
+                    "chat": _row_dict(updated_chat),
+                })
+            except Exception as e:
+                self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
+            finally:
+                if active_request:
+                    _change_active_chat_requests(self.server, -1)
+                if backend:
+                    backend.close()
+            return
+
         match = re.fullmatch(r"/api/chats/(\d+)/feedback", path)
         if match:
             backend = None
