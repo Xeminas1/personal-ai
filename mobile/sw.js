@@ -1,4 +1,4 @@
-const CACHE = "xemai-mobile-v0.6.0";
+const CACHE = "xemai-mobile-v0.6.1";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
