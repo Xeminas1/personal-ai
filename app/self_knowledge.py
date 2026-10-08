@@ -230,8 +230,19 @@ def comparison_answer_needs_retry(question: str, answer: str) -> bool:
     return False
 
 
-def build_authoritative_self_context(config, tool_registry) -> str:
-    capabilities = build_capability_status(config, tool_registry)
+def build_authoritative_self_context(
+    config,
+    tool_registry,
+    runtime_model_info: dict | None = None,
+) -> str:
+    runtime_model_info = runtime_model_info or {}
+    runtime_model = str(
+        runtime_model_info.get("model")
+        or config.get("model", "unknown")
+    )
+    capabilities = build_capability_status(
+        config, tool_registry, runtime_model_info
+    )
     capability_text = "\n".join(f"- {line}" for line in capabilities)
     release_text = "\n".join(
         f"- v{version}: {summary}"
@@ -247,7 +258,8 @@ habit that conflicts with it.
 
 Current application version: v{VERSION}
 Assistant identity: {config.get("assistant_name", "XemAi")}
-Underlying local language model: {config.get("model", "unknown")}
+Underlying local language model actually selected at runtime: {runtime_model}
+Model-selection source: {runtime_model_info.get("source", "configured_fallback")}
 
 CURRENT CAPABILITIES
 {capability_text}
@@ -274,6 +286,8 @@ IMPORTANT CORRECTIONS
 - Distinguish the underlying model from XemAi as a whole. XemAi is the local
   model plus the Personal AI application, memory, tools, interface, prompts,
   update system and user-specific state.
+- Do not infer the active model from config.json. The runtime model line above
+  comes from Ollama discovery and is authoritative for the current process.
 
 AI COMPARISON RULES
 - You are specifically XemAi. Never say you are an unnamed or unspecified AI.
@@ -325,9 +339,14 @@ RELEASE HISTORY. Correct any conflicting prior self-description directly.
 """.strip()
 
 
-def build_ai_comparison_fallback(text: str, config) -> str:
+def build_ai_comparison_fallback(
+    text: str,
+    config,
+    runtime_model_info: dict | None = None,
+) -> str:
     subject = ai_comparison_subject(text)
-    model = config.get("model", "unknown")
+    runtime_model_info = runtime_model_info or {}
+    model = runtime_model_info.get("model") or config.get("model", "unknown")
     return (
         f"My view of {subject}: it is a strong general-purpose AI benchmark "
         "for me, and at my current stage I would not claim to be better "
@@ -344,10 +363,18 @@ def build_ai_comparison_fallback(text: str, config) -> str:
     )
 
 
-def build_self_knowledge_fallback(text: str, config, tool_registry) -> str:
+def build_self_knowledge_fallback(
+    text: str,
+    config,
+    tool_registry,
+    runtime_model_info: dict | None = None,
+) -> str:
     assistant = config.get("assistant_name", "XemAi")
-    model = config.get("model", "unknown")
-    capabilities = build_capability_status(config, tool_registry)
+    runtime_model_info = runtime_model_info or {}
+    model = runtime_model_info.get("model") or config.get("model", "unknown")
+    capabilities = build_capability_status(
+        config, tool_registry, runtime_model_info
+    )
     capability_text = "; ".join(capabilities[:8])
     return (
         f"I am {assistant}, currently running as XemAi v{VERSION} with {model} "
