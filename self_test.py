@@ -503,7 +503,9 @@ def run() -> None:
         assert "Do not claim a 2023" in self_context
         assert "Do not reduce ChatGPT to merely a standalone model" in self_context
         assert "first sentence" in self_context
-        assert "currently configured underlying local model" in self_context
+        assert "currently selected underlying model" in self_context
+        assert "Compute route:" in self_context
+        assert "Compute machine:" in self_context
         assert "qwen3:8b local model" not in self_context
         assert "qwen3:1.7b" in self_context
         assert "ollama_installed_recent" in self_context
