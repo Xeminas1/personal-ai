@@ -1,36 +1,36 @@
 {
-  "version": "0.6.3",
-  "notes": "Self-knowledge and AI-comparison reliability: questions such as “What’s your opinion on ChatGPT?” now receive authoritative XemAi runtime context. XemAi may compare itself directly with other AI systems, must separate its underlying local model from the complete XemAi application, and may not invent training cutoffs or unsupported benchmark claims. Stale generic self-description drafts are rejected, regenerated once, and replaced with a deterministic truth-based fallback if necessary.",
+  "version": "0.6.4",
+  "notes": "AI-comparison quality update: catches avoidance wording such as “I don’t directly compare myself”, requires opinion/comparison answers to state a real position in the first sentence, rejects reducing ChatGPT to merely a standalone model, and rejects unsupported claims that XemAi excels/outperforms/is superior without benchmark evidence. Weak comparison drafts are retried once and then replaced with a deterministic direct XemAi comparison if needed.",
   "files": [
     {
       "path": "app/self_knowledge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.3/app/self_knowledge.py",
-      "sha256": "36024598e9e8b027a84d1d0f3b9656619fc6f70233b3202b8ca4b6921ea1863c"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.4/app/self_knowledge.py",
+      "sha256": "d5ad75f21c9f98172e001111bc5b32d76b7a83197bf0ddcedab62eeb60b047d0"
     },
     {
       "path": "app/gui_backend.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.3/app/gui_backend.py",
-      "sha256": "fa3f5c770d472d4c28ba863126524b5781bf841b66a592c754c6e244a21c62f9"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.4/app/gui_backend.py",
+      "sha256": "dd5692633b80d675dd71a2b6185b6be944793eb82d77dfc6fc58557e77f8c996"
     },
     {
       "path": "app/prompts.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.3/app/prompts.py",
-      "sha256": "595cfe41171f63597860252629ac37ac705ad758d97856ae6aeac0c8fb91f989"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.4/app/prompts.py",
+      "sha256": "27489d930b90d3217fbba5c93d338cf48463ac0294eefab797c41c9f6d228c19"
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.3/app/version.py",
-      "sha256": "11c7ab42cc42cff0c308738df20abb973f9b5ebb3d4e4501e09d499682389699"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.4/app/version.py",
+      "sha256": "78074b22dc2e8a881c04c6c04792c311591f55668a75d1a268a1351fce849c7e"
     },
     {
       "path": "self_test.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.3/self_test.py",
-      "sha256": "867151856865cffbb0e4e350a7f55b3bf725809de1e3c7b04f0e92db19925f0a"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.4/self_test.py",
+      "sha256": "927d40f90ebce580322309dd02825fb8a98d6d63d1736d7cd91c786c4345366e"
     },
     {
       "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.3/README.md",
-      "sha256": "488453f1caddef4af99ff97bfb36c49e7407095f4f88e0670b5495d5071d40cc"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.4/README.md",
+      "sha256": "0c553ac89acd82ab00d37614a5cd4666ec9df8ba6afec0f9bd530a5f83d93af3"
     }
   ]
 }
