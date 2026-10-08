@@ -18,6 +18,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.4.0", "Adds a shared mobile web/PWA client and localhost mobile server so Android and Windows use the same XemAi chats, memory, feedback and learning state."),
     ("0.4.1", "Adds mobile update checking/install for the official XemAi update channel, with automatic mobile-server restart and phone reconnection."),
     ("0.4.2", "Fixes Android mobile UI caching so new frontend code and update controls load immediately after XemAi releases."),
+    ("0.4.3", "Adds version-aware lifecycle management for the background mobile server so desktop updates replace stale server processes instead of leaving old API code in memory."),
 ]
 
 
