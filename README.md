@@ -531,3 +531,15 @@ Reply reliability hotfix:
 - successful assistant replies are no longer reported as failed if automatic memory extraction has a later error
 - logs the underlying reply-generation failure for troubleshooting
 - removes the hard-coded qwen3:8b limitation wording so XemAi describes whichever local model is actually configured
+
+
+## v0.6.8
+
+Shared file attachments:
+- the composer + button now opens the device file picker instead of creating a new chat
+- New chat remains available from the sidebar/drawer
+- selected files appear as removable attachment chips above the composer
+- attachments upload to the central XemAi host, so the same chat/file metadata synchronizes across phone and desktop
+- up to 3 files can be attached to one message, currently limited to 5 MB each
+- text, code, logs, configuration, JSON/CSV/XML/YAML and similar text formats are supplied directly to the local model, with an 8,000-character attachment context budget per message
+- binary files are stored on the host and shown in the conversation, but their contents are not falsely presented as readable by the current text-only model
