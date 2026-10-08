@@ -160,3 +160,13 @@ Mobile-server lifecycle fix:
 - unknown `/api/...` routes now return JSON 404 instead of falling through to the HTML app with HTTP 200
 - mobile API parse errors now explicitly report frontend/server version mismatch
 - adds `restart_mobile_server.bat` as a manual recovery tool
+
+
+## v0.4.4
+
+Verified republish of the mobile-server lifecycle fix:
+- supersedes the rejected v0.4.3 update manifest
+- keeps the version-aware background mobile-server restart logic
+- keeps JSON 404 responses for unknown mobile API routes
+- keeps explicit frontend/server mismatch diagnostics
+- release publication now verifies every manifest SHA against the frozen GitHub release content before making the manifest live
