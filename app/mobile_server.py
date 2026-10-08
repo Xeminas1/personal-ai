@@ -135,6 +135,76 @@ def _get_chat_activity(server, chat_id: int) -> dict:
     }
 
 
+def _run_chat_generation(
+    server,
+    chat_id: int,
+    text: str,
+    *,
+    attachments=None,
+    record_user: bool = True,
+) -> None:
+    backend = None
+    logger = getattr(server, "xemai_logger", None)
+    try:
+        backend = ChatBackend()
+        backend.send(
+            chat_id,
+            text,
+            status_callback=lambda status: _set_chat_activity(
+                server, chat_id, status
+            ),
+            record_user=record_user,
+            attachments=attachments,
+        )
+    except Exception as e:
+        if logger:
+            logger.error(
+                "Background reply generation failed | chat_id=%s error=%r",
+                chat_id,
+                e,
+            )
+    finally:
+        if backend:
+            try:
+                backend.close()
+            except Exception:
+                pass
+        _set_chat_activity(server, chat_id, None)
+        _change_active_chat_requests(server, -1)
+
+
+def _start_chat_generation(
+    server,
+    chat_id: int,
+    text: str,
+    *,
+    attachments=None,
+    record_user: bool = True,
+) -> None:
+    if _get_chat_activity(server, chat_id).get("active"):
+        raise RuntimeError("XemAi is already working on a reply in this chat.")
+
+    _change_active_chat_requests(server, 1)
+    _set_chat_activity(server, chat_id, "XemAi is thinking")
+    try:
+        worker = threading.Thread(
+            target=_run_chat_generation,
+            kwargs={
+                "server": server,
+                "chat_id": int(chat_id),
+                "text": str(text),
+                "attachments": attachments,
+                "record_user": bool(record_user),
+            },
+            daemon=True,
+            name=f"XemAiReply-{int(chat_id)}",
+        )
+        worker.start()
+    except Exception:
+        _set_chat_activity(server, chat_id, None)
+        _change_active_chat_requests(server, -1)
+        raise
+
 def _auto_update_loop(server) -> None:
     logger = getattr(server, "xemai_logger", None)
     stop_event = getattr(server, "stop_event", None)
