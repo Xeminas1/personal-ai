@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.4.3";
+const FRONTEND_VERSION = "0.4.5";
 
 const state = {
   bootstrap: null,
@@ -318,6 +318,7 @@ async function installMobileUpdate(version) {
       return;
     }
 
+    // Keep the composer disabled while the background server restarts.
     state.busy = true;
     els.thinking.classList.add("hidden");
     await waitForUpdatedServer(data.installed);
@@ -450,7 +451,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.4.3")
+  navigator.serviceWorker.register("/sw.js?v=0.4.5")
     .then((registration) => registration.update())
     .catch(() => {});
 }
