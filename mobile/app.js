@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.7.0";
+const FRONTEND_VERSION = "0.7.1";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
@@ -350,15 +350,30 @@ function startThinkingProgress(initial = "XemAi is thinking") {
 }
 
 function setRemoteActivity(active, status = "XemAi is thinking") {
+  const wasActive = state.remoteActivity;
   state.remoteActivity = Boolean(active);
   if (state.busy) return;
 
   if (state.remoteActivity) {
     els.thinking.classList.remove("hidden");
-    setThinkingText(String(status || "XemAi is thinking").replace(/…$/, ""));
-    setStatus(String(status || "XemAi is thinking") + "…");
+    const cleanStatus = String(status || "XemAi is thinking").replace(/…$/, "");
+    if (!wasActive) {
+      startThinkingProgress(cleanStatus);
+    } else if (
+      cleanStatus !== "XemAi is thinking"
+      && cleanStatus !== "XemAi is still thinking"
+      && cleanStatus !== "XemAi is still working"
+    ) {
+      setThinkingText(cleanStatus);
+    }
+    setStatus(cleanStatus + "…");
+    els.sendBtn.disabled = true;
+    els.newBtn.disabled = true;
   } else {
+    stopThinkingProgress();
     els.thinking.classList.add("hidden");
+    els.sendBtn.disabled = state.busy;
+    els.newBtn.disabled = state.busy || state.uploadingAttachments > 0;
     setStatus(`Connected · v${state.bootstrap.version}`);
   }
 }
@@ -429,23 +444,22 @@ function appendMessage(role, text, createdAt = null, delivery = null) {
 }
 
 async function retryLastMessage() {
-  if (state.busy || !state.chatId) return;
+  if (state.busy || state.remoteActivity || !state.chatId) return;
 
-  setBusy(true, "XemAi is thinking…");
+  setBusy(true, "Sending retry…");
   try {
-    await api(`/api/chats/${state.chatId}/retry`, {
+    const data = await api(`/api/chats/${state.chatId}/retry`, {
       method: "POST",
       body: JSON.stringify({}),
     });
     setBusy(false, `Connected · v${state.bootstrap.version}`);
-    await refreshChats(state.chatId);
-    scrollBottom();
+    setRemoteActivity(true, data.status || "XemAi is thinking");
+    window.setTimeout(syncSharedState, 250);
   } catch (err) {
-    setBusy(false, "Retry failed");
-    try {
-      await refreshChats(state.chatId);
-    } catch {}
-    showModal("Retry failed", err.message || String(err));
+    setBusy(false, "Connection interrupted");
+    setStatus("Connection interrupted · checking XemAi…");
+    window.setTimeout(syncSharedState, 500);
+    window.setTimeout(syncSharedState, 2000);
   }
 }
 
@@ -615,7 +629,7 @@ async function createChat() {
 
 async function sendMessage(event) {
   event?.preventDefault();
-  if (state.busy || !state.chatId) return;
+  if (state.busy || state.remoteActivity || !state.chatId) return;
 
   const text = els.input.value.trim();
   if (!text && !state.pendingAttachments.length) return;
@@ -624,9 +638,10 @@ async function sendMessage(event) {
     return;
   }
 
+  const outgoingAttachments = [...state.pendingAttachments];
   els.input.value = "";
   autoGrow();
-  const localAttachments = state.pendingAttachments.map((item) =>
+  const localAttachments = outgoingAttachments.map((item) =>
     `[[XEMAI_ATTACHMENT:${JSON.stringify(item)}]]`
   ).join("\n");
   appendMessage(
@@ -636,28 +651,28 @@ async function sendMessage(event) {
     "Sent"
   );
   scrollBottom();
-  setBusy(true, "XemAi is thinking…");
+  setBusy(true, "Sending…");
 
   try {
     const data = await api(`/api/chats/${state.chatId}/messages`, {
       method: "POST",
       body: JSON.stringify({
         text,
-        attachments: state.pendingAttachments,
+        attachments: outgoingAttachments,
       }),
     });
     state.pendingAttachments = [];
     renderAttachmentTray();
-    appendMessage("assistant", data.answer, new Date().toISOString());
     setBusy(false, `Connected · v${state.bootstrap.version}`);
-    await refreshChats(state.chatId);
-    scrollBottom();
+    setRemoteActivity(true, data.status || "XemAi is thinking");
+    window.setTimeout(syncSharedState, 250);
   } catch (err) {
-    setBusy(false, "Reply failed");
-    try {
-      await refreshChats(state.chatId);
-    } catch {}
-    showModal("Reply failed", err.message || String(err));
+    // A dropped mobile/Tailscale connection does not prove generation failed.
+    // The server may already have accepted the message and be working on it.
+    setBusy(false, "Connection interrupted");
+    setStatus("Connection interrupted · checking XemAi…");
+    window.setTimeout(syncSharedState, 500);
+    window.setTimeout(syncSharedState, 2000);
   }
 }
 
@@ -873,7 +888,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.7.0")
+  navigator.serviceWorker.register("/sw.js?v=0.7.1")
     .then((registration) => registration.update())
     .catch(() => {});
 }
