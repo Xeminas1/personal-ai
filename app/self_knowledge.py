@@ -34,6 +34,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.6.7", "Improves reply reliability: failed generations are persisted visibly across devices, successful replies no longer fail because memory extraction errored, and failed replies can be retried without duplicating the user message."),
     ("0.6.8", "Turns the composer plus button into shared file attachment support across phone and desktop; attached text/code/log/config files are stored on the XemAi host and supplied to the local model with the message."),
     ("0.6.9", "Adds per-message timestamps, right-aligned user metadata with Sent state, and a shared animated XemAi working indicator visible across open devices while a reply is being generated."),
+    ("0.7.0", "Adds live Ollama model discovery so XemAi selects and reports its actual Qwen runtime model instead of trusting a stale config.json model value."),
 ]
 
 
