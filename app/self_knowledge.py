@@ -23,6 +23,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.4.5", "Publishes the mobile-server lifecycle fix from exact tested source files after rejecting mismatched frozen release content."),
     ("0.5.0", "Redesigns both the Windows desktop app and the mobile app to the new bubble-based dark blue XemAi interface with gradient backgrounds and glassy conversation styling."),
     ("0.5.1", "Fixes the Windows desktop startup crash caused by timezone-aware chat timestamps in the redesigned recent-chats sidebar and adds startup crash logging."),
+    ("0.5.2", "Refines the visual redesign with a themed mobile header, corrected bottom-up blue glow, and improved Windows desktop layout, composer, sidebar, and scrollbars."),
 ]
 
 
