@@ -38,6 +38,12 @@ def build_capability_status(
         ),
         "Recent 0-10 feedback is available as a future-response optimisation signal",
         f"Live web search: {web_state}",
+        (
+            "Evidence-backed reputable-source research: enabled with ranked sources, "
+            "verbatim quote extraction and source URLs"
+            if tool_registry.web_search_enabled
+            else "Evidence-backed reputable-source research: unavailable until web search is configured"
+        ),
         "Direct HTTP/HTTPS webpage fetching: enabled",
         "Calculator: enabled",
         "Current date/time lookup: enabled",
