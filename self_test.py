@@ -416,6 +416,10 @@ def run() -> None:
         assert research_bundle["sources"][0]["url"].startswith("https://www.nhs.uk/")
         assert research_bundle["sources"][0]["quote_verified_from_fetched_page"]
         assert research_bundle["sources"][0]["quote"] in source_text
+        assert all(
+            "reddit.com" not in source["url"]
+            for source in research_bundle["sources"]
+        )
         appendix = format_research_appendix(research_bundle)
         assert "Evidence checked:" in appendix
         assert "Common cold - NHS" in appendix
