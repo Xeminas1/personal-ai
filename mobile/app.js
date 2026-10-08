@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.4.5";
+const FRONTEND_VERSION = "0.5.0";
 
 const state = {
   bootstrap: null,
@@ -13,12 +13,12 @@ const els = {
   status: $("status"),
   menuBtn: $("menuBtn"),
   newBtn: $("newBtn"),
+  moreBtn: $("moreBtn"),
   drawerNewBtn: $("drawerNewBtn"),
   drawer: $("drawer"),
   closeDrawerBtn: $("closeDrawerBtn"),
   scrim: $("scrim"),
   chatList: $("chatList"),
-  chatTitle: $("chatTitle"),
   messages: $("messages"),
   thinking: $("thinking"),
   composer: $("composer"),
@@ -103,6 +103,20 @@ function linkify(text) {
   );
 }
 
+function relativeTime(isoText) {
+  const date = new Date(isoText);
+  if (Number.isNaN(date.getTime())) return "";
+  const diff = Date.now() - date.getTime();
+  if (diff < 90000) return "Just now";
+  if (diff < 3600000) return `${Math.max(1, Math.floor(diff / 60000))} min ago`;
+  if (diff < 86400000) {
+    const h = Math.max(1, Math.floor(diff / 3600000));
+    return `${h} hour${h === 1 ? "" : "s"} ago`;
+  }
+  const d = Math.max(1, Math.floor(diff / 86400000));
+  return `${d} day${d === 1 ? "" : "s"} ago`;
+}
+
 function renderBody(text) {
   const parts = String(text).split(/```/);
   return parts.map((part, index) => {
@@ -126,8 +140,14 @@ function appendMessage(role, text) {
     ? state.bootstrap.user.name
     : state.bootstrap.assistant_name;
   wrap.innerHTML = `
-    <div class="message-name">${escapeHtml(name)}</div>
-    <div class="message-body">${renderBody(text)}</div>
+    <div class="bubble-wrap">
+      ${role === "assistant" ? '<div class="tail"></div>' : ''}
+      <div class="bubble">
+        <div class="message-body">${renderBody(text)}</div>
+        <div class="message-name">${escapeHtml(name)}</div>
+      </div>
+      ${role === "user" ? '<div class="tail"></div>' : ''}
+    </div>
   `;
   els.messages.appendChild(wrap);
 }
@@ -175,7 +195,11 @@ function renderChats() {
   for (const chat of state.chats) {
     const btn = document.createElement("button");
     btn.className = "chat-item" + (chat.id === state.chatId ? " active" : "");
-    btn.textContent = chat.title;
+    const updated = chat.updated_at ? relativeTime(chat.updated_at) : "";
+    btn.innerHTML = `
+      <span class="chat-title-text">${escapeHtml(chat.title)}</span>
+      <span class="chat-time">${escapeHtml(updated)}</span>
+    `;
     btn.addEventListener("click", async () => {
       if (state.busy) return;
       await loadChat(chat.id);
@@ -188,7 +212,6 @@ function renderChats() {
 async function loadChat(chatId) {
   const data = await api(`/api/chats/${chatId}/messages`);
   state.chatId = chatId;
-  els.chatTitle.textContent = data.chat.title;
   els.messages.innerHTML = "";
 
   if (!data.messages.length) {
@@ -230,7 +253,6 @@ async function sendMessage(event) {
       body: JSON.stringify({ text }),
     });
     appendMessage("assistant", data.answer);
-    els.chatTitle.textContent = data.chat.title;
     await fetch("/api/chats").then((r) => r.json()).then((d) => {
       if (d.ok) {
         state.chats = d.chats || state.chats;
@@ -434,6 +456,7 @@ els.menuBtn.addEventListener("click", openDrawer);
 els.closeDrawerBtn.addEventListener("click", closeDrawer);
 els.scrim.addEventListener("click", closeDrawer);
 els.newBtn.addEventListener("click", createChat);
+els.moreBtn.addEventListener("click", showCapabilities);
 els.drawerNewBtn.addEventListener("click", createChat);
 els.capabilitiesBtn.addEventListener("click", showCapabilities);
 els.updateBtn.addEventListener("click", checkMobileUpdate);
@@ -451,7 +474,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.4.5")
+  navigator.serviceWorker.register("/sw.js?v=0.5.0")
     .then((registration) => registration.update())
     .catch(() => {});
 }
