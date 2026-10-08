@@ -51,11 +51,13 @@ def run() -> None:
     assert 'time.sleep(2.5)' in mobile_server
     assert "/api/update/install" in mobile_js
     assert "/api/update/install" in mobile_server
+    assert 'r"/api/chats/(\\d+)/retry"' in mobile_server
+    assert "record_user=False" in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.6.6"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.6.7"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.6.6" in mobile_html
-    assert "/styles.css?v=0.6.6" in mobile_html
+    assert "/app.js?v=0.6.7" in mobile_html
+    assert "/styles.css?v=0.6.7" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
@@ -74,6 +76,11 @@ def run() -> None:
     assert "health.version !== state.bootstrap.version" in mobile_js
     assert "state.lastMessageSignature" in mobile_js
     assert "state.lastChatSignature" in mobile_js
+    assert "REPLY_ERROR_PREFIX" in mobile_js
+    assert "retry-reply-btn" in mobile_js
+    assert "async function retryLastMessage()" in mobile_js
+    assert "/retry" in mobile_js
+    assert ".retry-reply-btn" in mobile_css
     assert 'els.versionBadge.textContent = `v${data.version}`;' in mobile_js
     assert 'id="versionBadge"' in mobile_html
     assert ".version-badge" in mobile_css
@@ -83,6 +90,10 @@ def run() -> None:
     assert "Rejected unreliable XemAi self/comparison draft" in gui_backend_source
     assert "build_ai_comparison_fallback" in gui_backend_source
     assert "build_self_knowledge_fallback" in gui_backend_source
+    assert "REPLY_ERROR_PREFIX" in gui_backend_source
+    assert "record_user: bool = True" in gui_backend_source
+    assert "Automatic memory extraction failed after successful reply" in gui_backend_source
+    assert "Tap Retry to try the same message again." in gui_backend_source
     assert "explicitly naming or addressing" in gui_backend_source
     desktop_ui = (project_root / "ui.py").read_text(encoding="utf-8")
     assert 'row["updated_at"]' in desktop_ui
@@ -132,9 +143,9 @@ def run() -> None:
         "I think XemAi currently lacks arbitrary shell/command execution, "
         "unrestricted filesystem access, and native image/audio analysis."
     )
-    assert is_newer_version("0.6.7", "0.6.6")
-    assert not is_newer_version("0.6.6", "0.6.6")
-    assert not is_newer_version("0.6.5", "0.6.6")
+    assert is_newer_version("0.6.8", "0.6.7")
+    assert not is_newer_version("0.6.7", "0.6.7")
+    assert not is_newer_version("0.6.6", "0.6.7")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -242,6 +253,8 @@ def run() -> None:
         assert "Do not claim a 2023" in self_context
         assert "Do not reduce ChatGPT to merely a standalone model" in self_context
         assert "first sentence" in self_context
+        assert "currently configured underlying local model" in self_context
+        assert "qwen3:8b local model" not in self_context
 
         comparison_fallback = build_ai_comparison_fallback(
             "What's your opinion on ChatGPT?",
@@ -258,7 +271,7 @@ def run() -> None:
             registry,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.6.6" in safe_fallback
+        assert "v0.6.7" in safe_fallback
 
         calc = json.loads(registry.execute("calculator", {"expression": "2 + 3 * 4"}))
         assert calc["ok"] and calc["result"] == 14
