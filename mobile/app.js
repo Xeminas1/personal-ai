@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.7.1";
+const FRONTEND_VERSION = "0.7.2";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
@@ -24,8 +24,18 @@ const els = {
   versionBadge: $("versionBadge"),
   menuBtn: $("menuBtn"),
   newBtn: $("newBtn"),
+  galleryInput: $("galleryInput"),
+  cameraPhotoInput: $("cameraPhotoInput"),
+  cameraVideoInput: $("cameraVideoInput"),
   fileInput: $("fileInput"),
   attachmentTray: $("attachmentTray"),
+  attachmentMenu: $("attachmentMenu"),
+  attachmentMenuScrim: $("attachmentMenuScrim"),
+  galleryBtn: $("galleryBtn"),
+  cameraPhotoBtn: $("cameraPhotoBtn"),
+  cameraVideoBtn: $("cameraVideoBtn"),
+  filesBtn: $("filesBtn"),
+  attachmentMenuCancel: $("attachmentMenuCancel"),
   moreBtn: $("moreBtn"),
   drawerNewBtn: $("drawerNewBtn"),
   drawer: $("drawer"),
@@ -109,6 +119,32 @@ function closeDrawer() {
 function autoGrow() {
   els.input.style.height = "auto";
   els.input.style.height = `${Math.min(180, els.input.scrollHeight)}px`;
+}
+
+function isMobileLayout() {
+  return window.matchMedia("(max-width: 999px)").matches;
+}
+
+function openAttachmentMenu() {
+  if (state.busy || state.remoteActivity || state.uploadingAttachments) return;
+  if (!isMobileLayout()) {
+    els.fileInput.click();
+    return;
+  }
+  els.attachmentMenu.classList.remove("hidden");
+  els.attachmentMenuScrim.classList.remove("hidden");
+}
+
+function closeAttachmentMenu() {
+  els.attachmentMenu.classList.add("hidden");
+  els.attachmentMenuScrim.classList.add("hidden");
+}
+
+function chooseAttachmentInput(input) {
+  closeAttachmentMenu();
+  if (!input) return;
+  input.value = "";
+  input.click();
 }
 
 function formatBytes(bytes) {
@@ -220,7 +256,14 @@ async function uploadSelectedFiles(files) {
     }
   }
 
-  els.fileInput.value = "";
+  for (const input of [
+    els.galleryInput,
+    els.cameraPhotoInput,
+    els.cameraVideoInput,
+    els.fileInput,
+  ]) {
+    if (input) input.value = "";
+  }
 }
 
 function extractAttachmentDisplay(text) {
@@ -878,13 +921,33 @@ function showFeedback() {
 els.menuBtn.addEventListener("click", openDrawer);
 els.closeDrawerBtn.addEventListener("click", closeDrawer);
 els.scrim.addEventListener("click", closeDrawer);
-els.newBtn.addEventListener("click", () => {
-  if (state.busy || state.uploadingAttachments) return;
-  els.fileInput.click();
-});
-els.fileInput.addEventListener("change", () =>
-  uploadSelectedFiles(els.fileInput.files)
+els.newBtn.addEventListener("click", openAttachmentMenu);
+els.attachmentMenuScrim.addEventListener("click", closeAttachmentMenu);
+els.attachmentMenuCancel.addEventListener("click", closeAttachmentMenu);
+
+els.galleryBtn.addEventListener("click", () =>
+  chooseAttachmentInput(els.galleryInput)
 );
+els.cameraPhotoBtn.addEventListener("click", () =>
+  chooseAttachmentInput(els.cameraPhotoInput)
+);
+els.cameraVideoBtn.addEventListener("click", () =>
+  chooseAttachmentInput(els.cameraVideoInput)
+);
+els.filesBtn.addEventListener("click", () =>
+  chooseAttachmentInput(els.fileInput)
+);
+
+for (const input of [
+  els.galleryInput,
+  els.cameraPhotoInput,
+  els.cameraVideoInput,
+  els.fileInput,
+]) {
+  input.addEventListener("change", () =>
+    uploadSelectedFiles(input.files)
+  );
+}
 els.moreBtn.addEventListener("click", showCapabilities);
 els.drawerNewBtn.addEventListener("click", createChat);
 els.capabilitiesBtn.addEventListener("click", showCapabilities);
@@ -903,7 +966,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.7.1")
+  navigator.serviceWorker.register("/sw.js?v=0.7.2")
     .then((registration) => registration.update())
     .catch(() => {});
 }
