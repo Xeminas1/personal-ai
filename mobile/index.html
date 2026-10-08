@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#171717">
+  <meta name="theme-color" content="#050b12">
   <meta name="color-scheme" content="dark">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>XemAi</title>
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="stylesheet" href="/styles.css?v=0.4.3">
+  <link rel="stylesheet" href="/styles.css?v=0.5.0">
 </head>
 <body>
   <div id="app">
@@ -20,7 +20,7 @@
         <div id="brand" class="brand">XemAi</div>
         <div id="status" class="status">Connecting…</div>
       </div>
-      <button id="newBtn" class="icon-btn" aria-label="New chat">＋</button>
+      <button id="moreBtn" class="icon-btn" aria-label="More">⋯</button>
     </header>
 
     <aside id="drawer" class="drawer">
@@ -39,14 +39,13 @@
     <div id="scrim" class="scrim"></div>
 
     <main class="main">
-      <div id="chatTitle" class="chat-title">XemAi</div>
       <section id="messages" class="messages"></section>
       <div id="thinking" class="thinking hidden">XemAi is thinking…</div>
 
       <form id="composer" class="composer">
-        <textarea id="input" rows="1" maxlength="50000"
-          placeholder="Message XemAi…" autocomplete="off"></textarea>
-        <button id="sendBtn" type="submit" class="send-btn">↑</button>
+        <button id="newBtn" type="button" class="composer-plus" aria-label="New chat">＋</button>
+        <textarea id="input" rows="1" maxlength="50000" placeholder="Message XemAi..." autocomplete="off"></textarea>
+        <button id="sendBtn" type="submit" class="send-btn">➤</button>
       </form>
       <div class="safe-pad"></div>
     </main>
@@ -58,6 +57,6 @@
     <div id="modalActions" class="modal-actions"></div>
   </dialog>
 
-  <script src="/app.js?v=0.4.3" defer></script>
+  <script src="/app.js?v=0.5.0" defer></script>
 </body>
 </html>
