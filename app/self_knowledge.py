@@ -30,6 +30,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.6.3", "Strengthens XemAi identity and AI-comparison reliability: ChatGPT/AI opinion questions receive authoritative runtime context and stale generic model self-descriptions are rejected before being saved."),
     ("0.6.4", "Tightens AI-comparison quality: catches comparison-avoidance wording, unsupported superiority claims, oversimplifying ChatGPT as a standalone model, and opinion answers that never state a direct position."),
     ("0.6.5", "Adds a persistent mobile version label and makes AI opinion/comparison validation require the named comparison target to be addressed directly instead of drifting into unrelated XemAi limitations."),
+    ("0.6.6", "Adds live cross-device chat refresh and shared automatic official-channel updates so phone and desktop stay synchronized and reload themselves after a verified release installs."),
 ]
 
 
