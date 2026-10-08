@@ -519,3 +519,15 @@ Live cross-device sync and automatic updates:
 - auto-update installation waits for active AI responses to finish and temporarily rejects new generations while files are being replaced/restarted
 - manual and automatic installs share one update lock to avoid concurrent installs
 - automatic update defaults can be controlled with `auto_install_updates` and `auto_update_interval_seconds` in local config
+
+
+## v0.6.7
+
+Reply reliability hotfix:
+- persists failed generation messages in the shared chat database instead of showing a temporary browser-only error that live sync can erase
+- failed replies are visible on both phone and desktop
+- adds a Retry button that retries the latest saved user message without duplicating it
+- excludes persisted failure messages from future model context
+- successful assistant replies are no longer reported as failed if automatic memory extraction has a later error
+- logs the underlying reply-generation failure for troubleshooting
+- removes the hard-coded qwen3:8b limitation wording so XemAi describes whichever local model is actually configured
