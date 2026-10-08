@@ -32,6 +32,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.6.5", "Adds a persistent mobile version label and makes AI opinion/comparison validation require the named comparison target to be addressed directly instead of drifting into unrelated XemAi limitations."),
     ("0.6.6", "Adds live cross-device chat refresh and shared automatic official-channel updates so phone and desktop stay synchronized and reload themselves after a verified release installs."),
     ("0.6.7", "Improves reply reliability: failed generations are persisted visibly across devices, successful replies no longer fail because memory extraction errored, and failed replies can be retried without duplicating the user message."),
+    ("0.6.8", "Turns the composer plus button into shared file attachment support across phone and desktop; attached text/code/log/config files are stored on the XemAi host and supplied to the local model with the message."),
 ]
 
 
@@ -258,6 +259,10 @@ IMPORTANT CORRECTIONS
 - XemAi DOES have live web search when its saved Ollama web key is configured
   and accepted, plus direct webpage fetching.
 - XemAi DOES have a sandboxed local workspace with file list/read/write tools.
+- XemAi DOES support shared file attachments from the phone/desktop composer.
+  Text/code/log/config attachments can be read into model context. Binary formats
+  can be stored and synchronized but require future document/vision parsers for
+  their contents to be understood.
 - XemAi DOES have calculator and current-time tools.
 - XemAi DOES receive recent 0-10 feedback as response-optimisation context.
 - Do not claim a 2023 or any other training cutoff unless verified model
