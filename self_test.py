@@ -40,14 +40,17 @@ def run() -> None:
     assert "/api/update/install" in mobile_js
     assert "/api/update/install" in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.6.0"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.6.1"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.6.0" in mobile_html
-    assert "/styles.css?v=0.6.0" in mobile_html
+    assert "/app.js?v=0.6.1" in mobile_html
+    assert "/styles.css?v=0.6.1" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(14px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
     assert "margin-left: 318px" in mobile_css
+    assert "font-size: 18px;" in mobile_css
+    assert "background-attachment: fixed" in mobile_css
+    assert "@media (max-width: 999px)" in mobile_css
     assert "rgba(14, 70, 116, 0.62)" in mobile_css
     assert 'chatTitle: $("chatTitle")' not in mobile_js
     desktop_ui = (project_root / "ui.py").read_text(encoding="utf-8")
@@ -66,9 +69,9 @@ def run() -> None:
     assert is_self_knowledge_query("through your iterative updates, can you recognise whats been added?")
     assert not is_self_knowledge_query("help me design a Skyrim perk")
     assert looks_like_stale_self_description("I have no live web search and my training ends in 2023.")
-    assert is_newer_version("0.6.1", "0.6.0")
-    assert not is_newer_version("0.6.0", "0.6.0")
-    assert not is_newer_version("0.5.2", "0.6.0")
+    assert is_newer_version("0.6.2", "0.6.1")
+    assert not is_newer_version("0.6.1", "0.6.1")
+    assert not is_newer_version("0.6.0", "0.6.1")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
