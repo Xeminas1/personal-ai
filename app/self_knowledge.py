@@ -248,3 +248,20 @@ def build_ai_comparison_fallback(text: str, config) -> str:
         "for myself or verified current details about the other system unless "
         "I research them, so I will not invent those."
     )
+
+
+def build_self_knowledge_fallback(text: str, config, tool_registry) -> str:
+    assistant = config.get("assistant_name", "XemAi")
+    model = config.get("model", "unknown")
+    capabilities = build_capability_status(config, tool_registry)
+    capability_text = "; ".join(capabilities[:8])
+    return (
+        f"I am {assistant}, currently running as XemAi v{VERSION} with {model} "
+        "as my underlying local language model. I should answer questions about "
+        "my identity and capabilities from the running application, not from a "
+        "generic pretrained model self-description. Verified capabilities "
+        f"currently include: {capability_text}. I will not invent a training "
+        "cutoff or claim that I lack memory, web tools, or other capabilities "
+        "that the runtime reports as enabled. I also will not claim abilities "
+        "that are not in the runtime capability snapshot."
+    )
