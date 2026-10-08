@@ -442,6 +442,9 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     "assistant_name": backend.config.get("assistant_name", "XemAi"),
                     "runtime_model": runtime_model_info.get("model", "unknown"),
                     "model_source": runtime_model_info.get("source", "unknown"),
+                    "compute_source": runtime_model_info.get("compute", "local_host"),
+                    "compute_name": runtime_model_info.get("compute_name", "Always-on host"),
+                    "worker_available": bool(runtime_model_info.get("worker_available", False)),
                     "installed_qwen": runtime_model_info.get("installed_qwen", []),
                     "user": {
                         "id": backend.user["id"],
