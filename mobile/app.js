@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.6.1";
+const FRONTEND_VERSION = "0.6.2";
 
 const state = {
   bootstrap: null,
@@ -63,6 +63,20 @@ async function api(path, options = {}) {
 
 function setStatus(text) {
   els.status.textContent = text;
+}
+
+function setBrand(name) {
+  const displayName = String(name || "XemAi");
+  const drawerTitle = document.querySelector(".drawer-title");
+
+  if (displayName.toLowerCase() === "xemai") {
+    const markup = '<span class="brand-xem">Xem</span><span class="brand-ai">Ai</span>';
+    els.brand.innerHTML = markup;
+    if (drawerTitle) drawerTitle.innerHTML = markup;
+  } else {
+    els.brand.textContent = displayName;
+    if (drawerTitle) drawerTitle.textContent = displayName;
+  }
 }
 
 function openDrawer() {
@@ -160,7 +174,7 @@ async function bootstrap() {
   try {
     const data = await api("/api/bootstrap");
     state.bootstrap = data;
-    els.brand.textContent = data.assistant_name;
+    setBrand(data.assistant_name);
     document.title = data.assistant_name;
     await refreshChats();
     setStatus(`Connected · v${data.version}`);
@@ -474,7 +488,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.6.1")
+  navigator.serviceWorker.register("/sw.js?v=0.6.2")
     .then((registration) => registration.update())
     .catch(() => {});
 }
