@@ -1,41 +1,56 @@
 {
-  "version": "0.5.2",
-  "notes": "Visual refinement: adds a themed dark mobile header so scrolling text no longer overlaps XemAi, corrects the blue background glow so it rises from the bottom, and improves the Windows desktop layout with an integrated status/header area, a properly expanding composer, stronger sidebar proportions, styled scrollbars, and corrected lower blue glow.",
+  "version": "0.6.0",
+  "notes": "Major frontend architecture update: Windows and Android now use the same responsive HTML/CSS XemAi interface. Windows launches it in Microsoft Edge app mode with native Windows controls, while desktop CSS keeps the sidebar permanently visible and uses desktop-sized chat bubbles/composer spacing. The previous Tkinter desktop remains available as LegacyDesktop.pyw.",
   "files": [
     {
-      "path": "ui.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.2/ui.py",
-      "sha256": "730a55923ce669ff47fe85ee4c25fedb7fc84a270e1912c4a314932eab64c9c4"
+      "path": "XemAi.pyw",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.0/XemAi.pyw",
+      "sha256": "17b21b1a6440fe59d9b5549f32ea9196090dbfe15b003201da6482f0f4dc1969"
     },
     {
-      "path": "mobile/styles.css",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.2/mobile/styles.css",
-      "sha256": "1959e77a5c792bcb74466e793ca81c24e7299e865a399c2f98109c6e162d1730"
+      "path": "LegacyDesktop.pyw",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.0/LegacyDesktop.pyw",
+      "sha256": "d55c5cf7c2d4eccb52607797e4f857185d0e1090b304519c2cc81f12f3f8517c"
     },
     {
       "path": "mobile/index.html",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.2/mobile/index.html",
-      "sha256": "e45faabaea14d09f7be763a9bb31a0b8bf2921375e632aeda10868a67a286232"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.0/mobile/index.html",
+      "sha256": "0e849f66b186d5184fe2f46e1c682da4b5d070701e32b8dec5ee53d3e7020d40"
+    },
+    {
+      "path": "mobile/styles.css",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.0/mobile/styles.css",
+      "sha256": "34017f4f397a55fae3f8af43207f8ab3f8f3cf7716298875bd7c12c132ce0e72"
     },
     {
       "path": "mobile/app.js",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.2/mobile/app.js",
-      "sha256": "0789735a52009fd9be926b57254be7d92b2995eb327301d1afdd16ddfd8186aa"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.0/mobile/app.js",
+      "sha256": "529701b51af21dd6f1ab7d1bd5123adb7b6173ac9db18eec5ebf1467a9dead49"
     },
     {
       "path": "mobile/sw.js",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.2/mobile/sw.js",
-      "sha256": "5720b40cab26a93d93c8e1428a0f079f89cf1c6b5d133770ca71cb728af0c88c"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.0/mobile/sw.js",
+      "sha256": "21869849e9b308782dd9372d37fecb9d79adb41c66b147f6c7e461986d9840ca"
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.2/app/version.py",
-      "sha256": "1ffdb0ce4c2de4feeef7329208e9d0af2e0d592f432777c26d7e74087b0532d0"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.0/app/version.py",
+      "sha256": "e4f4629160f34596a89ee563bc89745de16e5b3543de26f83344ea3b7bbff4b4"
     },
     {
       "path": "app/self_knowledge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.5.2/app/self_knowledge.py",
-      "sha256": "d998811a1fa52b44eced4e780b4295cf42cfbf0eb6d009e060947733010f524d"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.0/app/self_knowledge.py",
+      "sha256": "6fe93139a7d667431627f9b9adc85f8153d26af9d435485382eec6f8fb89382e"
+    },
+    {
+      "path": "README.md",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.0/README.md",
+      "sha256": "cb2734894246a8a402f780d4fd8cea88d105f36635f99b05470d8d48054d07cb"
+    },
+    {
+      "path": "self_test.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.0/self_test.py",
+      "sha256": "ea7489c65f3dfe96c3463ff2e0315ebabec276cdb6d31fe02176c9bc2361472d"
     }
   ]
 }
