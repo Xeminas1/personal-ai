@@ -494,3 +494,14 @@ AI-comparison quality update:
 - rejects unsupported claims that XemAi "excels", outperforms, or is superior without benchmark evidence
 - describes XemAi's memory, continuity, local control, and tools as verified capabilities/design advantages rather than proof of superior performance
 - retries weak comparison drafts once, then uses a deterministic direct XemAi comparison if the retry still fails
+
+
+## v0.6.5
+
+Mobile version visibility and comparison relevance:
+- shows the installed XemAi version directly under the XemAi wordmark on phone
+- keeps the desktop's existing connected/version status unchanged
+- version label is populated from the running server, not hard-coded after startup
+- AI opinion/comparison answers must address the named external system in the first sentence
+- rejects answers to ChatGPT questions that drift into an unrelated list of XemAi limitations before actually discussing ChatGPT
+- retry instructions now explicitly require staying on the requested comparison target
