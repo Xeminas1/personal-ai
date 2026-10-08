@@ -11,10 +11,20 @@ class OllamaError(RuntimeError):
 
 
 class OllamaClient:
-    def __init__(self, base_url: str, model: str, logger):
+    def __init__(
+        self,
+        base_url: str,
+        model: str,
+        logger,
+        *,
+        extra_headers: dict[str, str] | None = None,
+        provider_name: str = "ollama",
+    ):
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.logger = logger
+        self.extra_headers = dict(extra_headers or {})
+        self.provider_name = str(provider_name or "ollama")
 
     def _request(
         self,
@@ -25,6 +35,7 @@ class OllamaClient:
         url = f"{self.base_url}{path}"
         data = None
         headers = {"Content-Type": "application/json"}
+        headers.update(self.extra_headers)
 
         if payload is not None:
             data = json.dumps(payload).encode("utf-8")
@@ -211,8 +222,12 @@ class OllamaClient:
             payload["tools"] = tools
 
         self.logger.debug(
-            "LLM request | provider=ollama model=%s messages=%d json=%s tools=%d",
-            self.model, len(messages), json_mode, len(tools or [])
+            "LLM request | provider=%s model=%s messages=%d json=%s tools=%d",
+            self.provider_name,
+            self.model,
+            len(messages),
+            json_mode,
+            len(tools or []),
         )
 
         response = self._request("/api/chat", payload=payload)
@@ -221,7 +236,8 @@ class OllamaClient:
         tool_calls = message.get("tool_calls") or []
 
         self.logger.debug(
-            "LLM response | provider=ollama model=%s chars=%d tool_calls=%d done=%s",
+            "LLM response | provider=%s model=%s chars=%d tool_calls=%d done=%s",
+            self.provider_name,
             response.get("model", self.model),
             len(content),
             len(tool_calls),
