@@ -43,7 +43,7 @@ def _schedule_mobile_server_restart() -> None:
     script = BASE_DIR / "XemAiServer.pyw"
     helper_code = (
         "import subprocess,sys,time;"
-        "time.sleep(1.5);"
+        "time.sleep(2.5);"
         "subprocess.Popen([sys.argv[1],sys.argv[2]],"
         "cwd=sys.argv[3],stdin=subprocess.DEVNULL,"
         "stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,"
@@ -136,6 +136,7 @@ def _auto_update_loop(server) -> None:
                                     VERSION,
                                     installed,
                                 )
+                            server.update_restarting = True
                             _schedule_mobile_server_restart()
                             return
                     finally:
@@ -433,7 +434,10 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             active_request = False
             try:
                 update_lock = getattr(self.server, "update_lock", None)
-                if update_lock is not None and update_lock.locked():
+                if (
+                    getattr(self.server, "update_restarting", False)
+                    or (update_lock is not None and update_lock.locked())
+                ):
                     self._error(
                         "XemAi is updating. Please retry this message in a moment.",
                         HTTPStatus.SERVICE_UNAVAILABLE,
@@ -548,6 +552,7 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     ),
                 })
                 self.wfile.flush()
+                self.server.update_restarting = True
                 _schedule_mobile_server_restart()
             except Exception as e:
                 self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
@@ -593,6 +598,7 @@ def run_mobile_server() -> int:
     server.update_lock = threading.Lock()
     server.activity_lock = threading.Lock()
     server.active_chat_requests = 0
+    server.update_restarting = False
     server.stop_event = threading.Event()
     state_path = DATA_DIR / "mobile_server.json"
     state = {
