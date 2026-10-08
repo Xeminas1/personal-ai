@@ -80,10 +80,10 @@ def run() -> None:
     assert '"model_source"' in mobile_server
     assert '"installed_qwen"' in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.7.1"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.7.2"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.7.1" in mobile_html
-    assert "/styles.css?v=0.7.1" in mobile_html
+    assert "/app.js?v=0.7.2" in mobile_html
+    assert "/styles.css?v=0.7.2" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
@@ -123,11 +123,26 @@ def run() -> None:
     assert "/activity" in mobile_js
     assert "fileToBase64" in mobile_js
     assert "els.fileInput.click()" in mobile_js
+    assert "function openAttachmentMenu()" in mobile_js
+    assert "function closeAttachmentMenu()" in mobile_js
+    assert "function chooseAttachmentInput(input)" in mobile_js
+    assert "els.galleryInput" in mobile_js
+    assert "els.cameraPhotoInput" in mobile_js
+    assert "els.cameraVideoInput" in mobile_js
+    assert "els.galleryBtn" in mobile_js
+    assert "els.cameraPhotoBtn" in mobile_js
+    assert "els.cameraVideoBtn" in mobile_js
+    assert "els.filesBtn" in mobile_js
+    assert 'els.newBtn.addEventListener("click", openAttachmentMenu)' in mobile_js
     assert 'els.newBtn.addEventListener("click", createChat)' not in mobile_js
     assert "/attachments" in mobile_js
     assert "/retry" in mobile_js
     assert ".retry-reply-btn" in mobile_css
     assert ".attachment-tray" in mobile_css
+    assert ".attachment-menu-scrim" in mobile_css
+    assert ".attachment-menu {" in mobile_css
+    assert ".attachment-menu-item" in mobile_css
+    assert ".attachment-menu-cancel" in mobile_css
     assert ".attachment-chip" in mobile_css
     assert ".message-attachment" in mobile_css
     assert ".message-meta" in mobile_css
@@ -137,6 +152,17 @@ def run() -> None:
     assert 'els.versionBadge.textContent = `v${data.version}`;' in mobile_js
     assert 'id="versionBadge"' in mobile_html
     assert 'id="fileInput"' in mobile_html
+    assert 'id="galleryInput"' in mobile_html
+    assert 'accept="image/*" multiple hidden' in mobile_html
+    assert 'id="cameraPhotoInput"' in mobile_html
+    assert 'accept="image/*" capture="environment"' in mobile_html
+    assert 'id="cameraVideoInput"' in mobile_html
+    assert 'accept="video/*" capture="environment"' in mobile_html
+    assert 'id="attachmentMenu"' in mobile_html
+    assert "Photo Gallery" in mobile_html
+    assert "Take Photo" in mobile_html
+    assert "Record Video" in mobile_html
+    assert ">Files<" in mobile_html
     assert 'id="attachmentTray"' in mobile_html
     assert 'aria-label="Attach file"' in mobile_html
     assert "thinking-dots" in mobile_html
@@ -208,9 +234,9 @@ def run() -> None:
         "I think XemAi currently lacks arbitrary shell/command execution, "
         "unrestricted filesystem access, and native image/audio analysis."
     )
-    assert is_newer_version("0.7.2", "0.7.1")
-    assert not is_newer_version("0.7.1", "0.7.1")
-    assert not is_newer_version("0.7.0", "0.7.1")
+    assert is_newer_version("0.7.3", "0.7.2")
+    assert not is_newer_version("0.7.2", "0.7.2")
+    assert not is_newer_version("0.7.1", "0.7.2")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -355,7 +381,7 @@ def run() -> None:
             runtime_info,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.7.1" in safe_fallback
+        assert "v0.7.2" in safe_fallback
         assert "qwen3:1.7b" in safe_fallback
 
         ollama_probe = OllamaClient(
