@@ -8,9 +8,16 @@ from pathlib import Path
 from app.capabilities import build_capability_status
 from app.database import Database
 from app.gui_backend import ChatBackend, title_from_message
+from app.hybrid import HybridOllamaClient, HybridWorkerClient
 from app.llm import OllamaClient
 from app.mobile_runtime import mobile_local_url, mobile_server_version
 from app.prompts import CONSTITUTION, build_system_prompt
+from app.secrets import (
+    load_hybrid_worker_client_token,
+    load_ollama_api_key,
+    save_hybrid_worker_client_token,
+    save_ollama_api_key,
+)
 from app.self_knowledge import (
     build_ai_comparison_fallback,
     build_authoritative_self_context,
@@ -45,6 +52,12 @@ def run() -> None:
     assert (project_root / "XemAiServer.pyw").exists()
     assert (project_root / "mobile_server.bat").exists()
     assert (project_root / "mobile_tailscale_setup.bat").exists()
+    assert (project_root / "XemAiWorker.pyw").exists()
+    assert (project_root / "hybrid_setup.py").exists()
+    assert (project_root / "hybrid_worker_setup.bat").exists()
+    assert (project_root / "hybrid_host_setup.bat").exists()
+    assert (project_root / "app" / "hybrid.py").exists()
+    assert (project_root / "app" / "worker_server.py").exists()
     assert (project_root / "mobile" / "index.html").exists()
     assert (project_root / "mobile" / "app.js").exists()
     mobile_js = (project_root / "mobile" / "app.js").read_text(encoding="utf-8")
@@ -54,6 +67,10 @@ def run() -> None:
     assert '"auto_detect_ollama_model": True' in config_source
     assert '"evidence_research_mode": "auto"' in config_source
     assert '"research_max_sources": 3' in config_source
+    assert '"hybrid_enabled": False' in config_source
+    assert '"hybrid_worker_url": ""' in config_source
+    assert '"hybrid_worker_port": 8766' in config_source
+    assert '"hybrid_routing_mode": "prefer_worker"' in config_source
     assert '"auto_update_interval_seconds": 60' in config_source
     assert "def _auto_update_loop(server)" in mobile_server
     assert "XemAiAutoUpdater" in mobile_server
@@ -72,6 +89,24 @@ def run() -> None:
     attachment_route = 'r"/api/chats/(\\d+)/attachments"'
     assert attachment_route not in do_get_source
     assert attachment_route in do_post_source
+    hybrid_source = (project_root / "app" / "hybrid.py").read_text(encoding="utf-8")
+    worker_source = (project_root / "app" / "worker_server.py").read_text(encoding="utf-8")
+    hybrid_setup_source = (project_root / "hybrid_setup.py").read_text(encoding="utf-8")
+    assert "class HybridOllamaClient" in hybrid_source
+    assert "class HybridWorkerClient" in hybrid_source
+    assert "build_llm_client" in hybrid_source
+    assert "falling back locally" in hybrid_source
+    assert 'host = "127.0.0.1"' in worker_source
+    assert "Authorization" in worker_source
+    assert 'self.path != "/api/chat"' in worker_source
+    assert "/api/pull" not in worker_source
+    assert "generation_lock" in worker_source
+    assert "ensure_hybrid_worker_server_token" in worker_source
+    assert '"serve"' in hybrid_setup_source
+    assert '"--https={port}"' in hybrid_setup_source
+    assert "hybrid_worker_client_token" not in hybrid_setup_source
+    assert "getpass.getpass" in hybrid_setup_source
+
     tools_source = (project_root / "app" / "tools.py").read_text(encoding="utf-8")
     assert "def should_research_query" in tools_source
     assert "def research_evidence" in tools_source
@@ -96,11 +131,15 @@ def run() -> None:
     assert '"runtime_model"' in mobile_server
     assert '"model_source"' in mobile_server
     assert '"installed_qwen"' in mobile_server
+    assert 'if path == "/api/compute":' in mobile_server
+    assert '"compute_source"' in mobile_server
+    assert '"compute_name"' in mobile_server
+    assert '"worker_available"' in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.8.0"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.9.0"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.8.0" in mobile_html
-    assert "/styles.css?v=0.8.0" in mobile_html
+    assert "/app.js?v=0.9.0" in mobile_html
+    assert "/styles.css?v=0.9.0" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
@@ -109,11 +148,15 @@ def run() -> None:
     assert "background-attachment: fixed" in mobile_css
     assert "@media (max-width: 999px)" in mobile_css
     assert ".brand-ai" in mobile_css
+    assert ".compute-badge" in mobile_css
     assert "#8fc0ff" in mobile_css
     assert "brand-xem" in mobile_html
     assert "brand-ai" in mobile_html
     assert "function setBrand(name)" in mobile_js
     assert 'versionBadge: $("versionBadge")' in mobile_js
+    assert 'computeBadge: $("computeBadge")' in mobile_js
+    assert "function setComputeBadge(" in mobile_js
+    assert 'api("/api/compute")' in mobile_js
     assert "function syncSharedState()" in mobile_js
     assert "window.setInterval(syncSharedState, 1500)" in mobile_js
     assert "health.version !== state.bootstrap.version" in mobile_js
@@ -168,6 +211,7 @@ def run() -> None:
     assert "@keyframes thinkingPulse" in mobile_css
     assert 'els.versionBadge.textContent = `v${data.version}`;' in mobile_js
     assert 'id="versionBadge"' in mobile_html
+    assert 'id="computeBadge"' in mobile_html
     assert 'id="fileInput"' in mobile_html
     assert 'id="galleryInput"' in mobile_html
     assert 'accept="image/*" multiple hidden' in mobile_html
@@ -261,9 +305,9 @@ def run() -> None:
         "I think XemAi currently lacks arbitrary shell/command execution, "
         "unrestricted filesystem access, and native image/audio analysis."
     )
-    assert is_newer_version("0.8.1", "0.8.0")
-    assert not is_newer_version("0.8.0", "0.8.0")
-    assert not is_newer_version("0.7.2", "0.8.0")
+    assert is_newer_version("0.9.1", "0.9.0")
+    assert not is_newer_version("0.9.0", "0.9.0")
+    assert not is_newer_version("0.8.0", "0.9.0")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -449,6 +493,8 @@ def run() -> None:
         assert "Automatic official-channel updates" in self_context
         assert "Shared file attachments" in self_context
         assert "Evidence-backed reputable-source research" in self_context
+        assert "Hybrid compute route:" in self_context
+        assert "XemAi DOES support authenticated hybrid compute" in self_context
         assert "XemAi DOES support evidence-backed research" in self_context
         assert "XemAi DOES support shared file attachments" in self_context
         assert "v0.3.0" in self_context
@@ -480,8 +526,77 @@ def run() -> None:
             runtime_info,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.8.0" in safe_fallback
+        assert "v0.9.0" in safe_fallback
         assert "qwen3:1.7b" in safe_fallback
+
+        hybrid_local = OllamaClient(
+            "http://local.invalid",
+            "qwen3:1.7b",
+            DummyLogger(),
+        )
+        hybrid_local.discover_runtime_model = lambda preferred=None: {
+            "model": "qwen3:1.7b",
+            "source": "test_local",
+            "installed_qwen": ["qwen3:1.7b"],
+            "running_qwen": [],
+        }
+        hybrid_local.health_check = lambda: True
+        hybrid_local.model_available = lambda model=None: True
+        hybrid_local.installed_models = lambda: [{"name": "qwen3:1.7b"}]
+        hybrid_local.running_models = lambda: []
+        hybrid_local.chat_raw = lambda messages, json_mode=False, tools=None: {
+            "model": "qwen3:1.7b",
+            "message": {"role": "assistant", "content": "local fallback"},
+            "done": True,
+        }
+
+        hybrid_worker = HybridWorkerClient(
+            "https://worker.invalid",
+            "test-token",
+            "qwen3:8b",
+            DummyLogger(),
+        )
+        hybrid_worker.worker_health = lambda: {
+            "ok": True,
+            "version": "0.9.0",
+            "machine_name": "Power-PC",
+            "recommended_model": "qwen3:8b",
+            "installed_qwen": ["qwen3:8b"],
+            "running_qwen": ["qwen3:8b"],
+        }
+        hybrid_worker.model_available = lambda model=None: True
+        hybrid_worker.installed_models = lambda: [{"name": "qwen3:8b"}]
+        hybrid_worker.running_models = lambda: [{"name": "qwen3:8b"}]
+        hybrid_worker.chat_raw = lambda messages, json_mode=False, tools=None: {
+            "model": "qwen3:8b",
+            "message": {"role": "assistant", "content": "worker answer"},
+            "done": True,
+        }
+
+        hybrid_client = HybridOllamaClient(
+            local_client=hybrid_local,
+            worker_client=hybrid_worker,
+            logger=DummyLogger(),
+            local_fallback_model="qwen3:1.7b",
+        )
+        hybrid_info = hybrid_client.discover_runtime_model()
+        assert hybrid_info["compute"] == "remote_worker"
+        assert hybrid_info["model"] == "qwen3:8b"
+        assert hybrid_info["compute_name"] == "Power-PC"
+        worker_answer = hybrid_client.chat(
+            [{"role": "user", "content": "hello"}]
+        )
+        assert worker_answer == "worker answer"
+
+        def fail_worker(*args, **kwargs):
+            raise RuntimeError("worker offline")
+        hybrid_worker.chat_raw = fail_worker
+        fallback = hybrid_client.chat_raw(
+            [{"role": "user", "content": "continue"}]
+        )
+        assert fallback["message"]["content"] == "local fallback"
+        assert hybrid_client.route_info["compute"] == "local_host"
+        assert hybrid_client.model == "qwen3:1.7b"
 
         ollama_probe = OllamaClient(
             "http://ollama.invalid",
@@ -529,6 +644,12 @@ def run() -> None:
         )
         assert discovered_running["model"] == "qwen3:4b"
         assert discovered_running["source"] == "ollama_running"
+
+        secret_dir = Path(temp) / "secret-test"
+        save_ollama_api_key(secret_dir, "web-secret")
+        save_hybrid_worker_client_token(secret_dir, "worker-secret")
+        assert load_ollama_api_key(secret_dir) == "web-secret"
+        assert load_hybrid_worker_client_token(secret_dir) == "worker-secret"
 
         calc = json.loads(registry.execute("calculator", {"expression": "2 + 3 * 4"}))
         assert calc["ok"] and calc["result"] == 14
