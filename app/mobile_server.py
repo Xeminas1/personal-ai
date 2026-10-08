@@ -76,6 +76,8 @@ def _schedule_mobile_server_restart() -> None:
 
     def stop_current():
         time.sleep(0.5)
+        # The response has already been sent. Exit immediately so the helper can
+        # bind the same localhost port using the newly installed code.
         os._exit(0)
 
     threading.Thread(target=stop_current, daemon=True).start()
@@ -86,7 +88,7 @@ def _row_dict(row) -> dict:
 
 
 class XemAiMobileHandler(BaseHTTPRequestHandler):
-    server_version = "XemAiMobile/0.4.3"
+    server_version = "XemAiMobile/0.4.5"
 
     def log_message(self, fmt, *args):
         logger = getattr(self.server, "xemai_logger", None)
@@ -149,6 +151,7 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
         if not target.is_file():
+            # Client-side routes fall back to the app shell.
             if "." not in relative.name:
                 target = MOBILE_DIR / "index.html"
             else:
@@ -312,10 +315,6 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             self._error("Unknown API endpoint.", HTTPStatus.NOT_FOUND)
             return
 
-        if path.startswith("/api/"):
-            self._error("Unknown API endpoint.", HTTPStatus.NOT_FOUND)
-            return
-
         self._serve_static(path)
 
     def do_POST(self):
@@ -460,6 +459,7 @@ def run_mobile_server() -> int:
     try:
         server = XemAiMobileServer((host, port), XemAiMobileHandler)
     except OSError as e:
+        # If another XemAi mobile server already owns the port, simply exit.
         logger.info(
             "Mobile server not started | host=%s port=%s reason=%r",
             host, port, e
