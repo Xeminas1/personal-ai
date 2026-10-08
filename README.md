@@ -450,3 +450,15 @@ Unified frontend release:
 - mobile mode keeps the slide-out drawer and phone layout
 - both platforms now share the same visual implementation instead of maintaining separate Tkinter and web designs
 - the previous Tkinter interface remains available as `LegacyDesktop.pyw` for fallback/troubleshooting
+
+
+## v0.6.1
+
+Mobile visual refinement:
+- makes the mobile update visibly different instead of only changing the desktop breakpoint
+- simplifies the fixed phone header to match the reference more closely
+- hides the tiny connection status under the mobile XemAi title while keeping desktop status visible
+- reduces bubble typography and padding for a cleaner phone layout
+- tightens mobile message spacing and composer sizing
+- strengthens the dark-to-blue bottom-up background glow
+- preserves the unified responsive frontend introduced in v0.6.0
