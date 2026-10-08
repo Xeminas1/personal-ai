@@ -21,6 +21,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.4.3", "Adds version-aware lifecycle management for the background mobile server so desktop updates replace stale server processes instead of leaving old API code in memory."),
     ("0.4.4", "Republishes the mobile-server lifecycle fix through a fully verified immutable release after rejecting a bad v0.4.3 manifest."),
     ("0.4.5", "Publishes the mobile-server lifecycle fix from exact tested source files after rejecting mismatched frozen release content."),
+    ("0.5.0", "Redesigns both the Windows desktop app and the mobile app to the new bubble-based dark blue XemAi interface with gradient backgrounds and glassy conversation styling."),
 ]
 
 
