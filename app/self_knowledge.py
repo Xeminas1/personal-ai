@@ -24,6 +24,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.5.0", "Redesigns both the Windows desktop app and the mobile app to the new bubble-based dark blue XemAi interface with gradient backgrounds and glassy conversation styling."),
     ("0.5.1", "Fixes the Windows desktop startup crash caused by timezone-aware chat timestamps in the redesigned recent-chats sidebar and adds startup crash logging."),
     ("0.5.2", "Refines the visual redesign with a themed mobile header, corrected bottom-up blue glow, and improved Windows desktop layout, composer, sidebar, and scrollbars."),
+    ("0.6.0", "Unifies Windows and Android on one responsive HTML/CSS frontend; Windows launches the same XemAi interface in Edge app mode while the legacy Tkinter frontend remains available as a fallback."),
 ]
 
 
