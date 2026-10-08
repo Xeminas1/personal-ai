@@ -18,9 +18,9 @@ html, body {
   margin: 0;
   min-height: 100%;
   background:
-    radial-gradient(50% 65% at 18% 86%, rgba(13, 74, 122, 0.58) 0%, rgba(13, 74, 122, 0.0) 62%),
-    radial-gradient(48% 58% at 88% 86%, rgba(23, 73, 122, 0.42) 0%, rgba(23, 73, 122, 0.0) 60%),
-    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+    radial-gradient(46% 58% at 12% 100%, rgba(14, 70, 116, 0.62) 0%, rgba(14, 70, 116, 0.0) 62%),
+    radial-gradient(42% 54% at 88% 100%, rgba(21, 74, 122, 0.42) 0%, rgba(21, 74, 122, 0.0) 60%),
+    linear-gradient(180deg, #02060b 0%, #04101a 72%, #071c2e 100%);
   color: var(--text);
 }
 body {
@@ -33,13 +33,17 @@ button { -webkit-tap-highlight-color: transparent; }
 .topbar {
   position: fixed;
   inset: 0 0 auto 0;
-  height: 74px;
+  height: 86px;
   z-index: 20;
   display: grid;
   grid-template-columns: 54px 1fr 54px;
   align-items: center;
-  padding: max(6px, env(safe-area-inset-top)) 16px 0;
-  background: transparent;
+  padding: max(10px, env(safe-area-inset-top)) 16px 10px;
+  background: rgba(4, 11, 18, 0.82);
+  border-bottom: 1px solid rgba(133, 183, 233, 0.18);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
 }
 .icon-btn {
   width: 40px;
@@ -69,10 +73,10 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 .main {
   min-height: 100dvh;
-  padding-top: calc(78px + env(safe-area-inset-top));
+  padding-top: calc(94px + env(safe-area-inset-top));
 }
 .messages {
-  padding: 10px 18px 170px;
+  padding: 14px 18px 170px;
   max-width: 900px;
   margin: 0 auto;
 }
@@ -172,8 +176,10 @@ button { -webkit-tap-highlight-color: transparent; }
   padding: 10px 12px;
   border-radius: 38px;
   border: 1px solid var(--border);
-  background: rgba(6, 18, 29, 0.88);
-  backdrop-filter: blur(10px);
+  background: rgba(4, 13, 22, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
 }
 .composer-plus, .send-btn {
   width: 46px;
