@@ -84,6 +84,26 @@ _REPUTABLE_DOMAINS = {
     "developer.mozilla.org": (98, "MDN technical documentation"),
     "w3.org": (104, "Web standards body"),
     "nist.gov": (108, "US standards / research agency"),
+    "plos.org": (98, "Peer-reviewed scientific journal"),
+    "frontiersin.org": (90, "Peer-reviewed scientific publisher"),
+    "academic.oup.com": (98, "Peer-reviewed academic publisher"),
+    "cambridge.org": (94, "Academic publisher"),
+    "link.springer.com": (90, "Academic publisher"),
+    "sciencedirect.com": (90, "Academic publisher"),
+    "cell.com": (100, "Peer-reviewed scientific journal"),
+    "pnas.org": (100, "Peer-reviewed scientific journal"),
+    "royalsocietypublishing.org": (98, "Peer-reviewed scientific journal"),
+    "arxiv.org": (70, "Academic preprint repository"),
+    "ietf.org": (104, "Internet standards body"),
+    "rfc-editor.org": (104, "Internet standards publication"),
+    "sec.gov": (108, "US financial regulator"),
+    "fca.org.uk": (106, "UK financial regulator"),
+    "bankofengland.co.uk": (106, "UK central bank"),
+    "ons.gov.uk": (106, "UK official statistics"),
+    "imf.org": (96, "International financial institution"),
+    "worldbank.org": (96, "International development institution"),
+    "developers.google.com": (86, "Official vendor documentation"),
+    "docs.github.com": (86, "Official vendor documentation"),
     "microsoft.com": (82, "Official vendor source"),
     "apple.com": (82, "Official vendor source"),
     "openai.com": (82, "Official vendor source"),
@@ -858,6 +878,9 @@ class ToolRegistry:
                 if page_content
                 else ""
             )
+
+            if authority.startswith("Low-priority"):
+                continue
 
             source = {
                 "id": 0,
