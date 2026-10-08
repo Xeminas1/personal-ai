@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.6.7";
+const FRONTEND_VERSION = "0.6.8";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
@@ -10,6 +10,8 @@ const state = {
   lastChatSignature: "",
   syncInFlight: false,
   syncCounter: 0,
+  pendingAttachments: [],
+  uploadingAttachments: 0,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -19,6 +21,8 @@ const els = {
   versionBadge: $("versionBadge"),
   menuBtn: $("menuBtn"),
   newBtn: $("newBtn"),
+  fileInput: $("fileInput"),
+  attachmentTray: $("attachmentTray"),
   moreBtn: $("moreBtn"),
   drawerNewBtn: $("drawerNewBtn"),
   drawer: $("drawer"),
@@ -99,11 +103,143 @@ function autoGrow() {
   els.input.style.height = `${Math.min(180, els.input.scrollHeight)}px`;
 }
 
+function formatBytes(bytes) {
+  const value = Number(bytes || 0);
+  if (value < 1000) return `${value} B`;
+  if (value < 1000000) return `${(value / 1000).toFixed(1)} KB`;
+  return `${(value / 1000000).toFixed(1)} MB`;
+}
+
+function renderAttachmentTray() {
+  if (!els.attachmentTray) return;
+  els.attachmentTray.innerHTML = "";
+
+  if (!state.pendingAttachments.length && !state.uploadingAttachments) {
+    els.attachmentTray.classList.add("hidden");
+    return;
+  }
+
+  els.attachmentTray.classList.remove("hidden");
+
+  for (const [index, item] of state.pendingAttachments.entries()) {
+    const chip = document.createElement("div");
+    chip.className = "attachment-chip";
+    chip.innerHTML = `
+      <span class="attachment-icon">📎</span>
+      <span class="attachment-info">
+        <span class="attachment-name">${escapeHtml(item.name)}</span>
+        <span class="attachment-size">${escapeHtml(formatBytes(item.size))}</span>
+      </span>
+      <button type="button" class="attachment-remove" aria-label="Remove attachment">×</button>
+    `;
+    chip.querySelector(".attachment-remove").addEventListener("click", () => {
+      if (state.busy) return;
+      state.pendingAttachments.splice(index, 1);
+      renderAttachmentTray();
+    });
+    els.attachmentTray.appendChild(chip);
+  }
+
+  if (state.uploadingAttachments) {
+    const chip = document.createElement("div");
+    chip.className = "attachment-chip uploading";
+    chip.innerHTML = `
+      <span class="attachment-icon">↥</span>
+      <span class="attachment-info">
+        <span class="attachment-name">Uploading file…</span>
+        <span class="attachment-size">Please wait</span>
+      </span>
+    `;
+    els.attachmentTray.appendChild(chip);
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error || new Error("Could not read file."));
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadSelectedFiles(files) {
+  if (!state.chatId || state.busy) return;
+
+  const selected = Array.from(files || []);
+  if (!selected.length) return;
+
+  const remainingSlots = Math.max(0, 3 - state.pendingAttachments.length);
+  if (!remainingSlots) {
+    showModal("Attachment limit", "You can attach up to 3 files to one message.");
+    return;
+  }
+
+  for (const file of selected.slice(0, remainingSlots)) {
+    if (file.size > 5000000) {
+      showModal(
+        "File too large",
+        `${file.name} is larger than the current 5 MB attachment limit.`
+      );
+      continue;
+    }
+
+    state.uploadingAttachments += 1;
+    renderAttachmentTray();
+    setStatus(`Uploading ${file.name}…`);
+
+    try {
+      const encoded = await fileToBase64(file);
+      const data = await api(`/api/chats/${state.chatId}/attachments`, {
+        method: "POST",
+        body: JSON.stringify({
+          name: file.name,
+          mime: file.type || "application/octet-stream",
+          data: encoded,
+        }),
+      });
+      state.pendingAttachments.push(data.attachment);
+    } catch (err) {
+      showModal("Attachment failed", err.message || String(err));
+    } finally {
+      state.uploadingAttachments = Math.max(0, state.uploadingAttachments - 1);
+      renderAttachmentTray();
+      setStatus(`Connected · v${state.bootstrap.version}`);
+    }
+  }
+
+  els.fileInput.value = "";
+}
+
+function extractAttachmentDisplay(text) {
+  const attachments = [];
+  const visibleLines = [];
+  for (const line of String(text).split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("[[XEMAI_ATTACHMENT:") && trimmed.endsWith("]]")) {
+      const raw = trimmed.slice("[[XEMAI_ATTACHMENT:".length, -2);
+      try {
+        const item = JSON.parse(raw);
+        if (item && typeof item === "object") {
+          attachments.push(item);
+          continue;
+        }
+      } catch {}
+    }
+    visibleLines.push(line);
+  }
+  return { attachments, text: visibleLines.join("\n").trim() };
+}
+
 function setBusy(value, label = null) {
   state.busy = value;
   els.input.disabled = value;
   els.sendBtn.disabled = value;
-  els.newBtn.disabled = value;
+  els.newBtn.disabled = value || state.uploadingAttachments > 0;
   els.drawerNewBtn.disabled = value;
   els.thinking.classList.toggle("hidden", !value);
   setStatus(label || (value ? "Thinking…" : "Ready"));
@@ -183,6 +319,18 @@ function appendMessage(role, text) {
   const name = role === "user"
     ? state.bootstrap.user.name
     : state.bootstrap.assistant_name;
+  const parsed = role === "user"
+    ? extractAttachmentDisplay(text)
+    : { attachments: [], text: String(text) };
+  const attachmentHtml = parsed.attachments.map((item) => `
+    <div class="message-attachment">
+      <span class="attachment-icon">📎</span>
+      <span>
+        <strong>${escapeHtml(item.name || "attachment")}</strong>
+        <small>${escapeHtml(formatBytes(item.size || 0))}</small>
+      </span>
+    </div>
+  `).join("");
   const retryable = (
     role === "assistant"
     && String(text).startsWith(REPLY_ERROR_PREFIX)
@@ -191,7 +339,8 @@ function appendMessage(role, text) {
     <div class="bubble-wrap">
       ${role === "assistant" ? '<div class="tail"></div>' : ''}
       <div class="bubble">
-        <div class="message-body">${renderBody(text)}</div>
+        ${attachmentHtml}
+        ${parsed.text ? `<div class="message-body">${renderBody(parsed.text)}</div>` : ""}
         ${retryable ? '<button type="button" class="retry-reply-btn">Retry</button>' : ''}
         <div class="message-name">${escapeHtml(name)}</div>
       </div>
@@ -353,6 +502,10 @@ function renderChats() {
 }
 
 async function loadChat(chatId) {
+  if (state.chatId !== chatId) {
+    state.pendingAttachments = [];
+    renderAttachmentTray();
+  }
   const data = await api(`/api/chats/${chatId}/messages`);
   state.chatId = chatId;
   state.lastMessageSignature = messageSignature(data.messages || []);
@@ -377,19 +530,31 @@ async function sendMessage(event) {
   if (state.busy || !state.chatId) return;
 
   const text = els.input.value.trim();
-  if (!text) return;
+  if (!text && !state.pendingAttachments.length) return;
+  if (state.uploadingAttachments) {
+    showModal("Attachment uploading", "Wait for the file upload to finish before sending.");
+    return;
+  }
 
   els.input.value = "";
   autoGrow();
-  appendMessage("user", text);
+  const localAttachments = state.pendingAttachments.map((item) =>
+    `[[XEMAI_ATTACHMENT:${JSON.stringify(item)}]]`
+  ).join("\n");
+  appendMessage("user", [localAttachments, text].filter(Boolean).join("\n"));
   scrollBottom();
   setBusy(true);
 
   try {
     const data = await api(`/api/chats/${state.chatId}/messages`, {
       method: "POST",
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({
+        text,
+        attachments: state.pendingAttachments,
+      }),
     });
+    state.pendingAttachments = [];
+    renderAttachmentTray();
     appendMessage("assistant", data.answer);
     setBusy(false, `Connected · v${state.bootstrap.version}`);
     await refreshChats(state.chatId);
@@ -590,7 +755,13 @@ function showFeedback() {
 els.menuBtn.addEventListener("click", openDrawer);
 els.closeDrawerBtn.addEventListener("click", closeDrawer);
 els.scrim.addEventListener("click", closeDrawer);
-els.newBtn.addEventListener("click", createChat);
+els.newBtn.addEventListener("click", () => {
+  if (state.busy || state.uploadingAttachments) return;
+  els.fileInput.click();
+});
+els.fileInput.addEventListener("change", () =>
+  uploadSelectedFiles(els.fileInput.files)
+);
 els.moreBtn.addEventListener("click", showCapabilities);
 els.drawerNewBtn.addEventListener("click", createChat);
 els.capabilitiesBtn.addEventListener("click", showCapabilities);
@@ -609,7 +780,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.6.7")
+  navigator.serviceWorker.register("/sw.js?v=0.6.8")
     .then((registration) => registration.update())
     .catch(() => {});
 }
