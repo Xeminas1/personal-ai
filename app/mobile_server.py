@@ -642,7 +642,6 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
         match = re.fullmatch(r"/api/chats/(\d+)/messages", path)
         if match:
             backend = None
-            active_request = False
             try:
                 update_lock = getattr(self.server, "update_lock", None)
                 if (
@@ -654,6 +653,7 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                         HTTPStatus.SERVICE_UNAVAILABLE,
                     )
                     return
+
                 chat_id = int(match.group(1))
                 text = str(body.get("text", "")).strip()
                 attachments = _validated_attachment_refs(
@@ -665,6 +665,12 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                 if len(text) > 50_000:
                     self._error("Message is too long.")
                     return
+                if _get_chat_activity(self.server, chat_id).get("active"):
+                    self._error(
+                        "XemAi is already working on a reply in this chat.",
+                        HTTPStatus.CONFLICT,
+                    )
+                    return
 
                 backend = self._backend()
                 chat = backend.get_chat(chat_id)
@@ -672,29 +678,27 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     self._error("Chat not found.", HTTPStatus.NOT_FOUND)
                     return
 
-                _change_active_chat_requests(self.server, 1)
-                _set_chat_activity(self.server, chat_id, "XemAi is thinking")
-                active_request = True
-                answer = backend.send(
+                _start_chat_generation(
+                    self.server,
                     chat_id,
                     text,
-                    status_callback=lambda status: _set_chat_activity(
-                        self.server, chat_id, status
-                    ),
                     attachments=attachments,
+                    record_user=True,
                 )
-                updated_chat = backend.get_chat(chat_id)
-                self._json({
-                    "ok": True,
-                    "answer": answer,
-                    "chat": _row_dict(updated_chat),
-                })
+                self._json(
+                    {
+                        "ok": True,
+                        "accepted": True,
+                        "chat_id": chat_id,
+                        "status": "XemAi is thinking",
+                    },
+                    HTTPStatus.ACCEPTED,
+                )
+            except RuntimeError as e:
+                self._error(e, HTTPStatus.CONFLICT)
             except Exception as e:
                 self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
             finally:
-                if active_request:
-                    _set_chat_activity(self.server, chat_id, None)
-                    _change_active_chat_requests(self.server, -1)
                 if backend:
                     backend.close()
             return
@@ -702,7 +706,6 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
         match = re.fullmatch(r"/api/chats/(\d+)/retry", path)
         if match:
             backend = None
-            active_request = False
             try:
                 update_lock = getattr(self.server, "update_lock", None)
                 if (
@@ -716,6 +719,13 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     return
 
                 chat_id = int(match.group(1))
+                if _get_chat_activity(self.server, chat_id).get("active"):
+                    self._error(
+                        "XemAi is already working on a reply in this chat.",
+                        HTTPStatus.CONFLICT,
+                    )
+                    return
+
                 backend = self._backend()
                 chat = backend.get_chat(chat_id)
                 if chat is None or chat["user_id"] != backend.user["id"]:
@@ -734,29 +744,26 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     self._error("No user message is available to retry.")
                     return
 
-                _change_active_chat_requests(self.server, 1)
-                _set_chat_activity(self.server, chat_id, "XemAi is thinking")
-                active_request = True
-                answer = backend.send(
+                _start_chat_generation(
+                    self.server,
                     chat_id,
                     str(last_user["content"]),
-                    status_callback=lambda status: _set_chat_activity(
-                        self.server, chat_id, status
-                    ),
                     record_user=False,
                 )
-                updated_chat = backend.get_chat(chat_id)
-                self._json({
-                    "ok": True,
-                    "answer": answer,
-                    "chat": _row_dict(updated_chat),
-                })
+                self._json(
+                    {
+                        "ok": True,
+                        "accepted": True,
+                        "chat_id": chat_id,
+                        "status": "XemAi is thinking",
+                    },
+                    HTTPStatus.ACCEPTED,
+                )
+            except RuntimeError as e:
+                self._error(e, HTTPStatus.CONFLICT)
             except Exception as e:
                 self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
             finally:
-                if active_request:
-                    _set_chat_activity(self.server, chat_id, None)
-                    _change_active_chat_requests(self.server, -1)
                 if backend:
                     backend.close()
             return
