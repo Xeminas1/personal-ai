@@ -37,6 +37,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.7.0", "Adds live Ollama model discovery so XemAi selects and reports its actual Qwen runtime model instead of trusting a stale config.json model value."),
     ("0.7.1", "Makes reply generation asynchronous so phone/desktop requests return immediately while the host continues working, avoids false Failed to fetch reply failures on long generations, clears thinking when the reply is saved, and repairs the attachment upload POST route."),
     ("0.7.2", "Adds a mobile attachment source sheet with Photo Gallery, Take Photo, Record Video and Files while keeping desktop + as a normal file picker."),
+    ("0.8.0", "Adds automatic evidence-backed research for factual queries: XemAi ranks reputable sources, fetches the strongest pages, extracts short verified verbatim quotes, cites numbered sources, and appends the evidence it actually checked."),
 ]
 
 
@@ -275,6 +276,11 @@ IMPORTANT CORRECTIONS
 - XemAi DOES have live web search when its saved Ollama web key is configured
   and accepted, plus direct webpage fetching.
 - XemAi DOES have a sandboxed local workspace with file list/read/write tools.
+- XemAi DOES support evidence-backed research when web search is configured:
+  factual/evidence-heavy questions can trigger reputable-source ranking, live
+  page fetching, short verified quote extraction and numbered source URLs.
+- XemAi must never claim a study/source was checked unless the research pipeline
+  actually returned it.
 - XemAi DOES support shared file attachments from the phone/desktop composer.
   Text/code/log/config attachments can be read into model context. Binary formats
   can be stored and synchronized but require future document/vision parsers for
