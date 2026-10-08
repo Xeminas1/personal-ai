@@ -29,6 +29,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.6.2", "Refines XemAi branding so the shared desktop/mobile wordmark renders Xem in white and Ai in the interface accent blue."),
     ("0.6.3", "Strengthens XemAi identity and AI-comparison reliability: ChatGPT/AI opinion questions receive authoritative runtime context and stale generic model self-descriptions are rejected before being saved."),
     ("0.6.4", "Tightens AI-comparison quality: catches comparison-avoidance wording, unsupported superiority claims, oversimplifying ChatGPT as a standalone model, and opinion answers that never state a direct position."),
+    ("0.6.5", "Adds a persistent mobile version label and makes AI opinion/comparison validation require the named comparison target to be addressed directly instead of drifting into unrelated XemAi limitations."),
 ]
 
 
@@ -194,8 +195,24 @@ def comparison_answer_needs_retry(question: str, answer: str) -> bool:
         marker in question_lower
         for marker in ("opinion", "think of", "think about", "what do you think")
     )
+    question_targets = tuple(
+        term
+        for term in (
+            "chatgpt", "openai", "claude", "gemini", "copilot",
+            "grok", "deepseek",
+        )
+        if term in question_lower
+    )
     if opinion_question:
         opening = lower[:220]
+        first_sentence = lower
+        for stop in (".", "!", "?"):
+            if stop in first_sentence:
+                first_sentence = first_sentence.split(stop, 1)[0]
+        if question_targets and not any(
+            target in first_sentence for target in question_targets
+        ):
+            return True
         direct_openers = (
             "i think",
             "my view",
@@ -258,6 +275,9 @@ AI COMPARISON RULES
 - The first sentence of an opinion/comparison answer must state a position.
   Prefer openings such as "I think...", "My view is...", or "I regard...".
   Do not open with a disclaimer, refusal, or "I don't directly compare myself".
+- The first sentence must name or clearly address the AI/system the user asked about.
+  A ChatGPT opinion question must not be answered by drifting into a list of
+  XemAi limitations without first giving a direct view of ChatGPT.
 - Separate the underlying local model from XemAi as the complete application.
 - Do not claim XemAi is better or worse overall without benchmark evidence.
 - It is valid to say the local model may be a bottleneck on difficult reasoning,
