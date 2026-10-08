@@ -31,6 +31,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.6.4", "Tightens AI-comparison quality: catches comparison-avoidance wording, unsupported superiority claims, oversimplifying ChatGPT as a standalone model, and opinion answers that never state a direct position."),
     ("0.6.5", "Adds a persistent mobile version label and makes AI opinion/comparison validation require the named comparison target to be addressed directly instead of drifting into unrelated XemAi limitations."),
     ("0.6.6", "Adds live cross-device chat refresh and shared automatic official-channel updates so phone and desktop stay synchronized and reload themselves after a verified release installs."),
+    ("0.6.7", "Improves reply reliability: failed generations are persisted visibly across devices, successful replies no longer fail because memory extraction errored, and failed replies can be retried without duplicating the user message."),
 ]
 
 
@@ -309,8 +310,8 @@ CURRENT GAPS / LIMITS
   fine-tune the model weights.
 - Memory retrieval is still relatively simple compared with a mature semantic
   retrieval/evidence system.
-- The qwen3:8b local model can still be a reasoning/quality bottleneck on hard
-  tasks even when the surrounding XemAi application is capable.
+- The currently configured underlying local model can still be a reasoning/quality
+  bottleneck on hard tasks even when the surrounding XemAi application is capable.
 
 When the user asks what XemAi is missing, reason from CURRENT GAPS / LIMITS and
 the user's project goals. When the user asks what has been added, use KNOWN
