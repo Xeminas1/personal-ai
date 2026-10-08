@@ -14,6 +14,7 @@ from app.self_knowledge import (
     build_ai_comparison_fallback,
     build_authoritative_self_context,
     build_self_knowledge_fallback,
+    comparison_answer_needs_retry,
     is_ai_comparison_query,
     is_self_knowledge_query,
     looks_like_stale_self_description,
@@ -59,10 +60,10 @@ def run() -> None:
     assert "brand-xem" in mobile_html
     assert "brand-ai" in mobile_html
     assert "function setBrand(name)" in mobile_js
-    assert "rgba(14, 70, 116, 0.62)" in mobile_css
+    assert "rgba(15, 79, 132, 0.78)" in mobile_css
     assert 'chatTitle: $("chatTitle")' not in mobile_js
     gui_backend_source = (project_root / "app" / "gui_backend.py").read_text(encoding="utf-8")
-    assert "Rejected stale XemAi self-description draft" in gui_backend_source
+    assert "Rejected unreliable XemAi self/comparison draft" in gui_backend_source
     assert "build_ai_comparison_fallback" in gui_backend_source
     assert "build_self_knowledge_fallback" in gui_backend_source
     desktop_ui = (project_root / "ui.py").read_text(encoding="utf-8")
@@ -90,9 +91,27 @@ def run() -> None:
     assert looks_like_stale_self_description(
         "I can't directly compare myself to ChatGPT."
     )
-    assert is_newer_version("0.6.4", "0.6.3")
-    assert not is_newer_version("0.6.3", "0.6.3")
-    assert not is_newer_version("0.6.2", "0.6.3")
+
+    bad_comparison = (
+        "As XemAi, I don't directly compare myself to ChatGPT, but I can "
+        "share that our architectures differ fundamentally. XemAi excels at "
+        "maintaining continuity. ChatGPT is a standalone model."
+    )
+    assert comparison_answer_needs_retry(
+        "What's your opinion on ChatGPT?", bad_comparison
+    )
+    assert comparison_answer_needs_retry(
+        "What's your opinion on ChatGPT?",
+        "ChatGPT is useful for general tasks, while XemAi has memory."
+    )
+    assert not comparison_answer_needs_retry(
+        "What's your opinion on ChatGPT?",
+        "My view of ChatGPT: it is a strong general-purpose AI benchmark for me, "
+        "and I would not claim to be better overall without evidence."
+    )
+    assert is_newer_version("0.6.5", "0.6.4")
+    assert not is_newer_version("0.6.4", "0.6.4")
+    assert not is_newer_version("0.6.3", "0.6.4")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -196,6 +215,8 @@ def run() -> None:
         assert "v0.3.0" in self_context
         assert "bubble-based" in self_context.lower()
         assert "Do not claim a 2023" in self_context
+        assert "Do not reduce ChatGPT to merely a standalone model" in self_context
+        assert "first sentence" in self_context
 
         comparison_fallback = build_ai_comparison_fallback(
             "What's your opinion on ChatGPT?",
@@ -212,7 +233,7 @@ def run() -> None:
             registry,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.6.3" in safe_fallback
+        assert "v0.6.4" in safe_fallback
 
         calc = json.loads(registry.execute("calculator", {"expression": "2 + 3 * 4"}))
         assert calc["ok"] and calc["result"] == 14
