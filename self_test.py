@@ -104,8 +104,9 @@ def run() -> None:
     assert "ensure_hybrid_worker_server_token" in worker_source
     assert '"serve"' in hybrid_setup_source
     assert '"--https={port}"' in hybrid_setup_source
-    assert "hybrid_worker_client_token" not in hybrid_setup_source
     assert "getpass.getpass" in hybrid_setup_source
+    assert "Worker token:" in hybrid_setup_source
+    assert "Bearer " not in hybrid_setup_source
 
     tools_source = (project_root / "app" / "tools.py").read_text(encoding="utf-8")
     assert "def should_research_query" in tools_source
