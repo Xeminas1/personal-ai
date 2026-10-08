@@ -583,3 +583,15 @@ Asynchronous reply transport and reliability:
 - clears the visible thinking indicator as soon as the assistant answer is persisted; automatic memory extraction can finish afterward without pretending XemAi is still composing the reply
 - limits the current single-host model runner to one generation at a time to avoid overloading the lower-spec always-on machine
 - fixes the v0.6.8 attachment upload endpoint so uploads are handled by POST rather than being accidentally placed under GET
+
+
+## v0.7.2
+
+Mobile attachment source picker:
+- tapping the composer + on phone opens a dedicated attachment sheet
+- Photo Gallery uses an image-only picker without a capture hint so Android/browser can select existing photos
+- Take Photo explicitly requests the rear-facing camera for a still image
+- Record Video explicitly requests the rear-facing camera for video
+- Files opens the normal generic file picker
+- desktop + continues to open the normal file picker directly
+- all four routes feed the existing shared attachment upload/chip system
