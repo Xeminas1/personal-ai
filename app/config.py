@@ -21,6 +21,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "update_manifest_url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/main/update_manifest.json",
     "check_updates_on_startup": True,
     "max_tool_rounds": 6,
+    "evidence_research_mode": "auto",
+    "research_max_sources": 3,
     "mobile_server_host": "127.0.0.1",
     "mobile_server_port": 8765,
     "mobile_server_autostart": True,
