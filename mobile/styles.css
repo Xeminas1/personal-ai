@@ -63,6 +63,16 @@ button { -webkit-tap-highlight-color: transparent; }
   letter-spacing: 0.2px;
   color: var(--text);
 }
+.brand-xem {
+  color: var(--text);
+}
+.brand-ai {
+  color: #8fc0ff;
+}
+.drawer-title .brand-xem,
+.drawer-title .brand-ai {
+  font-weight: 600;
+}
 .status {
   display: none;
 }
