@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.7.2";
+const FRONTEND_VERSION = "0.8.0";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
@@ -966,7 +966,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.7.2")
+  navigator.serviceWorker.register("/sw.js?v=0.8.0")
     .then((registration) => registration.update())
     .catch(() => {});
 }
