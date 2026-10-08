@@ -8,6 +8,7 @@ from pathlib import Path
 from app.capabilities import build_capability_status
 from app.database import Database
 from app.gui_backend import ChatBackend, title_from_message
+from app.llm import OllamaClient
 from app.mobile_runtime import mobile_local_url, mobile_server_version
 from app.prompts import CONSTITUTION, build_system_prompt
 from app.self_knowledge import (
@@ -43,6 +44,7 @@ def run() -> None:
     mobile_server = (project_root / "app" / "mobile_server.py").read_text(encoding="utf-8")
     config_source = (project_root / "app" / "config.py").read_text(encoding="utf-8")
     assert '"auto_install_updates": True' in config_source
+    assert '"auto_detect_ollama_model": True' in config_source
     assert '"auto_update_interval_seconds": 60' in config_source
     assert "def _auto_update_loop(server)" in mobile_server
     assert "XemAiAutoUpdater" in mobile_server
@@ -57,15 +59,22 @@ def run() -> None:
     assert 'r"/api/chats/(\\d+)/attachments"' in mobile_server
     assert "_validated_attachment_refs" in mobile_server
     assert "base64.b64decode" in mobile_server
+    llm_source = (project_root / "app" / "llm.py").read_text(encoding="utf-8")
+    assert "def discover_runtime_model" in llm_source
+    assert '"/api/ps"' in llm_source
+    assert '"/api/tags"' in llm_source
     assert "def _set_chat_activity" in mobile_server
     assert "def _get_chat_activity" in mobile_server
     assert 'r"/api/chats/(\\d+)/activity"' in mobile_server
     assert "server.chat_activity = {}" in mobile_server
+    assert '"runtime_model"' in mobile_server
+    assert '"model_source"' in mobile_server
+    assert '"installed_qwen"' in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.6.9"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.7.0"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.6.9" in mobile_html
-    assert "/styles.css?v=0.6.9" in mobile_html
+    assert "/app.js?v=0.7.0" in mobile_html
+    assert "/styles.css?v=0.7.0" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
@@ -128,6 +137,8 @@ def run() -> None:
     assert "def _expand_attachment_message" in gui_backend_source
     assert "ATTACHMENT_MARKER_PREFIX" in gui_backend_source
     assert "ATTACHMENT_TEXT_BUDGET = 8_000" in gui_backend_source
+    assert "runtime_model_info" in gui_backend_source
+    assert "refresh_runtime_model" in gui_backend_source
     assert "attachments=None" in gui_backend_source
     assert "Automatic memory extraction failed after successful reply" in gui_backend_source
     assert "Tap Retry to try the same message again." in gui_backend_source
@@ -180,9 +191,9 @@ def run() -> None:
         "I think XemAi currently lacks arbitrary shell/command execution, "
         "unrestricted filesystem access, and native image/audio analysis."
     )
-    assert is_newer_version("0.7.0", "0.6.9")
-    assert not is_newer_version("0.6.9", "0.6.9")
-    assert not is_newer_version("0.6.8", "0.6.9")
+    assert is_newer_version("0.7.1", "0.7.0")
+    assert not is_newer_version("0.7.0", "0.7.0")
+    assert not is_newer_version("0.6.9", "0.7.0")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -276,9 +287,20 @@ def run() -> None:
                 pass
 
         registry = ToolRegistry(Path(temp), Path(temp) / "data", DummyLogger())
+        runtime_info = {
+            "model": "qwen3:1.7b",
+            "source": "ollama_installed_recent",
+            "installed_qwen": ["qwen3:8b", "qwen3:4b", "qwen3:1.7b"],
+            "running_qwen": [],
+        }
         self_context = build_authoritative_self_context(
-            {"assistant_name": "XemAi", "model": "qwen3:8b", "auto_memory": True},
+            {
+                "assistant_name": "XemAi",
+                "model": "qwen3:8b",
+                "auto_memory": True,
+            },
             registry,
+            runtime_info,
         )
         assert "AUTHORITATIVE XEMAI RUNTIME SELF-KNOWLEDGE" in self_context
         assert "persistent chat history" in self_context.lower()
@@ -294,13 +316,18 @@ def run() -> None:
         assert "first sentence" in self_context
         assert "currently configured underlying local model" in self_context
         assert "qwen3:8b local model" not in self_context
+        assert "qwen3:1.7b" in self_context
+        assert "ollama_installed_recent" in self_context
+        assert "Do not infer the active model from config.json" in self_context
 
         comparison_fallback = build_ai_comparison_fallback(
             "What's your opinion on ChatGPT?",
             {"assistant_name": "XemAi", "model": "qwen3:8b"},
+            runtime_info,
         )
         assert "ChatGPT" in comparison_fallback
-        assert "qwen3:8b" in comparison_fallback
+        assert "qwen3:1.7b" in comparison_fallback
+        assert "qwen3:8b" not in comparison_fallback
         assert "without evidence" in comparison_fallback
         assert "training cutoffs" in comparison_fallback
 
@@ -308,9 +335,58 @@ def run() -> None:
             "what can you do?",
             {"assistant_name": "XemAi", "model": "qwen3:8b", "auto_memory": True},
             registry,
+            runtime_info,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.6.9" in safe_fallback
+        assert "v0.7.0" in safe_fallback
+        assert "qwen3:1.7b" in safe_fallback
+
+        ollama_probe = OllamaClient(
+            "http://ollama.invalid",
+            "qwen3:8b",
+            DummyLogger(),
+        )
+        ollama_responses = {
+            "/api/tags": {
+                "models": [
+                    {
+                        "name": "qwen3:8b",
+                        "modified_at": "2026-10-07T10:00:00Z",
+                    },
+                    {
+                        "name": "qwen3:1.7b",
+                        "modified_at": "2026-10-08T11:00:00Z",
+                    },
+                ]
+            },
+            "/api/ps": {
+                "models": [
+                    {
+                        "name": "qwen3:8b",
+                        "expires_at": "2026-10-08T17:40:00Z",
+                    }
+                ]
+            },
+        }
+        ollama_probe._request = lambda path, payload=None, timeout=600: ollama_responses[path]
+        discovered = ollama_probe.discover_runtime_model(preferred="qwen3:8b")
+        assert discovered["model"] == "qwen3:1.7b"
+        assert discovered["source"] == "ollama_installed_recent"
+        assert ollama_probe.model == "qwen3:1.7b"
+
+        ollama_responses["/api/ps"] = {
+            "models": [
+                {
+                    "name": "qwen3:4b",
+                    "expires_at": "2026-10-08T17:45:00Z",
+                }
+            ]
+        }
+        discovered_running = ollama_probe.discover_runtime_model(
+            preferred="qwen3:8b"
+        )
+        assert discovered_running["model"] == "qwen3:4b"
+        assert discovered_running["source"] == "ollama_running"
 
         calc = json.loads(registry.execute("calculator", {"expression": "2 + 3 * 4"}))
         assert calc["ok"] and calc["result"] == 14
