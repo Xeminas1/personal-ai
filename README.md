@@ -595,3 +595,19 @@ Mobile attachment source picker:
 - Files opens the normal generic file picker
 - desktop + continues to open the normal file picker directly
 - all four routes feed the existing shared attachment upload/chip system
+
+
+## v0.8.0
+
+Evidence-backed research:
+- factual and evidence-heavy queries can automatically trigger live research when web search is configured
+- XemAi ranks search results toward government, academic, peer-reviewed, standards-body and official primary sources while down-ranking social/community sources
+- the research pipeline opens the strongest pages rather than relying only on search-result snippets
+- extracts short verbatim quote candidates directly from fetched source text
+- source quotes are capped to short fragments and marked as verified only when they came from the fetched page
+- research evidence is supplied to the local model with numbered source IDs for inline citations
+- XemAi is instructed to distinguish source-backed facts from its own inference and to disclose conflicting or weak evidence
+- every researched answer appends an Evidence checked section with source title, source type, verified quote when available, and URL
+- fetched webpages are treated as untrusted evidence/data and cannot override XemAi instructions
+- if research fails to retrieve usable sources, XemAi is explicitly told not to pretend studies or sources were checked
+- evidence_research_mode defaults to auto and research_max_sources defaults to 3
