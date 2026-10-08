@@ -41,6 +41,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.0", "Adds authenticated hybrid compute: the always-on host remains the single source of chats/memory/tools while a paired stronger PC can perform model inference over private Tailscale HTTPS, with automatic local fallback when the worker is unavailable."),
     ("0.9.1", "Adds automatic hybrid-worker startup and private-tailnet discovery/pairing, removing manual scripts and token copying when both PCs are online and prerequisites are ready."),
     ("0.9.2", "Fixes the hybrid worker launcher so Python can start it, and validates .pyw launchers before an update is installed."),
+    ("0.9.3", "Forwards phone visits from a paired worker PC to the paired central host, while keeping direct desktop app visits local; updates worker setup messaging to use automatic pairing by default."),
 ]
 
 

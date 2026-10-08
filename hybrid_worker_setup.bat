@@ -11,7 +11,7 @@ if errorlevel 1 (
   ) else (
     echo XemAi needs an Administrator window once so Tailscale Serve can be configured.
     echo Requesting permission...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -ArgumentList '%XEMAI_SETUP_MODE%' -Verb RunAs"
   )
   exit /b
 )
@@ -22,6 +22,6 @@ if /i "%XEMAI_SETUP_MODE%"=="--silent" (
   exit /b %ERRORLEVEL%
 )
 
-python hybrid_setup.py worker
+python hybrid_setup.py worker %*
 echo.
 pause

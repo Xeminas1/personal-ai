@@ -21,6 +21,7 @@ from app import worker_server as worker_server_module
 from app.worker_server import XemAiWorkerHandler
 from app.llm import OllamaClient
 from app.mobile_runtime import mobile_local_url, mobile_server_version
+from app.mobile_server import _paired_host_redirect_url
 from app.prompts import CONSTITUTION, build_system_prompt
 from app.secrets import (
     claim_hybrid_worker_pairing,
@@ -181,6 +182,18 @@ def run() -> None:
     project_root = Path(__file__).resolve().parent
     assert compileall.compile_dir(project_root, quiet=1, force=True)
     py_compile.compile(str(project_root / "XemAiWorker.pyw"), doraise=True)
+    assert _paired_host_redirect_url(
+        path="/", query="", user_agent="Mozilla Android Mobile",
+        request_host="desktop.tailnet.ts.net", paired_host="laptop.tailnet.ts.net",
+    ) == "https://laptop.tailnet.ts.net/"
+    assert _paired_host_redirect_url(
+        path="/", query="desktop=1", user_agent="Mozilla Android Mobile",
+        request_host="desktop.tailnet.ts.net", paired_host="laptop.tailnet.ts.net",
+    ) is None
+    assert _paired_host_redirect_url(
+        path="/", query="", user_agent="Desktop Chrome",
+        request_host="desktop.tailnet.ts.net", paired_host="laptop.tailnet.ts.net",
+    ) is None
     assert "When directly asked for your opinion" in CONSTITUTION
     assert "You may form and express reasoned opinions" in CONSTITUTION
     assert (project_root / "XemAi.pyw").exists()
@@ -285,10 +298,10 @@ def run() -> None:
     assert '"compute_name"' in mobile_server
     assert '"worker_available"' in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.9.2"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.9.3"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.9.2" in mobile_html
-    assert "/styles.css?v=0.9.2" in mobile_html
+    assert "/app.js?v=0.9.3" in mobile_html
+    assert "/styles.css?v=0.9.3" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
@@ -454,7 +467,7 @@ def run() -> None:
         "I think XemAi currently lacks arbitrary shell/command execution, "
         "unrestricted filesystem access, and native image/audio analysis."
     )
-    assert is_newer_version("0.9.2", "0.9.0")
+    assert is_newer_version("0.9.3", "0.9.0")
     assert not is_newer_version("0.9.0", "0.9.0")
     assert not is_newer_version("0.8.0", "0.9.0")
     with tempfile.TemporaryDirectory() as temp:
@@ -677,7 +690,7 @@ def run() -> None:
             runtime_info,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.9.2" in safe_fallback
+        assert "v0.9.3" in safe_fallback
         assert "qwen3:1.7b" in safe_fallback
 
         hybrid_local = OllamaClient(

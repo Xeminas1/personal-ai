@@ -647,6 +647,13 @@ On the always-on XemAi host:
 The worker is served only within the Tailscale tailnet. Keep the pairing token private.
 
 
+## v0.9.3
+
+Hybrid handoff and setup clarity:
+- when a phone opens the worker PC’s XemAi address, it forwards the phone to the paired central host automatically
+- direct desktop app visits on the worker PC remain local
+- the normal worker setup now explains automatic pairing and no longer tells you to copy a URL/token; explicit `--manual` keeps the legacy fallback
+
 ## v0.9.2
 
 Hybrid worker startup fix:

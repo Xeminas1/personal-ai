@@ -121,7 +121,7 @@ def _test_worker(url: str, token: str) -> dict:
     return data
 
 
-def setup_worker(*, silent: bool = False) -> int:
+def setup_worker(*, silent: bool = False, manual: bool = False) -> int:
     if not silent:
         print("XemAi Hybrid Worker setup")
         print("-------------------------")
@@ -170,7 +170,7 @@ def setup_worker(*, silent: bool = False) -> int:
     startup = _install_worker_startup()
 
     health = _test_worker(url, token)
-    if not silent:
+    if not silent and manual:
         pairing = DATA_DIR / "hybrid_pairing.txt"
         pairing.write_text(
             "XemAi Hybrid Pairing\n"
@@ -191,6 +191,17 @@ def setup_worker(*, silent: bool = False) -> int:
         print("and paste the URL and token above.")
         print()
         print(f"A pairing copy was saved locally to: {pairing}")
+        print(f"Worker autostart entry: {startup}")
+    elif not silent:
+        try:
+            (DATA_DIR / "hybrid_pairing.txt").unlink()
+        except OSError:
+            pass
+        print()
+        print("Hybrid worker is ready for automatic pairing.")
+        print(f"Model: {health.get('recommended_model', 'unknown')}")
+        print("Keep XemAi running on the always-on host; it will discover this worker automatically.")
+        print("Do not copy the worker URL or token into the phone.")
         print(f"Worker autostart entry: {startup}")
     return 0
 
@@ -233,9 +244,10 @@ def setup_host() -> int:
 def main() -> int:
     mode = (sys.argv[1] if len(sys.argv) > 1 else "").strip().lower()
     silent = "--silent" in sys.argv[2:]
+    manual = "--manual" in sys.argv[2:]
     try:
         if mode == "worker":
-            return setup_worker(silent=silent)
+            return setup_worker(silent=silent, manual=manual)
         if mode == "host":
             return setup_host()
         print("Usage: python hybrid_setup.py worker|host")

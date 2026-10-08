@@ -12,13 +12,14 @@ import time
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from .config import DATA_DIR, LOG_DIR, load_config
 from .database import Database
 from .gui_backend import ChatBackend
 from .hybrid_autosetup import start_hybrid_auto_setup
 from .logging_setup import setup_logging
+from .secrets import load_hybrid_pairing_state
 from .version import VERSION
 
 
@@ -27,6 +28,31 @@ MOBILE_DIR = BASE_DIR / "mobile"
 MAX_BODY = 8_000_000
 MAX_ATTACHMENT_BYTES = 5_000_000
 MAX_ATTACHMENTS_PER_MESSAGE = 3
+
+
+def _paired_host_redirect_url(
+    *, path: str, query: str, user_agent: str, request_host: str, paired_host: str
+) -> str | None:
+    """Forward phone visits on the worker PC to the paired central host."""
+    if path not in {"", "/", "/index.html"}:
+        return None
+    if "1" in parse_qs(query).get("desktop", []):
+        return None
+    user_agent = user_agent.lower()
+    if not any(marker in user_agent for marker in ("android", "iphone", "mobile")):
+        return None
+    paired_host = paired_host.strip().rstrip(".")
+    if (
+        not paired_host
+        or len(paired_host) > 255
+        or not re.fullmatch(r"[A-Za-z0-9.-]+", paired_host)
+        or ".." in paired_host
+    ):
+        return None
+    current_host = request_host.split(":", 1)[0].strip().rstrip(".").lower()
+    if current_host == paired_host.lower():
+        return None
+    return f"https://{paired_host}/"
 
 
 def _pythonw_executable() -> Path:
@@ -421,6 +447,21 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
+
+        redirect_url = _paired_host_redirect_url(
+            path=path,
+            query=parsed.query,
+            user_agent=self.headers.get("User-Agent", ""),
+            request_host=self.headers.get("Host", ""),
+            paired_host=load_hybrid_pairing_state(DATA_DIR).get("host_id", ""),
+        )
+        if redirect_url:
+            self.send_response(HTTPStatus.FOUND)
+            self.send_header("Location", redirect_url)
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Vary", "User-Agent")
+            self.end_headers()
+            return
 
         if path == "/api/health":
             self._json({
