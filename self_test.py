@@ -11,7 +11,10 @@ from app.gui_backend import ChatBackend, title_from_message
 from app.mobile_runtime import mobile_local_url, mobile_server_version
 from app.prompts import CONSTITUTION, build_system_prompt
 from app.self_knowledge import (
+    build_ai_comparison_fallback,
     build_authoritative_self_context,
+    build_self_knowledge_fallback,
+    is_ai_comparison_query,
     is_self_knowledge_query,
     looks_like_stale_self_description,
 )
@@ -45,7 +48,7 @@ def run() -> None:
     assert "/app.js?v=0.6.2" in mobile_html
     assert "/styles.css?v=0.6.2" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
-    assert "backdrop-filter: blur(14px)" in mobile_css
+    assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
     assert "margin-left: 318px" in mobile_css
     assert "font-size: 18px;" in mobile_css
@@ -58,6 +61,10 @@ def run() -> None:
     assert "function setBrand(name)" in mobile_js
     assert "rgba(14, 70, 116, 0.62)" in mobile_css
     assert 'chatTitle: $("chatTitle")' not in mobile_js
+    gui_backend_source = (project_root / "app" / "gui_backend.py").read_text(encoding="utf-8")
+    assert "Rejected stale XemAi self-description draft" in gui_backend_source
+    assert "build_ai_comparison_fallback" in gui_backend_source
+    assert "build_self_knowledge_fallback" in gui_backend_source
     desktop_ui = (project_root / "ui.py").read_text(encoding="utf-8")
     assert 'row["updated_at"]' in desktop_ui
     assert 'row.get("updated_at")' not in desktop_ui
@@ -71,12 +78,21 @@ def run() -> None:
     assert XemAiApp._format_time(None, "2026-10-08T01:41:00+01:00") is not None
     assert "desktop_startup_error.log" in (project_root / "XemAi.pyw").read_text(encoding="utf-8")
     assert is_self_knowledge_query("what do you think your ai is missing?")
+    assert is_ai_comparison_query("What's your opinion on ChatGPT?")
+    assert is_self_knowledge_query("What's your opinion on ChatGPT?")
+    assert is_ai_comparison_query("Are you better than ChatGPT?")
     assert is_self_knowledge_query("through your iterative updates, can you recognise whats been added?")
     assert not is_self_knowledge_query("help me design a Skyrim perk")
     assert looks_like_stale_self_description("I have no live web search and my training ends in 2023.")
-    assert is_newer_version("0.6.3", "0.6.2")
-    assert not is_newer_version("0.6.2", "0.6.2")
-    assert not is_newer_version("0.6.1", "0.6.2")
+    assert looks_like_stale_self_description(
+        "I'm not ChatGPT, and I don't claim to be any specific AI. My training data ends in 2023."
+    )
+    assert looks_like_stale_self_description(
+        "I can't directly compare myself to ChatGPT."
+    )
+    assert is_newer_version("0.6.4", "0.6.3")
+    assert not is_newer_version("0.6.3", "0.6.3")
+    assert not is_newer_version("0.6.2", "0.6.3")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -180,6 +196,23 @@ def run() -> None:
         assert "v0.3.0" in self_context
         assert "bubble-based" in self_context.lower()
         assert "Do not claim a 2023" in self_context
+
+        comparison_fallback = build_ai_comparison_fallback(
+            "What's your opinion on ChatGPT?",
+            {"assistant_name": "XemAi", "model": "qwen3:8b"},
+        )
+        assert "ChatGPT" in comparison_fallback
+        assert "qwen3:8b" in comparison_fallback
+        assert "without evidence" in comparison_fallback
+        assert "training-cutoff" in comparison_fallback
+
+        safe_fallback = build_self_knowledge_fallback(
+            "what can you do?",
+            {"assistant_name": "XemAi", "model": "qwen3:8b", "auto_memory": True},
+            registry,
+        )
+        assert "I am XemAi" in safe_fallback
+        assert "v0.6.3" in safe_fallback
 
         calc = json.loads(registry.execute("calculator", {"expression": "2 + 3 * 4"}))
         assert calc["ok"] and calc["result"] == 14
