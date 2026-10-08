@@ -397,61 +397,6 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     backend.close()
             return
 
-        match = re.fullmatch(r"/api/chats/(\d+)/attachments", path)
-        if match:
-            backend = None
-            try:
-                chat_id = int(match.group(1))
-                backend = self._backend()
-                chat = backend.get_chat(chat_id)
-                if chat is None or chat["user_id"] != backend.user["id"]:
-                    self._error("Chat not found.", HTTPStatus.NOT_FOUND)
-                    return
-
-                original_name = Path(str(body.get("name", "")).strip()).name
-                if not original_name:
-                    self._error("A file name is required.")
-                    return
-
-                encoded = str(body.get("data", "")).strip()
-                if not encoded:
-                    self._error("File data is required.")
-                    return
-                try:
-                    raw = base64.b64decode(encoded, validate=True)
-                except Exception:
-                    self._error("Attachment data is not valid base64.")
-                    return
-                if len(raw) > MAX_ATTACHMENT_BYTES:
-                    self._error(
-                        f"Files are limited to {MAX_ATTACHMENT_BYTES // 1_000_000} MB."
-                    )
-                    return
-
-                safe_name = re.sub(
-                    r"[^A-Za-z0-9._ ()\-]+", "_", original_name
-                ).strip(" .")[:120] or "attachment"
-                stored_name = f"{time.time_ns()}_{safe_name}"
-                target = _attachment_root(chat_id) / stored_name
-                target.write_bytes(raw)
-
-                attachment = {
-                    "name": original_name[:160],
-                    "path": str(target.relative_to(DATA_DIR)).replace("\\", "/"),
-                    "mime": str(body.get("mime", "application/octet-stream"))[:120],
-                    "size": len(raw),
-                }
-                self._json(
-                    {"ok": True, "attachment": attachment},
-                    HTTPStatus.CREATED,
-                )
-            except Exception as e:
-                self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
-            finally:
-                if backend:
-                    backend.close()
-            return
-
         match = re.fullmatch(r"/api/chats/(\d+)/activity", path)
         if match:
             chat_id = int(match.group(1))
@@ -560,6 +505,61 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                 chat = backend.create_chat()
                 self._json(
                     {"ok": True, "chat": _row_dict(chat)},
+                    HTTPStatus.CREATED,
+                )
+            except Exception as e:
+                self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
+            finally:
+                if backend:
+                    backend.close()
+            return
+
+        match = re.fullmatch(r"/api/chats/(\d+)/attachments", path)
+        if match:
+            backend = None
+            try:
+                chat_id = int(match.group(1))
+                backend = self._backend()
+                chat = backend.get_chat(chat_id)
+                if chat is None or chat["user_id"] != backend.user["id"]:
+                    self._error("Chat not found.", HTTPStatus.NOT_FOUND)
+                    return
+
+                original_name = Path(str(body.get("name", "")).strip()).name
+                if not original_name:
+                    self._error("A file name is required.")
+                    return
+
+                encoded = str(body.get("data", "")).strip()
+                if not encoded:
+                    self._error("File data is required.")
+                    return
+                try:
+                    raw = base64.b64decode(encoded, validate=True)
+                except Exception:
+                    self._error("Attachment data is not valid base64.")
+                    return
+                if len(raw) > MAX_ATTACHMENT_BYTES:
+                    self._error(
+                        f"Files are limited to {MAX_ATTACHMENT_BYTES // 1_000_000} MB."
+                    )
+                    return
+
+                safe_name = re.sub(
+                    r"[^A-Za-z0-9._ ()\-]+", "_", original_name
+                ).strip(" .")[:120] or "attachment"
+                stored_name = f"{time.time_ns()}_{safe_name}"
+                target = _attachment_root(chat_id) / stored_name
+                target.write_bytes(raw)
+
+                attachment = {
+                    "name": original_name[:160],
+                    "path": str(target.relative_to(DATA_DIR)).replace("\\", "/"),
+                    "mime": str(body.get("mime", "application/octet-stream"))[:120],
+                    "size": len(raw),
+                }
+                self._json(
+                    {"ok": True, "attachment": attachment},
                     HTTPStatus.CREATED,
                 )
             except Exception as e:
