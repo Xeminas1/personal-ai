@@ -543,3 +543,16 @@ Shared file attachments:
 - up to 3 files can be attached to one message, currently limited to 5 MB each
 - text, code, logs, configuration, JSON/CSV/XML/YAML and similar text formats are supplied directly to the local model, with an 8,000-character attachment context budget per message
 - binary files are stored on the host and shown in the conversation, but their contents are not falsely presented as readable by the current text-only model
+
+
+## v0.6.9
+
+Message metadata and activity feedback:
+- shows a local-time timestamp under every stored user and assistant message
+- user metadata is right-aligned with the user's name at the far-right edge of the bubble
+- user messages show Sent · time · name
+- assistant messages show XemAi · time on the left
+- replaces the plain thinking pill with an animated working indicator
+- long-running requests progress from XemAi is thinking to XemAi is still thinking and XemAi is still working
+- active reply state is shared by chat, so another open phone/desktop viewing the same chat can see that XemAi is working
+- does not fake a typing state before true token streaming exists
