@@ -38,6 +38,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.7.1", "Makes reply generation asynchronous so phone/desktop requests return immediately while the host continues working, avoids false Failed to fetch reply failures on long generations, clears thinking when the reply is saved, and repairs the attachment upload POST route."),
     ("0.7.2", "Adds a mobile attachment source sheet with Photo Gallery, Take Photo, Record Video and Files while keeping desktop + as a normal file picker."),
     ("0.8.0", "Adds automatic evidence-backed research for factual queries: XemAi ranks reputable sources, fetches the strongest pages, extracts short verified verbatim quotes, cites numbered sources, and appends the evidence it actually checked."),
+    ("0.9.0", "Adds authenticated hybrid compute: the always-on host remains the single source of chats/memory/tools while a paired stronger PC can perform model inference over private Tailscale HTTPS, with automatic local fallback when the worker is unavailable."),
 ]
 
 
@@ -262,8 +263,10 @@ habit that conflicts with it.
 
 Current application version: v{VERSION}
 Assistant identity: {config.get("assistant_name", "XemAi")}
-Underlying local language model actually selected at runtime: {runtime_model}
+Underlying language model actually selected at runtime: {runtime_model}
 Model-selection source: {runtime_model_info.get("source", "configured_fallback")}
+Compute route: {runtime_model_info.get("compute", "local_host")}
+Compute machine: {runtime_model_info.get("compute_name", "Always-on host")}
 
 CURRENT CAPABILITIES
 {capability_text}
@@ -285,6 +288,12 @@ IMPORTANT CORRECTIONS
   Text/code/log/config attachments can be read into model context. Binary formats
   can be stored and synchronized but require future document/vision parsers for
   their contents to be understood.
+- XemAi DOES support authenticated hybrid compute when paired: chats, memory,
+  research and tools stay on the always-on host while model inference can run
+  on a stronger PC over private Tailscale HTTPS. If that worker is unavailable,
+  model inference falls back to the host's local Ollama.
+- The runtime compute/model lines above are authoritative for where the current
+  process intends to generate.
 - XemAi DOES have calculator and current-time tools.
 - XemAi DOES receive recent 0-10 feedback as response-optimisation context.
 - Do not claim a 2023 or any other training cutoff unless verified model
@@ -339,8 +348,10 @@ CURRENT GAPS / LIMITS
   fine-tune the model weights.
 - Memory retrieval is still relatively simple compared with a mature semantic
   retrieval/evidence system.
-- The currently configured underlying local model can still be a reasoning/quality
+- The currently selected underlying model can still be a reasoning/quality
   bottleneck on hard tasks even when the surrounding XemAi application is capable.
+- Hybrid compute improves access to stronger local hardware; it does not by itself
+  prove frontier-model reasoning or benchmark parity.
 
 When the user asks what XemAi is missing, reason from CURRENT GAPS / LIMITS and
 the user's project goals. When the user asks what has been added, use KNOWN
@@ -360,7 +371,7 @@ def build_ai_comparison_fallback(
         f"My view of {subject}: it is a strong general-purpose AI benchmark "
         "for me, and at my current stage I would not claim to be better "
         "overall without evidence. "
-        f"My underlying local model is {model}, which may be a bottleneck on "
+        f"My underlying model is {model}, which may be a bottleneck on "
         "difficult reasoning, coding, and broad-knowledge tasks. XemAi as a "
         "whole is being built differently around persistent local memory, "
         "continuity across your projects, user-specific context, local control, "
@@ -387,7 +398,7 @@ def build_self_knowledge_fallback(
     capability_text = "; ".join(capabilities[:8])
     return (
         f"I am {assistant}, currently running as XemAi v{VERSION} with {model} "
-        "as my underlying local language model. I should answer questions about "
+        "as my underlying language model. I should answer questions about "
         "my identity and capabilities from the running application, not from a "
         "generic pretrained model self-description. Verified capabilities "
         f"currently include: {capability_text}. I will not invent a training "
