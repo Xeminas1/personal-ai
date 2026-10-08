@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>XemAi</title>
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="stylesheet" href="/styles.css?v=0.7.1">
+  <link rel="stylesheet" href="/styles.css?v=0.7.2">
 </head>
 <body>
   <div id="app">
@@ -18,7 +18,7 @@
       <button id="menuBtn" class="icon-btn" aria-label="Chats">☰</button>
       <div class="brand-wrap">
         <div id="brand" class="brand"><span class="brand-xem">Xem</span><span class="brand-ai">Ai</span></div>
-        <div id="versionBadge" class="version-badge">v0.7.1</div>
+        <div id="versionBadge" class="version-badge">v0.7.2</div>
         <div id="status" class="status">Connecting…</div>
       </div>
       <button id="moreBtn" class="icon-btn" aria-label="More">⋯</button>
@@ -45,7 +45,33 @@
       <div id="thinking" class="thinking hidden" role="status" aria-live="polite"><span class="thinking-label">XemAi is thinking</span><span class="thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
 
       <div id="attachmentTray" class="attachment-tray hidden"></div>
+      <input id="galleryInput" type="file" accept="image/*" multiple hidden>
+      <input id="cameraPhotoInput" type="file" accept="image/*" capture="environment" hidden>
+      <input id="cameraVideoInput" type="file" accept="video/*" capture="environment" hidden>
       <input id="fileInput" type="file" multiple hidden>
+
+      <div id="attachmentMenuScrim" class="attachment-menu-scrim hidden"></div>
+      <section id="attachmentMenu" class="attachment-menu hidden" aria-label="Add attachment">
+        <div class="attachment-menu-handle"></div>
+        <button id="galleryBtn" type="button" class="attachment-menu-item">
+          <span class="attachment-menu-icon">▣</span>
+          <span>Photo Gallery</span>
+        </button>
+        <button id="cameraPhotoBtn" type="button" class="attachment-menu-item">
+          <span class="attachment-menu-icon">◉</span>
+          <span>Take Photo</span>
+        </button>
+        <button id="cameraVideoBtn" type="button" class="attachment-menu-item">
+          <span class="attachment-menu-icon">▶</span>
+          <span>Record Video</span>
+        </button>
+        <button id="filesBtn" type="button" class="attachment-menu-item">
+          <span class="attachment-menu-icon">⌑</span>
+          <span>Files</span>
+        </button>
+        <button id="attachmentMenuCancel" type="button" class="attachment-menu-cancel">Cancel</button>
+      </section>
+
       <form id="composer" class="composer">
         <button id="newBtn" type="button" class="composer-plus" aria-label="Attach file">＋</button>
         <textarea id="input" rows="1" maxlength="50000" placeholder="Message XemAi..." autocomplete="off"></textarea>
@@ -61,6 +87,6 @@
     <div id="modalActions" class="modal-actions"></div>
   </dialog>
 
-  <script src="/app.js?v=0.7.1" defer></script>
+  <script src="/app.js?v=0.7.2" defer></script>
 </body>
 </html>
