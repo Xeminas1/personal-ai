@@ -7,6 +7,7 @@ import os
 import py_compile
 import threading
 import tempfile
+import urllib.request
 from http import HTTPStatus
 from pathlib import Path
 from types import SimpleNamespace
@@ -169,7 +170,7 @@ def test_hybrid_auto_discovery() -> None:
                  ["small.tailnet.ts.net", "strong.tailnet.ts.net"],
              )), \
              patch.object(hybrid_autosetup, "_request_json", side_effect=fake_request), \
-             patch("app.hybrid_autosetup.urllib.request.urlopen", return_value=Response()):
+             patch.object(hybrid_autosetup, "open_model_request", return_value=Response()):
             assert hybrid_autosetup.try_auto_pair() is True
         assert config["hybrid_enabled"] is True
         assert config["hybrid_worker_url"] == "https://strong.tailnet.ts.net:8766"
@@ -178,7 +179,54 @@ def test_hybrid_auto_discovery() -> None:
         assert claims[0][0].startswith("https://strong.tailnet.ts.net:8766")
 
 
+def test_host_setup() -> None:
+    import hybrid_setup
+    with patch.object(hybrid_setup, "try_auto_pair", return_value=True), \
+         patch("builtins.input", side_effect=AssertionError("Automatic pairing must not ask for a token")), \
+         patch("sys.stdout", new=io.StringIO()):
+        assert hybrid_setup.setup_host() == 0
+    for token in ("bad\x16token", "bad token", "bad\ntoken"):
+        with patch("builtins.input", return_value="https://worker.tailnet.ts.net:8766"), \
+             patch.object(hybrid_setup.getpass, "getpass", return_value=token), \
+             patch.object(hybrid_setup, "_test_worker") as health, \
+             patch("sys.stdout", new=io.StringIO()):
+            assert hybrid_setup.setup_host(manual=True) == 1
+            health.assert_not_called()
+    with patch("builtins.input", return_value="https://worker.tailnet.ts.net:8766"), \
+         patch.object(hybrid_setup.getpass, "getpass", return_value="a" * 43), \
+         patch.object(hybrid_setup, "_test_worker", return_value={"ok": True, "recommended_model": "qwen3:8b"}), \
+         patch.object(hybrid_setup, "_tailscale_exe", return_value="tailscale"), \
+         patch.object(hybrid_setup, "_tailscale_dns_name", return_value="laptop.tailnet.ts.net"), \
+         patch.object(hybrid_setup, "_request_json", return_value={"ok": True}) as claim, \
+         patch.object(hybrid_setup, "load_config", return_value={}), \
+         patch.object(hybrid_setup, "save_config") as save, \
+         patch.object(hybrid_setup, "save_hybrid_worker_client_token"), \
+         patch("sys.stdout", new=io.StringIO()):
+        assert hybrid_setup.setup_host(manual=True) == 0
+        assert claim.call_args.kwargs["payload"]["host_id"] == "laptop.tailnet.ts.net"
+        assert save.call_args.args[0]["hybrid_enabled"] is True
+
+
 def run() -> None:
+    test_host_setup()
+    from app.llm import open_model_request
+    for url in (
+        "https://reece-pc.tail52254c.ts.net:8766/api/health",
+        "http://127.0.0.1:11434/api/tags",
+        "http://100.112.76.38:8766/api/health",
+        "http://[fd7a:115c:a1e0::1]:8766/api/health",
+    ):
+        with patch("app.llm.urllib.request.build_opener") as direct, \
+             patch("app.llm.urllib.request.urlopen") as proxied:
+            request = urllib.request.Request(url)
+            open_model_request(request, timeout=4)
+            direct.return_value.open.assert_called_once_with(request, timeout=4)
+            proxied.assert_not_called()
+    with patch("app.llm.urllib.request.build_opener") as direct, \
+         patch("app.llm.urllib.request.urlopen") as proxied:
+        open_model_request("https://models.example.com/api/health", timeout=4)
+        direct.assert_not_called()
+        proxied.assert_called_once()
     project_root = Path(__file__).resolve().parent
     assert compileall.compile_dir(project_root, quiet=1, force=True)
     py_compile.compile(str(project_root / "XemAiWorker.pyw"), doraise=True)
@@ -189,10 +237,30 @@ def run() -> None:
     assert _paired_host_redirect_url(
         path="/", query="desktop=1", user_agent="Mozilla Android Mobile",
         request_host="desktop.tailnet.ts.net", paired_host="laptop.tailnet.ts.net",
-    ) is None
+    ) == "https://laptop.tailnet.ts.net/?desktop=1"
     assert _paired_host_redirect_url(
         path="/", query="", user_agent="Desktop Chrome",
         request_host="desktop.tailnet.ts.net", paired_host="laptop.tailnet.ts.net",
+    ) == "https://laptop.tailnet.ts.net/"
+    assert _paired_host_redirect_url(
+        path="/", query="desktop=1", user_agent="Desktop Edge",
+        request_host="127.0.0.1:8765", paired_host="laptop.tailnet.ts.net",
+    ) == "https://laptop.tailnet.ts.net/?desktop=1"
+    assert _paired_host_redirect_url(
+        path="/", query="", user_agent="Desktop Edge",
+        request_host="laptop.tailnet.ts.net", paired_host="laptop.tailnet.ts.net",
+    ) is None
+    assert _paired_host_redirect_url(
+        path="/api/health", query="", user_agent="Desktop Edge",
+        request_host="127.0.0.1:8765", paired_host="laptop.tailnet.ts.net",
+    ) is None
+    assert _paired_host_redirect_url(
+        path="/", query="", user_agent="Desktop Edge",
+        request_host="127.0.0.1:8765", paired_host="",
+    ) is None
+    assert _paired_host_redirect_url(
+        path="/", query="", user_agent="Desktop Edge",
+        request_host="127.0.0.1:8765", paired_host="evil.example/path",
     ) is None
     assert "When directly asked for your opinion" in CONSTITUTION
     assert "You may form and express reasoned opinions" in CONSTITUTION
@@ -298,10 +366,10 @@ def run() -> None:
     assert '"compute_name"' in mobile_server
     assert '"worker_available"' in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.9.3"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.9.4"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.9.3" in mobile_html
-    assert "/styles.css?v=0.9.3" in mobile_html
+    assert "/app.js?v=0.9.4" in mobile_html
+    assert "/styles.css?v=0.9.4" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
@@ -690,7 +758,7 @@ def run() -> None:
             runtime_info,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.9.3" in safe_fallback
+        assert "v0.9.4" in safe_fallback
         assert "qwen3:1.7b" in safe_fallback
 
         hybrid_local = OllamaClient(

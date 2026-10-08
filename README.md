@@ -1,5 +1,31 @@
 # Personal AI v0.1
 
+## v0.9.4 hybrid pairing and shared chats
+
+- Paired worker PCs open the central laptop's chat interface on desktop and phone.
+- Private Tailscale model requests bypass Windows HTTP proxies while retaining TLS verification.
+- Host setup tries automatic pairing before asking for a token. Manual pairing now registers the laptop identity on the worker.
+- Worker setup retries incomplete startup instead of treating a launch attempt as success.
+- Manual setup rejects malformed pasted tokens before sending authentication headers.
+
+Update both PCs, leave the laptop server running, and open XemAi on the stronger
+PC. Approve worker setup if prompted. Automatic discovery retries while the
+worker starts. The laptop retains all shared chats; old worker-local chats are
+preserved separately. If automatic pairing is unavailable, run
+`hybrid_host_setup.bat` on the laptop; `--manual` explicitly selects manual mode.
+
+### Shared desktop and phone chats on a paired worker
+
+Once the stronger PC's inference worker is paired with the always-on laptop,
+opening the normal XemAi desktop app on the stronger PC forwards its chat
+interface to the laptop, just like a phone visit. Both interfaces then use the
+laptop's shared chats and compute routing; the stronger PC remains an inference
+worker. The laptop must be online and reachable through Tailscale.
+
+Chats previously created in the stronger PC's local database are preserved but
+are not automatically copied to the laptop. An unpaired PC still opens its local
+interface. The legacy native desktop and console interfaces also remain local.
+
 A local-first prototype of your independent personal AI.
 
 ## What this version already does

@@ -33,13 +33,8 @@ MAX_ATTACHMENTS_PER_MESSAGE = 3
 def _paired_host_redirect_url(
     *, path: str, query: str, user_agent: str, request_host: str, paired_host: str
 ) -> str | None:
-    """Forward phone visits on the worker PC to the paired central host."""
+    """Use the paired central host for every worker-PC chat interface."""
     if path not in {"", "/", "/index.html"}:
-        return None
-    if "1" in parse_qs(query).get("desktop", []):
-        return None
-    user_agent = user_agent.lower()
-    if not any(marker in user_agent for marker in ("android", "iphone", "mobile")):
         return None
     paired_host = paired_host.strip().rstrip(".")
     if (
@@ -52,7 +47,8 @@ def _paired_host_redirect_url(
     current_host = request_host.split(":", 1)[0].strip().rstrip(".").lower()
     if current_host == paired_host.lower():
         return None
-    return f"https://{paired_host}/"
+    desktop = "?desktop=1" if "1" in parse_qs(query).get("desktop", []) else ""
+    return f"https://{paired_host}/{desktop}"
 
 
 def _pythonw_executable() -> Path:

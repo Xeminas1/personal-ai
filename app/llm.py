@@ -1,9 +1,30 @@
 from __future__ import annotations
 
 import json
+import ipaddress
 import urllib.error
 import urllib.request
+from urllib.parse import urlparse
 from typing import Any
+
+
+def open_model_request(request, *, timeout):
+    """Reach loopback and private Tailscale models without system proxies."""
+    url = request.full_url if isinstance(request, urllib.request.Request) else request
+    host = (urlparse(url).hostname or "").lower().rstrip(".")
+    direct = host == "localhost" or host.endswith(".ts.net")
+    try:
+        address = ipaddress.ip_address(host)
+        direct = direct or address.is_loopback or (
+            address.version == 4 and address in ipaddress.ip_network("100.64.0.0/10")
+        ) or address in ipaddress.ip_network("fd7a:115c:a1e0::/48")
+    except ValueError:
+        pass
+    if direct:
+        return urllib.request.build_opener(urllib.request.ProxyHandler({})).open(
+            request, timeout=timeout
+        )
+    return urllib.request.urlopen(request, timeout=timeout)
 
 
 class OllamaError(RuntimeError):
@@ -48,7 +69,7 @@ class OllamaClient:
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as response:
+            with open_model_request(req, timeout=timeout) as response:
                 raw = response.read().decode("utf-8")
                 return json.loads(raw) if raw else {}
         except urllib.error.HTTPError as e:

@@ -1,210 +1,210 @@
 {
-  "version": "0.9.3",
-  "notes": "Hybrid handoff: after the worker is paired with the always-on host, phone visits to the worker PC address automatically forward to the paired host, while desktop app sessions remain local. Worker setup now describes automatic pairing by default and only shows/copies tokens in explicit manual mode.",
+  "version": "0.9.4",
+  "notes": "Hybrid repair: desktop and phone on paired worker PCs use the shared laptop host. Private Tailscale model requests bypass system proxies with TLS verification preserved. Host setup tries automatic pairing without copied tokens; manual pairing registers the host identity and rejects malformed token headers. Incomplete worker startup is retried.",
   "files": [
     {
       "path": "LegacyDesktop.pyw",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/LegacyDesktop.pyw",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/LegacyDesktop.pyw",
       "sha256": "d55c5cf7c2d4eccb52607797e4f857185d0e1090b304519c2cc81f12f3f8517c"
     },
     {
       "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/README.md",
-      "sha256": "0d258369583e8add41e8dd5c793c5904877479a6d22c17040252e5d19a78c56b"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/README.md",
+      "sha256": "7a42176a69c8168b8ba2f4c1a5e570ac491f3ff4f6341f28b026b4593edcea1f"
     },
     {
       "path": "XemAi.pyw",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/XemAi.pyw",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/XemAi.pyw",
       "sha256": "17b21b1a6440fe59d9b5549f32ea9196090dbfe15b003201da6482f0f4dc1969"
     },
     {
       "path": "XemAiServer.pyw",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/XemAiServer.pyw",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/XemAiServer.pyw",
       "sha256": "e847c86585c36d4a3fe889d3b1bd70174296f5652667a27d6b5593b2877c87c1"
     },
     {
       "path": "XemAiWorker.pyw",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/XemAiWorker.pyw",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/XemAiWorker.pyw",
       "sha256": "615041b36a415e30a8c214ac574b9096f9aa513acbb6ad2e69ae62174c9cfb7a"
     },
     {
       "path": "app/__init__.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/__init__.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/__init__.py",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
       "path": "app/capabilities.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/capabilities.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/capabilities.py",
       "sha256": "ffd95b50eb4bf518248102f65666499970d9fa6216982625f784955cfb561d94"
     },
     {
       "path": "app/config.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/config.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/config.py",
       "sha256": "d6f59b035d732bc9018aba2f7cdd1fb660f7948a758d4df72872cfc4f2fc952d"
     },
     {
       "path": "app/database.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/database.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/database.py",
       "sha256": "33805ea6c8a44ce92f202affd4aa1218b4dbe68701ab366aacf0fccfb23a6cd4"
     },
     {
       "path": "app/gui_backend.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/gui_backend.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/gui_backend.py",
       "sha256": "5adb4bae1e9fb8709f7b628810416c5f1f6888c1c794eb53ba98acdd81a8cfed"
     },
     {
       "path": "app/hybrid.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/hybrid.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/hybrid.py",
       "sha256": "4522059632b64fb0e9bd218021ade7fe0af54af95ac4357be08cbdfeadd6fa8f"
     },
     {
       "path": "app/hybrid_autosetup.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/hybrid_autosetup.py",
-      "sha256": "36f0f8c417362d48fc6fa032ec5c686c57856aa06c02e6762fb53710ff323ec3"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/hybrid_autosetup.py",
+      "sha256": "91554a1250f853aa3f9daadfe36af24f7c731e66b490bec7bad33dbfd3ce8cb9"
     },
     {
       "path": "app/learning.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/learning.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/learning.py",
       "sha256": "ec1d9238278f87d2f1987f5a3ce36e0b830d50ec701f415b4f559bfa334bda17"
     },
     {
       "path": "app/llm.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/llm.py",
-      "sha256": "735d3737f78c0b43d69cb119bca30a83b51ef9c68ffc094077ad7dd8143fd4cd"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/llm.py",
+      "sha256": "3542f596cbdbf29064446c11a8e7a2e6867b1feaf6c9d3a5236ce86f4e9908a4"
     },
     {
       "path": "app/logging_setup.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/logging_setup.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/logging_setup.py",
       "sha256": "e0ca68985d496023a42566eee84bc069b42e94219c5be486ed8bdaf3ea616dbd"
     },
     {
       "path": "app/mobile_runtime.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/mobile_runtime.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/mobile_runtime.py",
       "sha256": "77d5b57f1102e2f0722aa9be1e810cfab38e7aeee9909d9da76d9322fb613b56"
     },
     {
       "path": "app/mobile_server.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/mobile_server.py",
-      "sha256": "27e67bdb2af7f2faacfc3cfaca68acc30fd62c5df288ccc71d03a2575c68cd1b"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/mobile_server.py",
+      "sha256": "d99d1e8eded029a1df12f60074d0f0b12d214bdbc84c453f7a1e44ce4d00a6f3"
     },
     {
       "path": "app/prompts.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/prompts.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/prompts.py",
       "sha256": "712f62a02a100603b2bf9ed4fd01ba40b97768a9237bf56f9ceb100c9b4ee311"
     },
     {
       "path": "app/secrets.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/secrets.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/secrets.py",
       "sha256": "e85396e25df67f98b0271b8b6309741b46be837406c00673d841cf368d920e3b"
     },
     {
       "path": "app/self_knowledge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/self_knowledge.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/self_knowledge.py",
       "sha256": "cf683ad651847a119be68b1a540c7100fe042bb3e65cba2145c864668161e068"
     },
     {
       "path": "app/tools.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/tools.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/tools.py",
       "sha256": "98ac829a61ae4d657e4ff9b420c3508b8f452760906663a6444e501713a1da43"
     },
     {
       "path": "app/updater.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/updater.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/updater.py",
       "sha256": "bf18212a94e86ea4dcb3cd3ad3b528cedd1516533ac3e9ec7efa91d46a106895"
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/version.py",
-      "sha256": "fd61ce1593b9f1ccb603f23318d531ba7055ac6bab3b7ee58b55400051a6f7d3"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/version.py",
+      "sha256": "c8da8354d9dc16929331a205fa026be95d2b8b762b3c5f8fc53abdabeb089885"
     },
     {
       "path": "app/worker_server.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/app/worker_server.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/app/worker_server.py",
       "sha256": "14d6ca1e22da693fbd2c9c752ae43d78b44eaf42c0cb95bcfad87a0c2ede6ae4"
     },
     {
       "path": "console.bat",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/console.bat",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/console.bat",
       "sha256": "0ddef333be736e1cfb42f1facd89d358d9b8346696f7539c94958535eb770ca1"
     },
     {
       "path": "hybrid_host_setup.bat",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/hybrid_host_setup.bat",
-      "sha256": "4b96b3d5f0deeea7f10baa39006025fd4797845f21dad53b7d19a490c9509c54"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/hybrid_host_setup.bat",
+      "sha256": "7309f586b5fdf9b9a3b1d7d888958e47d8327c7e93aa6efc66e69e9f5d2e9b59"
     },
     {
       "path": "hybrid_setup.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/hybrid_setup.py",
-      "sha256": "db8cd39b33514aa31a77b510c9c63003e7c7ff8470e5fab75ed8396abdcc0265"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/hybrid_setup.py",
+      "sha256": "24f2f1292e95707fc3bc1f464b691d0e9669f89f6e0ad624628017897268359b"
     },
     {
       "path": "hybrid_worker_setup.bat",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/hybrid_worker_setup.bat",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/hybrid_worker_setup.bat",
       "sha256": "5693223e7de2fe6030f48ece34a23e91523d46095cddcf0c66732dbc6e633bfe"
     },
     {
       "path": "main.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/main.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/main.py",
       "sha256": "15e94976502fb705966a8944f67446eca83d2aef478040e43fbcf827bd65523e"
     },
     {
       "path": "mobile/app.js",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/mobile/app.js",
-      "sha256": "b52fd1f2824d08dfee2f250e4db9deb85ed669a260f27bec5abd721850d3faab"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/mobile/app.js",
+      "sha256": "1834c021a01ce37e3829032e8ebdfedb0577d8f85a2fbed67b222f706ab85b8a"
     },
     {
       "path": "mobile/index.html",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/mobile/index.html",
-      "sha256": "a35795061b52a5a7acbadee158359c1f46a111a3fdaf472ad634852760adf692"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/mobile/index.html",
+      "sha256": "b609430670650035794f10083ca0e36fdcddb4ad31763a3c716c242f9a63b729"
     },
     {
       "path": "mobile/manifest.webmanifest",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/mobile/manifest.webmanifest",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/mobile/manifest.webmanifest",
       "sha256": "81a0cb2b8a3490ff850805ad602807968f8ec9e2dd1b2f921f54757d76a09929"
     },
     {
       "path": "mobile/styles.css",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/mobile/styles.css",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/mobile/styles.css",
       "sha256": "93237b28429e0b91d61769175ee5b9521365fd6c192b449429740dd7416b3bc2"
     },
     {
       "path": "mobile/sw.js",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/mobile/sw.js",
-      "sha256": "8eacaf8025eaf4926ce32254492a990e1e9bcfd39f1fe96a89729c82a102708a"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/mobile/sw.js",
+      "sha256": "8e79fe42f1b571d22c00bd8d316b3a5cfd98173427f631e9b33ce2a872cc1252"
     },
     {
       "path": "mobile_server.bat",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/mobile_server.bat",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/mobile_server.bat",
       "sha256": "e4d1b7fd03e245a50470a42a9e637f361c0f7f1df5284bb20aa1797de6f84467"
     },
     {
       "path": "mobile_tailscale_setup.bat",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/mobile_tailscale_setup.bat",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/mobile_tailscale_setup.bat",
       "sha256": "f0e67849424bbc5fcf81ede89872f69fc858310edf58c0dbdbba09b65cd0ef04"
     },
     {
       "path": "restart_mobile_server.bat",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/restart_mobile_server.bat",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/restart_mobile_server.bat",
       "sha256": "92fe3c68fefae346d0fd4e6509f7d09a16ea7b1e3fbfb3be10ccd01aa3583a4c"
     },
     {
       "path": "run.bat",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/run.bat",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/run.bat",
       "sha256": "e8fb6d4b8f6a39a962013a0bcce326314711f1b054238e78a52e89b0c449e615"
     },
     {
       "path": "self_test.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/self_test.py",
-      "sha256": "5694d87fe559162d610086733938837997da3db52000f122c3d9fd0300718263"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/self_test.py",
+      "sha256": "130f86533bdc2db9b0a8adbefcbcb788b917c49139fb24f33a5f6bdde739d17e"
     },
     {
       "path": "test.bat",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/test.bat",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/test.bat",
       "sha256": "ed72d1a3e5411b979858e453ad330dd8a714f720203b5e56f21a7658986e9c0e"
     },
     {
       "path": "ui.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.3/ui.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.4/ui.py",
       "sha256": "730a55923ce669ff47fe85ee4c25fedb7fc84a270e1912c4a314932eab64c9c4"
     }
   ]

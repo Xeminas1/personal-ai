@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import BASE_DIR, DATA_DIR, load_config, save_config
-from .llm import OllamaClient
+from .llm import OllamaClient, open_model_request
 from .secrets import (
     complete_hybrid_worker_client_pairing,
     load_hybrid_pairing_state,
@@ -92,7 +92,7 @@ def _request_json(url: str, *, payload: dict | None = None, timeout: float = 3) 
         headers={"Content-Type": "application/json", "Cache-Control": "no-store"},
         method="GET" if body is None else "POST",
     )
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    with open_model_request(request, timeout=timeout) as response:
         value = json.loads(response.read().decode("utf-8"))
     if not isinstance(value, dict):
         raise ValueError("Worker returned an invalid response.")
@@ -109,6 +109,16 @@ def try_auto_pair(logger=None) -> bool:
     """Discover one Qwen worker on the private tailnet and pair it once."""
     config = load_config()
     if config.get("hybrid_worker_url"):
+        from .hybrid import build_llm_client
+        from .logging_setup import setup_logging
+        candidate = dict(config, hybrid_enabled=True)
+        client = build_llm_client(candidate, logger or setup_logging(BASE_DIR / "logs"), DATA_DIR)
+        if not getattr(client, "is_hybrid", False):
+            return False
+        if client.refresh_route().get("compute") != "remote_worker":
+            return False
+        if not config.get("hybrid_enabled"):
+            save_config(candidate)
         return True
     if os.environ.get("XEMAI_WORKER_TOKEN", "").strip():
         if logger:
@@ -155,7 +165,7 @@ def try_auto_pair(logger=None) -> bool:
                 url + "/api/health",
                 headers={"Authorization": f"Bearer {token}"},
             )
-            with urllib.request.urlopen(health_req, timeout=5) as response:
+            with open_model_request(health_req, timeout=5) as response:
                 health = json.loads(response.read().decode("utf-8"))
             if not health.get("ok"):
                 continue
@@ -220,14 +230,16 @@ def _ensure_worker(logger=None) -> bool:
     attempted = DATA_DIR / "hybrid_worker_autosetup_attempted"
     try:
         if attempted.read_text(encoding="utf-8").strip() == VERSION:
-            return True
+            import time
+            if time.time() - attempted.stat().st_mtime < 120:
+                return False
     except OSError:
         pass
     attempted.parent.mkdir(parents=True, exist_ok=True)
     attempted.write_text(VERSION + "\n", encoding="utf-8")
     setup = BASE_DIR / "hybrid_worker_setup.bat"
     if not setup.is_file():
-        return True
+        return False
     try:
         subprocess.Popen(
             ["cmd.exe", "/c", "start", "", str(setup), "--silent"],
@@ -239,7 +251,7 @@ def _ensure_worker(logger=None) -> bool:
         )
         if logger:
             logger.info("Hybrid worker auto-setup launched with Windows approval prompt")
-        return True
+        return False
     except Exception as e:
         if logger:
             logger.warning("Hybrid worker auto-setup could not launch | error=%r", e)

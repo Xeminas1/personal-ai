@@ -12,6 +12,8 @@ import urllib.request
 from pathlib import Path
 
 from app.config import BASE_DIR, DATA_DIR, load_config, save_config
+from app.llm import open_model_request
+from app.hybrid_autosetup import try_auto_pair, _request_json
 from app.secrets import (
     ensure_hybrid_worker_server_token,
     save_hybrid_worker_client_token,
@@ -55,7 +57,7 @@ def _tailscale_dns_name(ts: str) -> str:
 def _ollama_qwen_models() -> list[str]:
     req = urllib.request.Request("http://127.0.0.1:11434/api/tags", method="GET")
     try:
-        with urllib.request.urlopen(req, timeout=5) as response:
+        with open_model_request(req, timeout=5) as response:
             data = json.loads(response.read().decode("utf-8"))
     except Exception as e:
         raise RuntimeError(
@@ -109,7 +111,7 @@ def _test_worker(url: str, token: str) -> dict:
         method="GET",
     )
     try:
-        with urllib.request.urlopen(req, timeout=8) as response:
+        with open_model_request(req, timeout=8) as response:
             data = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
@@ -206,21 +208,40 @@ def setup_worker(*, silent: bool = False, manual: bool = False) -> int:
     return 0
 
 
-def setup_host() -> int:
+def setup_host(*, manual: bool = False) -> int:
     print("XemAi Hybrid Host pairing")
     print("-------------------------")
-    print("Enter the details shown by hybrid_worker_setup.bat on the strong PC.")
+    if not manual:
+        print("Discovering the stronger PC automatically through Tailscale...")
+        if try_auto_pair():
+            print("Hybrid compute is paired. No token copying is needed.")
+            return 0
+        print("Automatic pairing is not available yet. Trying manual pairing.")
+    print("Enter the details shown by hybrid_worker_setup.bat --manual on the strong PC.")
     print()
     url = input("Worker URL: ").strip().rstrip("/")
     token = getpass.getpass("Worker token (hidden while pasting): ").strip()
     if not url or not token:
         print("Worker URL and token are both required.")
         return 1
+    if any(ord(character) < 33 or ord(character) > 126 for character in token):
+        print("The pasted token contains spaces or control characters. Nothing was saved.")
+        print("Run host setup without --manual to pair automatically without copying a token.")
+        return 1
     if not url.lower().startswith("https://"):
         print("For the normal Tailscale setup, use the HTTPS worker URL.")
         return 1
 
     health = _test_worker(url, token)
+    # Register the central host on the worker as well as saving its client token,
+    # so worker-PC desktop visits can use the shared host database.
+    host_id = _tailscale_dns_name(_tailscale_exe())
+    claimed = _request_json(
+        url + "/api/pair/claim",
+        payload={"host_id": host_id, "token": token}, timeout=8,
+    )
+    if not claimed.get("ok"):
+        raise RuntimeError("The worker did not accept this host's pairing identity.")
     config = load_config()
     config["hybrid_enabled"] = True
     config["hybrid_worker_url"] = url
@@ -249,7 +270,7 @@ def main() -> int:
         if mode == "worker":
             return setup_worker(silent=silent, manual=manual)
         if mode == "host":
-            return setup_host()
+            return setup_host(manual=manual)
         print("Usage: python hybrid_setup.py worker|host")
         return 2
     except Exception as e:
