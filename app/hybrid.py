@@ -44,6 +44,7 @@ class HybridOllamaClient(OllamaClient):
             logger=logger,
             provider_name="xemai-hybrid",
         )
+        self.is_hybrid = True
         self.local_client = local_client
         self.worker_client = worker_client
         self.local_fallback_model = str(local_fallback_model or local_client.model)
