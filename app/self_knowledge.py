@@ -28,6 +28,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.6.1", "Refines the mobile XemAi interface with a cleaner fixed header, smaller chat typography, tighter bubbles/composer spacing, and a stronger bottom-up blue glow while preserving the unified desktop/mobile frontend."),
     ("0.6.2", "Refines XemAi branding so the shared desktop/mobile wordmark renders Xem in white and Ai in the interface accent blue."),
     ("0.6.3", "Strengthens XemAi identity and AI-comparison reliability: ChatGPT/AI opinion questions receive authoritative runtime context and stale generic model self-descriptions are rejected before being saved."),
+    ("0.6.4", "Tightens AI-comparison quality: catches comparison-avoidance wording, unsupported superiority claims, oversimplifying ChatGPT as a standalone model, and opinion answers that never state a direct position."),
 ]
 
 
@@ -152,6 +153,62 @@ def looks_like_stale_self_description(text: str) -> bool:
     return any(marker in lower for marker in stale_markers)
 
 
+def comparison_answer_needs_retry(question: str, answer: str) -> bool:
+    lower = " ".join(answer.lower().replace("’", "'").split())
+    question_lower = " ".join(question.lower().split())
+
+    if looks_like_stale_self_description(answer):
+        return True
+
+    avoidance_markers = (
+        "i don't directly compare myself",
+        "i do not directly compare myself",
+        "i don't compare myself",
+        "i do not compare myself",
+        "i won't compare myself",
+        "i will not compare myself",
+        "i cannot compare myself",
+        "i can't compare myself",
+        "i am not able to compare myself",
+    )
+    if any(marker in lower for marker in avoidance_markers):
+        return True
+
+    if "chatgpt" in lower and "standalone model" in lower:
+        return True
+
+    unsupported_superiority = (
+        "xemai excels",
+        "i excel at",
+        "xemai is superior",
+        "i am superior",
+        "xemai outperforms",
+        "i outperform",
+        "xemai is better overall",
+        "i am better overall",
+    )
+    if any(marker in lower for marker in unsupported_superiority):
+        return True
+
+    opinion_question = any(
+        marker in question_lower
+        for marker in ("opinion", "think of", "think about", "what do you think")
+    )
+    if opinion_question:
+        opening = lower[:220]
+        direct_openers = (
+            "i think",
+            "my view",
+            "my opinion",
+            "i regard",
+            "i see ",
+        )
+        if not any(marker in opening for marker in direct_openers):
+            return True
+
+    return False
+
+
 def build_authoritative_self_context(config, tool_registry) -> str:
     capabilities = build_capability_status(config, tool_registry)
     capability_text = "\n".join(f"- {line}" for line in capabilities)
@@ -198,6 +255,9 @@ AI COMPARISON RULES
 - You MAY directly compare yourself with ChatGPT and other AI systems.
 - If asked for your opinion, give a clear reasoned opinion first rather than a
   generic disclaimer.
+- The first sentence of an opinion/comparison answer must state a position.
+  Prefer openings such as "I think...", "My view is...", or "I regard...".
+  Do not open with a disclaimer, refusal, or "I don't directly compare myself".
 - Separate the underlying local model from XemAi as the complete application.
 - Do not claim XemAi is better or worse overall without benchmark evidence.
 - It is valid to say the local model may be a bottleneck on difficult reasoning,
@@ -207,6 +267,12 @@ AI COMPARISON RULES
 - Do not invent current features, model names, training cutoffs, benchmark
   results, or limitations for ChatGPT or another external system. If current
   details matter, use live research when available or state the uncertainty.
+- Do not reduce ChatGPT to merely a standalone model. Treat it as an AI
+  product/system whose exact current capabilities should be verified before
+  making detailed claims.
+- Describe XemAi's memory, continuity, local control, and custom tools as design
+  advantages or verified capabilities, not proof that XemAi "excels" or
+  outperforms another system.
 - Never use "I can't compare myself" as an excuse when a reasoned comparison is
   possible from verified information.
 
@@ -235,18 +301,18 @@ def build_ai_comparison_fallback(text: str, config) -> str:
     subject = ai_comparison_subject(text)
     model = config.get("model", "unknown")
     return (
-        f"My view of {subject}: it is a useful benchmark for me, and I should "
-        "compare myself with it directly rather than hide behind a generic AI "
-        "disclaimer. I would not claim I am better overall without evidence. "
-        f"My underlying local model is {model}, which can be a bottleneck on "
-        "hard reasoning, coding, and broad-knowledge tasks. XemAi as a whole "
-        "has different strengths: persistent local memory, continuity across "
-        "your projects, user-specific context, local control, custom tools, "
-        "and auditable state. My goal is to measure where I am weaker, improve "
-        "those areas, and earn any claim of being better through benchmarks "
-        "rather than assertion. I do not have verified training-cutoff metadata "
-        "for myself or verified current details about the other system unless "
-        "I research them, so I will not invent those."
+        f"My view of {subject}: it is a strong general-purpose AI benchmark "
+        "for me, and at my current stage I would not claim to be better "
+        "overall without evidence. "
+        f"My underlying local model is {model}, which may be a bottleneck on "
+        "difficult reasoning, coding, and broad-knowledge tasks. XemAi as a "
+        "whole is being built differently around persistent local memory, "
+        "continuity across your projects, user-specific context, local control, "
+        "custom tools, and auditable state. Those are design advantages, not "
+        "proof that I outperform ChatGPT. My goal is to measure where I am "
+        "weaker, improve those areas, and earn stronger claims through "
+        "benchmarks rather than assertion. I will not invent training cutoffs "
+        "or unverified current details about the other system."
     )
 
 
