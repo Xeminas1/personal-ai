@@ -187,6 +187,99 @@ button { -webkit-tap-highlight-color: transparent; }
   z-index: 8;
 }
 .hidden { display: none !important; }
+.attachment-tray {
+  position: fixed;
+  left: 14px;
+  right: 14px;
+  bottom: calc(82px + env(safe-area-inset-bottom));
+  z-index: 14;
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: auto;
+}
+.attachment-chip {
+  max-width: min(78vw, 360px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(111, 159, 203, 0.34);
+  border-radius: 15px;
+  background: rgba(7, 21, 34, 0.96);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+.attachment-chip.uploading {
+  color: var(--muted);
+}
+.attachment-icon {
+  flex: 0 0 auto;
+  font-size: 17px;
+}
+.attachment-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.attachment-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 13px;
+}
+.attachment-size {
+  color: var(--muted);
+  font-size: 11px;
+}
+.attachment-remove {
+  flex: 0 0 auto;
+  margin-left: 2px;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(31, 65, 96, 0.8);
+  color: #d9e8f7;
+  font-size: 18px;
+  line-height: 1;
+}
+.message-attachment {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 2px 0 10px;
+  padding: 9px 11px;
+  border: 1px solid rgba(111, 159, 203, 0.28);
+  border-radius: 13px;
+  background: rgba(4, 15, 25, 0.22);
+}
+.message.user .message-attachment {
+  border-color: rgba(63, 91, 120, 0.22);
+  background: rgba(32, 60, 88, 0.06);
+}
+.message-attachment span:last-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.message-attachment strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.message-attachment small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.message.user .message-attachment small {
+  color: #73879b;
+}
 .composer {
   position: fixed;
   left: 14px; right: 14px;
@@ -474,6 +567,13 @@ button { -webkit-tap-highlight-color: transparent; }
 
   .message-name {
     font-size: 12px;
+  }
+
+  .attachment-tray {
+    left: 360px;
+    right: 44px;
+    bottom: 104px;
+    max-width: none;
   }
 
   .composer {
