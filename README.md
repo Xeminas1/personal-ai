@@ -170,3 +170,12 @@ Verified republish of the mobile-server lifecycle fix:
 - keeps JSON 404 responses for unknown mobile API routes
 - keeps explicit frontend/server mismatch diagnostics
 - release publication now verifies every manifest SHA against the frozen GitHub release content before making the manifest live
+
+
+## v0.4.5
+
+Exact-source republish:
+- supersedes the rejected v0.4.3 and abandoned v0.4.4 publishing attempts
+- publishes the exact locally tested mobile-server lifecycle source
+- keeps SHA verification mandatory
+- freezes release content first, then computes the live manifest hashes from that frozen GitHub branch
