@@ -432,6 +432,13 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             backend = None
             active_request = False
             try:
+                update_lock = getattr(self.server, "update_lock", None)
+                if update_lock is not None and update_lock.locked():
+                    self._error(
+                        "XemAi is updating. Please retry this message in a moment.",
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                    )
+                    return
                 chat_id = int(match.group(1))
                 text = str(body.get("text", "")).strip()
                 if not text:
@@ -486,7 +493,25 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
 
         if path == "/api/update/install":
             backend = None
+            update_lock = getattr(self.server, "update_lock", None)
+            acquired = False
             try:
+                if _active_chat_requests(self.server) > 0:
+                    self._error(
+                        "XemAi is finishing a reply. The updater will retry shortly.",
+                        HTTPStatus.CONFLICT,
+                    )
+                    return
+
+                if update_lock is not None:
+                    acquired = update_lock.acquire(blocking=False)
+                    if not acquired:
+                        self._error(
+                            "An XemAi update is already in progress.",
+                            HTTPStatus.CONFLICT,
+                        )
+                        return
+
                 backend = self._backend()
                 if not backend.config.get("mobile_updates_enabled", True):
                     self._error(
@@ -505,6 +530,13 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     })
                     return
 
+                if _active_chat_requests(self.server) > 0:
+                    self._error(
+                        "XemAi became busy. The updater will retry shortly.",
+                        HTTPStatus.CONFLICT,
+                    )
+                    return
+
                 installed = backend.install_update(manifest)
                 self._json({
                     "ok": True,
@@ -512,7 +544,7 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     "restart": True,
                     "message": (
                         f"Updated to v{installed}. "
-                        "The mobile server is restarting."
+                        "The shared XemAi server is restarting."
                     ),
                 })
                 self.wfile.flush()
@@ -522,6 +554,8 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             finally:
                 if backend:
                     backend.close()
+                if acquired and update_lock is not None:
+                    update_lock.release()
             return
 
         self._error("Unknown endpoint.", HTTPStatus.NOT_FOUND)
