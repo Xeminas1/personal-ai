@@ -44,10 +44,10 @@ def run() -> None:
     assert "/api/update/install" in mobile_js
     assert "/api/update/install" in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.6.2"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.6.5"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.6.2" in mobile_html
-    assert "/styles.css?v=0.6.2" in mobile_html
+    assert "/app.js?v=0.6.5" in mobile_html
+    assert "/styles.css?v=0.6.5" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
@@ -60,12 +60,17 @@ def run() -> None:
     assert "brand-xem" in mobile_html
     assert "brand-ai" in mobile_html
     assert "function setBrand(name)" in mobile_js
+    assert 'versionBadge: $("versionBadge")' in mobile_js
+    assert 'els.versionBadge.textContent = `v${data.version}`;' in mobile_js
+    assert 'id="versionBadge"' in mobile_html
+    assert ".version-badge" in mobile_css
     assert "rgba(15, 79, 132, 0.78)" in mobile_css
     assert 'chatTitle: $("chatTitle")' not in mobile_js
     gui_backend_source = (project_root / "app" / "gui_backend.py").read_text(encoding="utf-8")
     assert "Rejected unreliable XemAi self/comparison draft" in gui_backend_source
     assert "build_ai_comparison_fallback" in gui_backend_source
     assert "build_self_knowledge_fallback" in gui_backend_source
+    assert "explicitly naming or addressing" in gui_backend_source
     desktop_ui = (project_root / "ui.py").read_text(encoding="utf-8")
     assert 'row["updated_at"]' in desktop_ui
     assert 'row.get("updated_at")' not in desktop_ui
@@ -109,9 +114,14 @@ def run() -> None:
         "My view of ChatGPT: it is a strong general-purpose AI benchmark for me, "
         "and I would not claim to be better overall without evidence."
     )
-    assert is_newer_version("0.6.5", "0.6.4")
-    assert not is_newer_version("0.6.4", "0.6.4")
-    assert not is_newer_version("0.6.3", "0.6.4")
+    assert comparison_answer_needs_retry(
+        "What's your opinion on ChatGPT?",
+        "I think XemAi currently lacks arbitrary shell/command execution, "
+        "unrestricted filesystem access, and native image/audio analysis."
+    )
+    assert is_newer_version("0.6.6", "0.6.5")
+    assert not is_newer_version("0.6.5", "0.6.5")
+    assert not is_newer_version("0.6.4", "0.6.5")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -233,7 +243,7 @@ def run() -> None:
             registry,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.6.4" in safe_fallback
+        assert "v0.6.5" in safe_fallback
 
         calc = json.loads(registry.execute("calculator", {"expression": "2 + 3 * 4"}))
         assert calc["ok"] and calc["result"] == 14
