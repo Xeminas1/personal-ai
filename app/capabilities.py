@@ -1,7 +1,26 @@
 from __future__ import annotations
 
 
-def build_capability_status(config, tool_registry) -> list[str]:
+def build_capability_status(
+    config,
+    tool_registry,
+    runtime_model_info: dict | None = None,
+) -> list[str]:
+    runtime_model_info = runtime_model_info or {}
+    runtime_model = str(
+        runtime_model_info.get("model")
+        or config.get("model", "unknown")
+    )
+    model_source = str(
+        runtime_model_info.get("source")
+        or "configured_fallback"
+    )
+    installed_qwen = [
+        str(name)
+        for name in runtime_model_info.get("installed_qwen", [])
+        if str(name).strip()
+    ]
+
     web_state = (
         "configured; use the Web Test control to verify the saved Ollama key"
         if tool_registry.web_search_enabled
@@ -23,7 +42,13 @@ def build_capability_status(config, tool_registry) -> list[str]:
         "Calculator: enabled",
         "Current date/time lookup: enabled",
         "Sandboxed local workspace file listing/reading/writing: enabled",
-        f"Underlying local model: {config.get('model', 'unknown')}",
+        f"Underlying local model actually selected at runtime: {runtime_model}",
+        f"Model selection source: {model_source}",
+        (
+            "Qwen models detected by Ollama: " + ", ".join(installed_qwen)
+            if installed_qwen
+            else "Qwen models detected by Ollama: none reported"
+        ),
         "Arbitrary shell/command execution: disabled",
         "Unrestricted filesystem access: disabled",
         "Unrestricted computer/desktop control: disabled",
