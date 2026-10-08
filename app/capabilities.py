@@ -32,6 +32,7 @@ def build_capability_status(config, tool_registry) -> list[str]:
         "Shared Android/mobile web client: enabled through the local XemAi mobile server",
         "PC and phone share the same chats, memories, feedback and database",
         "Cross-device live chat refresh: enabled while clients are open",
+        "Shared file attachments: enabled for phone and desktop; text/code/log/config contents can be supplied to the local model",
         (
             "Automatic official-channel updates: enabled"
             if config.get("auto_install_updates", True)
