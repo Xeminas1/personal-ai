@@ -412,7 +412,7 @@ class XemAiApp(tk.Tk):
             stamp = dt.datetime.fromisoformat(value)
         except ValueError:
             return ""
-        now = dt.datetime.now()
+        now = dt.datetime.now(stamp.tzinfo) if stamp.tzinfo else dt.datetime.now()
         delta = now - stamp
         if delta.total_seconds() < 90:
             return "Just now"
