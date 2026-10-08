@@ -7,6 +7,7 @@ import operator
 import re
 import urllib.error
 import urllib.request
+from urllib.parse import urlparse
 from datetime import datetime
 from html.parser import HTMLParser
 from pathlib import Path
@@ -53,6 +54,246 @@ def should_force_web_search(text: str) -> bool:
         "what happened today",
     )
     return any(term in lower for term in freshness_terms)
+
+
+_RESEARCH_STOPWORDS = {
+    "about", "after", "again", "also", "been", "being", "best", "could",
+    "does", "from", "have", "into", "just", "more", "most", "much",
+    "should", "that", "their", "there", "these", "they", "this", "those",
+    "what", "when", "where", "which", "with", "would", "your",
+}
+
+_REPUTABLE_DOMAINS = {
+    "pubmed.ncbi.nlm.nih.gov": (120, "PubMed / biomedical research"),
+    "ncbi.nlm.nih.gov": (112, "NCBI / biomedical research"),
+    "nih.gov": (112, "US National Institutes of Health"),
+    "cochranelibrary.com": (120, "Cochrane systematic reviews"),
+    "who.int": (112, "World Health Organization"),
+    "nice.org.uk": (114, "NICE clinical guidance"),
+    "nhs.uk": (108, "NHS guidance"),
+    "cdc.gov": (112, "US CDC"),
+    "fda.gov": (108, "US FDA"),
+    "gov.uk": (100, "UK government"),
+    "jamanetwork.com": (104, "Peer-reviewed medical journal"),
+    "nejm.org": (104, "Peer-reviewed medical journal"),
+    "thelancet.com": (104, "Peer-reviewed medical journal"),
+    "bmj.com": (102, "Peer-reviewed medical journal"),
+    "nature.com": (96, "Scientific journal / publisher"),
+    "science.org": (96, "Scientific journal / publisher"),
+    "docs.python.org": (104, "Official Python documentation"),
+    "developer.mozilla.org": (98, "MDN technical documentation"),
+    "w3.org": (104, "Web standards body"),
+    "nist.gov": (108, "US standards / research agency"),
+    "microsoft.com": (82, "Official vendor source"),
+    "apple.com": (82, "Official vendor source"),
+    "openai.com": (82, "Official vendor source"),
+    "nvidia.com": (82, "Official vendor source"),
+}
+
+_LOW_QUALITY_DOMAINS = {
+    "reddit.com", "quora.com", "pinterest.com", "tiktok.com",
+    "facebook.com", "instagram.com", "x.com", "twitter.com",
+    "medium.com",
+}
+
+_HEALTH_RESEARCH_TERMS = {
+    "health", "medical", "medicine", "symptom", "symptoms", "disease",
+    "infection", "cold", "flu", "virus", "pain", "treatment", "drug",
+    "medication", "supplement", "diet", "exercise", "sleep", "blood",
+    "heart", "cancer", "testosterone", "therapy",
+}
+
+_SCIENCE_RESEARCH_TERMS = {
+    "study", "studies", "research", "evidence", "scientific", "science",
+    "peer reviewed", "systematic review", "meta-analysis", "trial",
+    "randomized", "randomised", "paper", "journal",
+}
+
+
+def should_research_query(text: str) -> bool:
+    """
+    Deterministically decide whether outside evidence would materially improve
+    the answer. This is intentionally broader than freshness-only web routing
+    but excludes casual, creative and XemAi-local questions.
+    """
+    lower = " ".join(str(text).lower().split())
+    if not lower:
+        return False
+
+    no_research = (
+        "don't search", "do not search", "no web", "without web",
+        "don't research", "do not research",
+    )
+    if any(term in lower for term in no_research):
+        return False
+
+    casual_or_local = (
+        "how are you", "how do you feel", "who are you", "what is your name",
+        "what model are you running", "what version are you",
+        "new chat", "rename this chat",
+    )
+    if any(term in lower for term in casual_or_local):
+        return False
+
+    creative_starts = (
+        "write me ", "write a ", "rewrite ", "reword ", "brainstorm ",
+        "give me names", "give me name", "make up ", "roleplay ",
+        "create a story", "create a character",
+    )
+    if lower.startswith(creative_starts):
+        return False
+
+    explicit = (
+        "research ", "research this", "source", "sources", "cite", "citation",
+        "evidence", "study", "studies", "paper", "peer reviewed",
+        "peer-reviewed", "backed by", "what does the research",
+        "what do studies", "scientific evidence",
+    )
+    if any(term in lower for term in explicit):
+        return True
+
+    tokens = set(re.findall(r"[a-z0-9][a-z0-9'\-]+", lower))
+    if tokens & _HEALTH_RESEARCH_TERMS:
+        return True
+    if any(term in lower for term in _SCIENCE_RESEARCH_TERMS):
+        return True
+
+    factual_starts = (
+        "what is ", "what are ", "why does ", "why do ", "why is ",
+        "how does ", "how do ", "how can ", "is it ", "are there ",
+        "does ", "do ", "can ", "should ", "which ", "when ", "where ",
+        "who ", "what causes ", "what's the best", "what is the best",
+    )
+    return len(lower) >= 20 and lower.startswith(factual_starts)
+
+
+def _research_terms(query: str) -> set[str]:
+    return {
+        token for token in re.findall(r"[a-z0-9][a-z0-9'\-]+", query.lower())
+        if len(token) >= 4 and token not in _RESEARCH_STOPWORDS
+    }
+
+
+def _source_authority(url: str, title: str = "", content: str = "") -> tuple[int, str]:
+    try:
+        host = (urlparse(url).hostname or "").lower().lstrip("www.")
+    except Exception:
+        host = ""
+
+    score = 0
+    label = "General web source"
+
+    for domain, (domain_score, domain_label) in _REPUTABLE_DOMAINS.items():
+        if host == domain or host.endswith("." + domain):
+            score = max(score, domain_score)
+            label = domain_label
+            break
+
+    if host.endswith(".gov") or host.endswith(".gov.uk"):
+        score = max(score, 100)
+        label = "Government / public authority"
+    elif host.endswith(".edu") or host.endswith(".ac.uk"):
+        score = max(score, 88)
+        label = "Academic institution"
+
+    if any(host == d or host.endswith("." + d) for d in _LOW_QUALITY_DOMAINS):
+        score -= 100
+        label = "Low-priority community / social source"
+
+    evidence_text = f"{title} {content}".lower()
+    if any(term in evidence_text for term in (
+        "systematic review", "meta-analysis", "meta analysis",
+        "randomized controlled trial", "randomised controlled trial",
+        "clinical guideline", "practice guideline",
+    )):
+        score += 22
+        if label == "General web source":
+            label = "Research / evidence source"
+    elif any(term in evidence_text for term in (
+        "peer reviewed", "journal", "study", "trial", "guideline",
+    )):
+        score += 10
+
+    if not content.strip():
+        score -= 10
+
+    return score, label
+
+
+def _research_query_variant(query: str) -> str:
+    lower = query.lower()
+    tokens = set(re.findall(r"[a-z0-9][a-z0-9'\-]+", lower))
+    if tokens & _HEALTH_RESEARCH_TERMS:
+        return f"{query} systematic review PubMed NHS NICE evidence"
+    if any(term in lower for term in _SCIENCE_RESEARCH_TERMS):
+        return f"{query} systematic review meta-analysis peer reviewed"
+    if any(term in lower for term in (
+        "code", "python", "javascript", "windows", "android", "api",
+        "software", "programming", "browser",
+    )):
+        return f"{query} official documentation specification"
+    return f"{query} primary source official evidence"
+
+
+def extract_exact_quote(content: str, query: str, max_words: int = 24) -> str:
+    """
+    Pick a short verbatim fragment from fetched page text. The returned words
+    are copied from the normalized fetched source text; nothing is paraphrased.
+    """
+    clean = " ".join(str(content).split())
+    if not clean:
+        return ""
+
+    terms = _research_terms(query)
+    candidates = re.split(r"(?<=[.!?])\s+", clean)
+    ranked = []
+
+    for index, sentence in enumerate(candidates[:180]):
+        words = sentence.split()
+        if len(words) < 6:
+            continue
+        lower = sentence.lower()
+        overlap = sum(1 for term in terms if term in lower)
+        evidence_bonus = sum(
+            1 for marker in (
+                "found", "associated", "increased", "decreased", "reduced",
+                "recommend", "evidence", "concluded", "results", "risk",
+                "effective", "benefit", "compared",
+            )
+            if marker in lower
+        )
+        length_bonus = 2 if 8 <= len(words) <= 35 else 0
+        ranked.append((overlap * 5 + evidence_bonus + length_bonus, -index, sentence))
+
+    if not ranked:
+        words = clean.split()
+        return " ".join(words[:max(1, int(max_words))])
+
+    ranked.sort(reverse=True)
+    sentence = ranked[0][2]
+    words = sentence.split()
+    return " ".join(words[:max(1, min(25, int(max_words)))])
+
+
+def format_research_appendix(bundle: dict[str, Any]) -> str:
+    sources = list(bundle.get("sources") or [])
+    if not sources:
+        return ""
+
+    lines = ["Evidence checked:"]
+    for source in sources:
+        sid = int(source.get("id", len(lines)))
+        title = str(source.get("title") or source.get("domain") or "Source")
+        authority = str(source.get("authority") or "Source")
+        quote = str(source.get("quote") or "").strip()
+        url = str(source.get("url") or "").strip()
+        lines.append(f"[{sid}] {title} — {authority}")
+        if quote:
+            lines.append(f'> "{quote}"')
+        if url:
+            lines.append(url)
+    return "\n".join(lines)
+
 
 
 class _TextExtractor(HTMLParser):
@@ -152,6 +393,11 @@ class ToolRegistry:
                 "web_search: configured (run /webtest to verify connection)"
                 if self.web_search_enabled
                 else "web_search: disabled (run /websetup to configure)"
+            ),
+            (
+                "evidence_research: enabled (reputable-source ranking + verbatim quote extraction)"
+                if self.web_search_enabled
+                else "evidence_research: unavailable until web_search is configured"
             ),
             "workspace_list: enabled",
             "workspace_read: enabled",
@@ -274,6 +520,36 @@ class ToolRegistry:
                     },
                 }
             )
+        if self.web_search_enabled:
+            tools.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "research_evidence",
+                        "description": (
+                            "Research a factual question using ranked reputable sources. "
+                            "Returns numbered sources, short evidence excerpts and verbatim "
+                            "quote candidates. Prefer this over plain web_search when the "
+                            "user asks for evidence, studies, health/science facts or citations."
+                        ),
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "query": {
+                                    "type": "string",
+                                    "description": "Factual question or research query"
+                                },
+                                "max_sources": {
+                                    "type": "integer",
+                                    "description": "Maximum sources to return, 1-5"
+                                },
+                            },
+                            "required": ["query"],
+                        },
+                    },
+                }
+            )
+
         return tools
 
     def _safe_workspace_path(self, relative: str) -> Path:
@@ -299,6 +575,11 @@ class ToolRegistry:
                 )
             elif name == "web_fetch":
                 result = self.web_fetch(str(args.get("url", "")))
+            elif name == "research_evidence":
+                result = self.research_evidence(
+                    str(args.get("query", "")),
+                    int(args.get("max_sources", 3) or 3),
+                )
             elif name == "workspace_list":
                 result = self.workspace_list(str(args.get("path", ".")))
             elif name == "workspace_read":
@@ -437,7 +718,13 @@ class ToolRegistry:
             )
         return {"query": query.strip(), "results": cleaned}
 
-    def web_fetch(self, url: str):
+    def web_fetch(
+        self,
+        url: str,
+        *,
+        timeout: int = 30,
+        max_chars: int = 12000,
+    ):
         url = url.strip()
         if not re.match(r"^https?://", url, flags=re.I):
             raise ToolError("Only HTTP and HTTPS URLs are allowed.")
@@ -448,7 +735,9 @@ class ToolRegistry:
             method="GET",
         )
         try:
-            with urllib.request.urlopen(req, timeout=30) as response:
+            with urllib.request.urlopen(
+                req, timeout=max(3, min(30, int(timeout)))
+            ) as response:
                 content_type = response.headers.get("Content-Type", "")
                 raw = response.read(1_500_000)
         except urllib.error.HTTPError as e:
@@ -473,8 +762,140 @@ class ToolRegistry:
         return {
             "url": url,
             "title": title,
-            "content": body[:12000],
-            "truncated": len(body) > 12000,
+            "content": body[:max(500, min(50000, int(max_chars)))],
+            "truncated": len(body) > max(500, min(50000, int(max_chars))),
+        }
+
+    def research_evidence(
+        self,
+        query: str,
+        max_sources: int = 3,
+    ) -> dict[str, Any]:
+        query = " ".join(str(query).split())
+        if not query:
+            raise ToolError("Research query is empty.")
+
+        max_sources = max(1, min(5, int(max_sources)))
+        searches = [query]
+        variant = _research_query_variant(query)
+        if variant.lower() != query.lower():
+            searches.append(variant)
+
+        candidates: dict[str, dict[str, Any]] = {}
+        for search_index, search_query in enumerate(searches):
+            result = self.web_search(search_query, max_results=8)
+            for rank, item in enumerate(result.get("results", [])):
+                url = str(item.get("url", "")).strip()
+                if not url or url in candidates:
+                    continue
+                title = str(item.get("title", "")).strip()
+                snippet = " ".join(str(item.get("content", "")).split())
+                score, authority = _source_authority(url, title, snippet)
+                score += max(0, 16 - rank * 2)
+                if search_index == 0:
+                    score += 3
+                candidates[url] = {
+                    "title": title,
+                    "url": url,
+                    "snippet": snippet,
+                    "score": score,
+                    "authority": authority,
+                }
+
+        ordered = sorted(
+            candidates.values(),
+            key=lambda item: item["score"],
+            reverse=True,
+        )
+
+        sources = []
+        fallback_sources = []
+        fetch_attempts = 0
+
+        for item in ordered:
+            if len(sources) >= max_sources:
+                break
+            if fetch_attempts >= 6:
+                break
+
+            fetch_attempts += 1
+            page = None
+            try:
+                page = self.web_fetch(
+                    item["url"],
+                    timeout=10,
+                    max_chars=6000,
+                )
+            except Exception as e:
+                self.logger.info(
+                    "Research source fetch skipped | url=%s error=%r",
+                    item["url"],
+                    e,
+                )
+
+            page_content = (
+                " ".join(str(page.get("content", "")).split())
+                if page
+                else ""
+            )
+            source_title = (
+                str(page.get("title", "")).strip()
+                if page
+                else ""
+            ) or item["title"]
+            source_text = page_content or item["snippet"]
+            score, authority = _source_authority(
+                item["url"], source_title, source_text
+            )
+            score += max(0, int(item["score"]) // 5)
+
+            quote = (
+                extract_exact_quote(
+                    page_content,
+                    query,
+                    max_words=24,
+                )
+                if page_content
+                else ""
+            )
+
+            source = {
+                "id": 0,
+                "title": source_title or item["url"],
+                "url": item["url"],
+                "domain": (urlparse(item["url"]).hostname or "").lower(),
+                "authority": authority,
+                "authority_score": score,
+                "quote": quote,
+                "excerpt": source_text[:1200],
+                "quote_verified_from_fetched_page": bool(quote and page_content),
+            }
+
+            if quote:
+                sources.append(source)
+            else:
+                fallback_sources.append(source)
+
+        for source in fallback_sources:
+            if len(sources) >= max_sources:
+                break
+            sources.append(source)
+
+        for index, source in enumerate(sources, start=1):
+            source["id"] = index
+
+        return {
+            "query": query,
+            "method": (
+                "Ranked live-web research prioritising government, academic, "
+                "peer-reviewed, standards and official primary sources."
+            ),
+            "sources": sources,
+            "source_count": len(sources),
+            "quote_rule": (
+                "Only quote text where quote_verified_from_fetched_page is true. "
+                "Quotes are short verbatim fragments from the fetched page."
+            ),
         }
 
     def workspace_list(self, path: str = "."):
