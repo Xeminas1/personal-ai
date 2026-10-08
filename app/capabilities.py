@@ -51,6 +51,25 @@ def build_capability_status(
         f"Underlying local model actually selected at runtime: {runtime_model}",
         f"Model selection source: {model_source}",
         (
+            "Hybrid compute route: "
+            + (
+                f"strong PC worker ({runtime_model_info.get('compute_name', 'Powerful PC')})"
+                if runtime_model_info.get("compute") == "remote_worker"
+                else "always-on host local fallback"
+            )
+            if config.get("hybrid_enabled", False)
+            else "Hybrid compute route: disabled"
+        ),
+        (
+            "Hybrid worker availability: online"
+            if runtime_model_info.get("worker_available")
+            else (
+                "Hybrid worker availability: offline/unpaired; local fallback active"
+                if config.get("hybrid_enabled", False)
+                else "Hybrid worker availability: not configured"
+            )
+        ),
+        (
             "Qwen models detected by Ollama: " + ", ".join(installed_qwen)
             if installed_qwen
             else "Qwen models detected by Ollama: none reported"
