@@ -12,6 +12,7 @@ CONFIG_PATH = BASE_DIR / "config.json"
 DEFAULT_CONFIG: dict[str, Any] = {
     "ollama_url": "http://localhost:11434",
     "model": "qwen3:8b",
+    "auto_detect_ollama_model": True,
     "assistant_name": "XemAi",
     "history_messages": 30,
     "memory_limit": 25,
