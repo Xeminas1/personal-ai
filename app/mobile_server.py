@@ -430,6 +430,26 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             })
             return
 
+        if path == "/api/compute":
+            backend = None
+            try:
+                backend = self._backend()
+                info = backend.refresh_runtime_model()
+                self._json({
+                    "ok": True,
+                    "model": info.get("model", "unknown"),
+                    "source": info.get("source", "unknown"),
+                    "compute_source": info.get("compute", "local_host"),
+                    "compute_name": info.get("compute_name", "Always-on host"),
+                    "worker_available": bool(info.get("worker_available", False)),
+                })
+            except Exception as e:
+                self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
+            finally:
+                if backend:
+                    backend.close()
+            return
+
         if path == "/api/bootstrap":
             backend = None
             try:
