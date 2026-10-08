@@ -61,14 +61,96 @@ class OllamaClient:
             self.logger.debug("Ollama health check failed: %r", e)
             return False
 
-    def model_available(self) -> bool:
+    def installed_models(self) -> list[dict[str, Any]]:
+        data = self._request("/api/tags", timeout=10)
+        return [
+            item for item in data.get("models", [])
+            if isinstance(item, dict)
+        ]
+
+    def running_models(self) -> list[dict[str, Any]]:
+        data = self._request("/api/ps", timeout=10)
+        return [
+            item for item in data.get("models", [])
+            if isinstance(item, dict)
+        ]
+
+    @staticmethod
+    def _model_name(item: dict[str, Any]) -> str:
+        return str(item.get("name") or item.get("model") or "").strip()
+
+    @classmethod
+    def _qwen_models(cls, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [
+            item for item in items
+            if "qwen" in cls._model_name(item).lower()
+        ]
+
+    def discover_runtime_model(
+        self,
+        *,
+        preferred: str | None = None,
+    ) -> dict[str, Any]:
+        preferred = str(preferred or self.model or "").strip()
+        installed = self.installed_models()
         try:
-            data = self._request("/api/tags", timeout=10)
+            running = self.running_models()
+        except Exception as e:
+            self.logger.debug("Ollama /api/ps discovery failed: %r", e)
+            running = []
+
+        installed_qwen = self._qwen_models(installed)
+        running_qwen = self._qwen_models(running)
+
+        if running_qwen:
+            selected = max(
+                running_qwen,
+                key=lambda item: str(item.get("expires_at", "")),
+            )
+            source = "ollama_running"
+        elif installed_qwen:
+            selected = max(
+                installed_qwen,
+                key=lambda item: str(item.get("modified_at", "")),
+            )
+            source = "ollama_installed_recent"
+        else:
+            selected = None
+            source = "configured_fallback"
+
+        model = self._model_name(selected) if selected else preferred
+        if model:
+            self.model = model
+
+        info = {
+            "model": model or "unknown",
+            "source": source,
+            "installed_qwen": [
+                self._model_name(item) for item in installed_qwen
+                if self._model_name(item)
+            ],
+            "running_qwen": [
+                self._model_name(item) for item in running_qwen
+                if self._model_name(item)
+            ],
+        }
+        self.logger.info(
+            "Ollama runtime model discovery | model=%s source=%s installed_qwen=%s running_qwen=%s",
+            info["model"],
+            info["source"],
+            ",".join(info["installed_qwen"]) or "none",
+            ",".join(info["running_qwen"]) or "none",
+        )
+        return info
+
+    def model_available(self, model: str | None = None) -> bool:
+        target = str(model or self.model).strip()
+        try:
             names = {
-                item.get("name", "")
-                for item in data.get("models", [])
+                self._model_name(item)
+                for item in self.installed_models()
             }
-            return self.model in names or f"{self.model}:latest" in names
+            return target in names or f"{target}:latest" in names
         except Exception:
             return False
 
