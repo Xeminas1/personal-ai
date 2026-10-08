@@ -22,6 +22,7 @@ const els = {
   brand: $("brand"),
   status: $("status"),
   versionBadge: $("versionBadge"),
+  computeBadge: $("computeBadge"),
   menuBtn: $("menuBtn"),
   newBtn: $("newBtn"),
   galleryInput: $("galleryInput"),
@@ -91,6 +92,15 @@ function setStatus(text) {
 function isNetworkFetchError(err) {
   const message = String(err?.message || err || "");
   return /failed to fetch|networkerror|network request failed|load failed/i.test(message);
+}
+
+function setComputeBadge(data) {
+  if (!els.computeBadge || !data) return;
+  const isWorker = data.compute_source === "remote_worker";
+  const route = isWorker ? "Worker" : "Host";
+  const model = String(data.runtime_model || data.model || "unknown");
+  els.computeBadge.textContent = `${route} · ${model}`;
+  els.computeBadge.dataset.route = isWorker ? "worker" : "host";
 }
 
 function setBrand(name) {
@@ -571,6 +581,10 @@ async function syncSharedState() {
     }
 
     state.syncCounter += 1;
+    if (state.syncCounter % 10 === 0) {
+      const compute = await api("/api/compute");
+      setComputeBadge(compute);
+    }
     if (state.syncCounter % 3 === 0) {
       const health = await api(`/api/health?t=${Date.now()}`);
       if (health.version && health.version !== state.bootstrap.version) {
@@ -604,6 +618,7 @@ async function bootstrap() {
     state.bootstrap = data;
     setBrand(data.assistant_name);
     if (els.versionBadge) els.versionBadge.textContent = `v${data.version}`;
+    setComputeBadge(data);
     document.title = data.assistant_name;
     await refreshChats();
     setStatus(`Connected · v${data.version}`);
