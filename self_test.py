@@ -17,6 +17,7 @@ from app.self_knowledge import (
 )
 from app.updater import is_newer_version
 from app.tools import ToolRegistry, should_force_web_search
+from ui import XemAiApp
 
 
 def run() -> None:
@@ -52,6 +53,8 @@ def run() -> None:
     assert "ensure_mobile_server_current" in runtime_source
     assert "XemAiServer.pyw" in runtime_source
     assert title_from_message("hello world") == "hello world"
+    assert XemAiApp._format_time(None, "2026-10-08T01:41:00+01:00") is not None
+    assert "desktop_startup_error.log" in (project_root / "XemAi.pyw").read_text(encoding="utf-8")
     assert is_self_knowledge_query("what do you think your ai is missing?")
     assert is_self_knowledge_query("through your iterative updates, can you recognise whats been added?")
     assert not is_self_knowledge_query("help me design a Skyrim perk")
