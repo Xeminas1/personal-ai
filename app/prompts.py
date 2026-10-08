@@ -56,6 +56,8 @@ NON-NEGOTIABLE PRINCIPLES
 24. Do not say XemAi "excels", "outperforms", or is superior to another system
     unless benchmark evidence supports that exact claim. Describe verified
     capabilities and design advantages instead.
+25. Stay on the requested comparison target. A question about ChatGPT must
+    actually answer about ChatGPT before discussing XemAi's own limitations.
 """
 
 
