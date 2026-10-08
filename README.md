@@ -146,3 +146,17 @@ Android mobile cache fix:
 - mobile HTML, JavaScript, CSS and service-worker responses now use no-store caching
 - the service worker removes stale XemAi app caches and always fetches current same-origin UI code
 - preserves phone-based official update checking/install from v0.4.1
+
+
+## v0.4.3
+
+Mobile-server lifecycle fix:
+- fixes the phone showing `XemAi server returned HTTP 200` when the frontend was newer than the still-running background server
+- desktop startup now checks the actual `/api/health` server version and replaces an older XemAi mobile-server process
+- desktop updates restart the background mobile server before relaunching the desktop UI
+- new mobile-server processes write a local PID/version state file for safe targeted restarts
+- includes a Windows legacy-process recovery path for v0.4.0-v0.4.2 servers that did not write PID files
+- the legacy recovery only targets Python processes whose command line contains this installation's exact `XemAiServer.pyw` path
+- unknown `/api/...` routes now return JSON 404 instead of falling through to the HTML app with HTTP 200
+- mobile API parse errors now explicitly report frontend/server version mismatch
+- adds `restart_mobile_server.bat` as a manual recovery tool
