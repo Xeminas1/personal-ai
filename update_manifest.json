@@ -1,36 +1,36 @@
 {
-  "version": "0.6.1",
-  "notes": "Mobile-focused visual refinement: the phone UI now has a cleaner fixed header with no tiny status line under XemAi, noticeably smaller and tighter chat bubbles, a more compact composer, and a stronger bottom-up dark-blue glow to better match the reference. Desktop remains on the unified responsive frontend introduced in v0.6.0.",
+  "version": "0.6.2",
+  "notes": "Brand polish: XemAi now renders its wordmark as white “Xem” plus soft blue “Ai” in the shared desktop/mobile header and sidebar/drawer title. Custom assistant names remain normal single-colour text. Frontend cache/version tags are bumped so the change appears immediately after updating.",
   "files": [
     {
-      "path": "mobile/styles.css",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.1/mobile/styles.css",
-      "sha256": "71116a3f77c92e5acfe35be3d3257c6a11131ccf63c11152b497f90aad37f316"
+      "path": "mobile/index.html",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.2/mobile/index.html",
+      "sha256": "92f73ce87af356c556c98b034784a536a4999b6bc9a9ad3e9469fedf9db5a673"
     },
     {
-      "path": "mobile/index.html",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.1/mobile/index.html",
-      "sha256": "1b758929194207bc3fd0a573121628f930f5cc8ab9af418ed8f846524173d988"
+      "path": "mobile/styles.css",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.2/mobile/styles.css",
+      "sha256": "2178e9518d7600527c8b8ff0093b90247cba5510307768471958b912ad65a917"
     },
     {
       "path": "mobile/app.js",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.1/mobile/app.js",
-      "sha256": "e0def0739e7541b14c387ee3c207c91634abbbe85ead1def9158f9e32a9534d2"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.2/mobile/app.js",
+      "sha256": "bec83fce11298179fd51ddc4649b248865b09d2a625a3bc7cbe8815bc2015887"
     },
     {
       "path": "mobile/sw.js",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.1/mobile/sw.js",
-      "sha256": "4eaff71ecd00d896f705d6a984aba560412c1a35c0c2633a05a3fe006a100346"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.2/mobile/sw.js",
+      "sha256": "39cfd354549e2b09e28d4b9586e1ed4fcadc590fb3eeee927adf4a5cfa90313f"
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.1/app/version.py",
-      "sha256": "812aa1230ec484ceeb4caaaa920d0291e123c270615b528821bbbc2ebbffc653"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.2/app/version.py",
+      "sha256": "e51e402733c612b5d0492ef035c750dc02fd34e666573dadd829a3442dd27b6f"
     },
     {
       "path": "app/self_knowledge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.1/app/self_knowledge.py",
-      "sha256": "2d3b4a5c11193020711ec2f9d5b72b538bf17d9d52a4d3dcc235d2d89c4c49ff"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.6.2/app/self_knowledge.py",
+      "sha256": "5ed815f599f5e6dc3b1209b9cb7e913c7a744085855da3c15d8d752c1fb6f9f9"
     }
   ]
 }
