@@ -489,6 +489,18 @@ class ChatBackend:
                         ),
                     })
 
+            if research_bundle is not None and not research_sources:
+                messages.append({
+                    "role": "system",
+                    "content": (
+                        "RESEARCH ATTEMPTED BUT NO SOURCES: XemAi attempted live "
+                        "evidence research for this question but did not retrieve a "
+                        "usable reputable source bundle. Do not claim that research or "
+                        "studies were checked. Answer cautiously from general reasoning "
+                        "or state that stronger verification is needed."
+                    ),
+                })
+
             if (
                 tools.web_search_enabled
                 and should_force_web_search(query_text)
