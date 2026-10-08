@@ -462,3 +462,13 @@ Mobile visual refinement:
 - tightens mobile message spacing and composer sizing
 - strengthens the dark-to-blue bottom-up background glow
 - preserves the unified responsive frontend introduced in v0.6.0
+
+
+## v0.6.2
+
+Brand polish update:
+- renders the XemAi wordmark as white `Xem` plus blue `Ai`
+- applies the split-color branding to the shared desktop/mobile top header
+- applies the same branding to the desktop sidebar and mobile drawer title
+- keeps custom assistant names as normal single-color text
+- bumps frontend asset/cache versions so the change appears immediately after updating
