@@ -570,3 +570,16 @@ Ollama runtime model discovery:
 - capabilities and authoritative self-knowledge report the actual runtime-selected model, selection source and Qwen models discovered by Ollama
 - mobile/desktop bootstrap exposes runtime_model, model_source and installed_qwen for diagnostics
 - auto-detection can be disabled with auto_detect_ollama_model=false for a future explicit/manual model override
+
+
+## v0.7.1
+
+Asynchronous reply transport and reliability:
+- message submission returns immediately after the shared host accepts the job instead of holding one HTTP request open for the entire local-model generation
+- the always-on host continues generating even if the phone changes networks, Tailscale briefly reconnects, or the browser request disappears
+- phone and desktop follow reply progress through the shared activity endpoint and live chat sync
+- removes the misleading Reply failed / Failed to fetch flow for long-running generations
+- retry requests use the same asynchronous job model
+- clears the visible thinking indicator as soon as the assistant answer is persisted; automatic memory extraction can finish afterward without pretending XemAi is still composing the reply
+- limits the current single-host model runner to one generation at a time to avoid overloading the lower-spec always-on machine
+- fixes the v0.6.8 attachment upload endpoint so uploads are handled by POST rather than being accidentally placed under GET
