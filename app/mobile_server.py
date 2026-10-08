@@ -103,6 +103,38 @@ def _change_active_chat_requests(server, delta: int) -> None:
         server.active_chat_requests = max(0, current + int(delta))
 
 
+def _set_chat_activity(server, chat_id: int, status: str | None) -> None:
+    lock = getattr(server, "activity_lock", None)
+    if lock is None:
+        return
+    with lock:
+        activity = getattr(server, "chat_activity", None)
+        if activity is None:
+            activity = {}
+            server.chat_activity = activity
+        if status:
+            activity[int(chat_id)] = {
+                "status": str(status),
+                "updated_at": time.time(),
+            }
+        else:
+            activity.pop(int(chat_id), None)
+
+
+def _get_chat_activity(server, chat_id: int) -> dict:
+    lock = getattr(server, "activity_lock", None)
+    if lock is None:
+        return {"active": False, "status": None}
+    with lock:
+        item = dict(getattr(server, "chat_activity", {}).get(int(chat_id), {}))
+    if not item:
+        return {"active": False, "status": None}
+    return {
+        "active": True,
+        "status": str(item.get("status") or "XemAi is thinking"),
+    }
+
+
 def _auto_update_loop(server) -> None:
     logger = getattr(server, "xemai_logger", None)
     stop_event = getattr(server, "stop_event", None)
@@ -415,6 +447,13 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     backend.close()
             return
 
+        match = re.fullmatch(r"/api/chats/(\d+)/activity", path)
+        if match:
+            chat_id = int(match.group(1))
+            activity = _get_chat_activity(self.server, chat_id)
+            self._json({"ok": True, **activity})
+            return
+
         match = re.fullmatch(r"/api/chats/(\d+)/messages", path)
         if match:
             backend = None
@@ -559,8 +598,16 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     return
 
                 _change_active_chat_requests(self.server, 1)
+                _set_chat_activity(self.server, chat_id, "XemAi is thinking")
                 active_request = True
-                answer = backend.send(chat_id, text, attachments=attachments)
+                answer = backend.send(
+                    chat_id,
+                    text,
+                    status_callback=lambda status: _set_chat_activity(
+                        self.server, chat_id, status
+                    ),
+                    attachments=attachments,
+                )
                 updated_chat = backend.get_chat(chat_id)
                 self._json({
                     "ok": True,
@@ -571,6 +618,7 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                 self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
             finally:
                 if active_request:
+                    _set_chat_activity(self.server, chat_id, None)
                     _change_active_chat_requests(self.server, -1)
                 if backend:
                     backend.close()
@@ -612,10 +660,14 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     return
 
                 _change_active_chat_requests(self.server, 1)
+                _set_chat_activity(self.server, chat_id, "XemAi is thinking")
                 active_request = True
                 answer = backend.send(
                     chat_id,
                     str(last_user["content"]),
+                    status_callback=lambda status: _set_chat_activity(
+                        self.server, chat_id, status
+                    ),
                     record_user=False,
                 )
                 updated_chat = backend.get_chat(chat_id)
@@ -628,6 +680,7 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                 self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
             finally:
                 if active_request:
+                    _set_chat_activity(self.server, chat_id, None)
                     _change_active_chat_requests(self.server, -1)
                 if backend:
                     backend.close()
@@ -755,6 +808,7 @@ def run_mobile_server() -> int:
     server.update_lock = threading.Lock()
     server.activity_lock = threading.Lock()
     server.active_chat_requests = 0
+    server.chat_activity = {}
     server.update_restarting = False
     server.stop_event = threading.Event()
     state_path = DATA_DIR / "mobile_server.json"
