@@ -511,6 +511,8 @@ class ChatBackend:
 
             worker_db.add_message(chat_id, "assistant", answer)
             assistant_recorded = True
+            if status_callback:
+                status_callback(None)
 
             if self.config.get("auto_memory", True):
                 try:
