@@ -78,6 +78,11 @@ function setStatus(text) {
   els.status.textContent = text;
 }
 
+function isNetworkFetchError(err) {
+  const message = String(err?.message || err || "");
+  return /failed to fetch|networkerror|network request failed|load failed/i.test(message);
+}
+
 function setBrand(name) {
   const displayName = String(name || "XemAi");
   const drawerTitle = document.querySelector(".drawer-title");
@@ -456,10 +461,15 @@ async function retryLastMessage() {
     setRemoteActivity(true, data.status || "XemAi is thinking");
     window.setTimeout(syncSharedState, 250);
   } catch (err) {
-    setBusy(false, "Connection interrupted");
-    setStatus("Connection interrupted · checking XemAi…");
-    window.setTimeout(syncSharedState, 500);
-    window.setTimeout(syncSharedState, 2000);
+    if (isNetworkFetchError(err)) {
+      setBusy(false, "Connection interrupted");
+      setStatus("Connection interrupted · checking XemAi…");
+      window.setTimeout(syncSharedState, 500);
+      window.setTimeout(syncSharedState, 2000);
+    } else {
+      setBusy(false, "Retry not started");
+      showModal("Retry not started", err.message || String(err));
+    }
   }
 }
 
@@ -669,10 +679,15 @@ async function sendMessage(event) {
   } catch (err) {
     // A dropped mobile/Tailscale connection does not prove generation failed.
     // The server may already have accepted the message and be working on it.
-    setBusy(false, "Connection interrupted");
-    setStatus("Connection interrupted · checking XemAi…");
-    window.setTimeout(syncSharedState, 500);
-    window.setTimeout(syncSharedState, 2000);
+    if (isNetworkFetchError(err)) {
+      setBusy(false, "Connection interrupted");
+      setStatus("Connection interrupted · checking XemAi…");
+      window.setTimeout(syncSharedState, 500);
+      window.setTimeout(syncSharedState, 2000);
+    } else {
+      setBusy(false, "Message not accepted");
+      showModal("Message not accepted", err.message || String(err));
+    }
   }
 }
 
