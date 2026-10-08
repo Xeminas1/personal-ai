@@ -36,6 +36,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.6.9", "Adds per-message timestamps, right-aligned user metadata with Sent state, and a shared animated XemAi working indicator visible across open devices while a reply is being generated."),
     ("0.7.0", "Adds live Ollama model discovery so XemAi selects and reports its actual Qwen runtime model instead of trusting a stale config.json model value."),
     ("0.7.1", "Makes reply generation asynchronous so phone/desktop requests return immediately while the host continues working, avoids false Failed to fetch reply failures on long generations, clears thinking when the reply is saved, and repairs the attachment upload POST route."),
+    ("0.7.2", "Adds a mobile attachment source sheet with Photo Gallery, Take Photo, Record Video and Files while keeping desktop + as a normal file picker."),
 ]
 
 
