@@ -32,7 +32,17 @@ class ScrollableFrame(tk.Frame):
     def __init__(self, master, bg: str, **kwargs):
         super().__init__(master, bg=bg, **kwargs)
         self.canvas = tk.Canvas(self, bg=bg, highlightthickness=0, bd=0)
-        self.scrollbar = tk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.scrollbar = tk.Scrollbar(
+            self,
+            orient="vertical",
+            command=self.canvas.yview,
+            bg="#18334c",
+            troughcolor=bg,
+            activebackground="#2d597f",
+            elementborderwidth=0,
+            borderwidth=0,
+            width=10,
+        )
         self.inner = tk.Frame(self.canvas, bg=bg)
         self.window = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
@@ -177,12 +187,12 @@ class XemAiApp(tk.Tk):
         self.bg_canvas.bind("<Configure>", self._draw_gradient)
 
         self.shell = tk.Frame(self, bg="#04101a", highlightthickness=1, highlightbackground="#2a4965")
-        self.shell.place(relx=0.5, rely=0.5, relwidth=0.93, relheight=0.9, anchor="center")
+        self.shell.place(relx=0.5, rely=0.5, relwidth=0.93, relheight=0.92, anchor="center")
         self.shell.grid_columnconfigure(1, weight=1)
         self.shell.grid_rowconfigure(0, weight=1)
 
         # Sidebar
-        self.sidebar = tk.Frame(self.shell, bg="#06111a", width=300, highlightthickness=1, highlightbackground="#17324a")
+        self.sidebar = tk.Frame(self.shell, bg="#06111a", width=320, highlightthickness=1, highlightbackground="#17324a")
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_propagate(False)
         self.sidebar.grid_columnconfigure(0, weight=1)
@@ -273,13 +283,22 @@ class XemAiApp(tk.Tk):
         self.main.grid_columnconfigure(0, weight=1)
         self.main.grid_rowconfigure(1, weight=1)
 
-        top = tk.Frame(self.main, bg="#03070c", height=70)
+        top = tk.Frame(self.main, bg="#050d15", height=86, highlightthickness=1, highlightbackground="#17324a")
         top.grid(row=0, column=0, sticky="ew")
+        top.grid_propagate(False)
         top.grid_columnconfigure(0, weight=1)
         top.grid_columnconfigure(1, weight=1)
         top.grid_columnconfigure(2, weight=1)
 
-        tk.Label(top, text="", bg=top.cget("bg")).grid(row=0, column=0)
+        self.status = tk.Label(
+            top,
+            text=f"Connected · v{VERSION}",
+            bg=top.cget("bg"),
+            fg=MUTED,
+            font=("Segoe UI", 10),
+            anchor="w",
+        )
+        self.status.grid(row=0, column=0, sticky="w", padx=22)
         self.brand = tk.Label(
             top,
             text=self.backend.config.get("assistant_name", "XemAi"),
@@ -287,7 +306,7 @@ class XemAiApp(tk.Tk):
             fg=TEXT,
             font=("Segoe UI Light", 30),
         )
-        self.brand.grid(row=0, column=1, pady=20)
+        self.brand.grid(row=0, column=1, pady=18)
 
         actions = tk.Frame(top, bg=top.cget("bg"))
         actions.grid(row=0, column=2, sticky="e", padx=22)
@@ -299,22 +318,12 @@ class XemAiApp(tk.Tk):
                   font=("Segoe UI Symbol", 20)).grid(row=0, column=1, padx=6)
 
         self.messages = ScrollableFrame(self.main, bg="#03070c")
-        self.messages.grid(row=1, column=0, sticky="nsew", padx=(26, 26), pady=(0, 12))
+        self.messages.grid(row=1, column=0, sticky="nsew", padx=(24, 24), pady=(12, 10))
         self.messages.inner.grid_columnconfigure(0, weight=1)
 
-        self.status = tk.Label(
-            self.main,
-            text="Ready",
-            bg="#03070c",
-            fg=MUTED,
-            font=("Segoe UI", 10),
-            anchor="center",
-        )
-        self.status.grid(row=2, column=0, sticky="ew", pady=(0, 2))
-
         composer_holder = tk.Frame(self.main, bg="#03070c")
-        composer_holder.grid(row=3, column=0, sticky="ew", padx=26, pady=(0, 24))
-        composer_holder.grid_columnconfigure(1, weight=1)
+        composer_holder.grid(row=2, column=0, sticky="ew", padx=26, pady=(0, 22))
+        composer_holder.grid_columnconfigure(0, weight=1)
 
         self.composer = tk.Frame(
             composer_holder,
@@ -345,7 +354,7 @@ class XemAiApp(tk.Tk):
 
         self.input = tk.Text(
             self.composer,
-            height=3,
+            height=2,
             wrap="word",
             bg=INPUT_BG,
             fg=TEXT,
@@ -390,8 +399,8 @@ class XemAiApp(tk.Tk):
         if w < 2 or h < 2:
             return
         self.bg_canvas.delete("grad")
-        top = (0x02, 0x05, 0x09)
-        bottom = (0x07, 0x23, 0x39)
+        top = (0x02, 0x06, 0x0a)
+        bottom = (0x03, 0x0f, 0x17)
         for i in range(h):
             t = i / max(1, h - 1)
             r = int(top[0] + (bottom[0] - top[0]) * t)
@@ -399,10 +408,10 @@ class XemAiApp(tk.Tk):
             b = int(top[2] + (bottom[2] - top[2]) * t)
             color = f"#{r:02x}{g:02x}{b:02x}"
             self.bg_canvas.create_line(0, i, w, i, fill=color, tags="grad")
-        self.bg_canvas.create_oval(-w * 0.25, h * 0.45, w * 0.45, h * 1.35,
-                                   fill="#0a2d48", outline="", stipple="gray25", tags="grad")
-        self.bg_canvas.create_oval(w * 0.55, h * 0.55, w * 1.2, h * 1.45,
-                                   fill="#123554", outline="", stipple="gray25", tags="grad")
+        self.bg_canvas.create_oval(-w * 0.15, h * 0.66, w * 0.35, h * 1.22,
+                                   fill="#0d3556", outline="", stipple="gray25", tags="grad")
+        self.bg_canvas.create_oval(w * 0.55, h * 0.68, w * 1.05, h * 1.24,
+                                   fill="#15456d", outline="", stipple="gray25", tags="grad")
         self.bg_canvas.tag_lower("grad")
 
     def _format_time(self, value: str | None) -> str:
@@ -499,7 +508,7 @@ class XemAiApp(tk.Tk):
 
     def _resize_bubbles(self):
         available = max(440, self.messages.canvas.winfo_width())
-        wrap = int(min(max(available * 0.55, 280), 650))
+        wrap = int(min(max(available * 0.60, 320), 760))
         for bubble in self.message_widgets:
             bubble.set_wrap(wrap)
 
