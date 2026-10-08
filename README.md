@@ -483,3 +483,14 @@ Self-knowledge and AI-comparison reliability update:
 - forbids invented training cutoffs, unsupported benchmark claims, and generic "I'm not any specific AI" disclaimers
 - rejects stale self-description drafts before they are saved, retries once with a corrective runtime prompt, then falls back to a deterministic truth-based XemAi answer if needed
 - keeps claims about external AI systems cautious unless current details have been verified
+
+
+## v0.6.4
+
+AI-comparison quality update:
+- catches avoidance variants such as "I don't directly compare myself"
+- requires AI opinion/comparison answers to state a real position in the first sentence
+- rejects describing ChatGPT merely as a standalone model
+- rejects unsupported claims that XemAi "excels", outperforms, or is superior without benchmark evidence
+- describes XemAi's memory, continuity, local control, and tools as verified capabilities/design advantages rather than proof of superior performance
+- retries weak comparison drafts once, then uses a deterministic direct XemAi comparison if the retry still fails
