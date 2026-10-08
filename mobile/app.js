@@ -1,4 +1,5 @@
-const FRONTEND_VERSION = "0.6.6";
+const FRONTEND_VERSION = "0.6.7";
+const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
   bootstrap: null,
@@ -182,17 +183,45 @@ function appendMessage(role, text) {
   const name = role === "user"
     ? state.bootstrap.user.name
     : state.bootstrap.assistant_name;
+  const retryable = (
+    role === "assistant"
+    && String(text).startsWith(REPLY_ERROR_PREFIX)
+  );
   wrap.innerHTML = `
     <div class="bubble-wrap">
       ${role === "assistant" ? '<div class="tail"></div>' : ''}
       <div class="bubble">
         <div class="message-body">${renderBody(text)}</div>
+        ${retryable ? '<button type="button" class="retry-reply-btn">Retry</button>' : ''}
         <div class="message-name">${escapeHtml(name)}</div>
       </div>
       ${role === "user" ? '<div class="tail"></div>' : ''}
     </div>
   `;
+  const retryBtn = wrap.querySelector(".retry-reply-btn");
+  if (retryBtn) retryBtn.addEventListener("click", retryLastMessage);
   els.messages.appendChild(wrap);
+}
+
+async function retryLastMessage() {
+  if (state.busy || !state.chatId) return;
+
+  setBusy(true, "Retrying…");
+  try {
+    await api(`/api/chats/${state.chatId}/retry`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    setBusy(false, `Connected · v${state.bootstrap.version}`);
+    await refreshChats(state.chatId);
+    scrollBottom();
+  } catch (err) {
+    setBusy(false, "Retry failed");
+    try {
+      await refreshChats(state.chatId);
+    } catch {}
+    showModal("Retry failed", err.message || String(err));
+  }
 }
 
 function scrollBottom() {
@@ -366,9 +395,11 @@ async function sendMessage(event) {
     await refreshChats(state.chatId);
     scrollBottom();
   } catch (err) {
-    setBusy(false, "Error");
-    appendMessage("assistant", `I hit an error: ${err.message || err}`);
-    scrollBottom();
+    setBusy(false, "Reply failed");
+    try {
+      await refreshChats(state.chatId);
+    } catch {}
+    showModal("Reply failed", err.message || String(err));
   }
 }
 
@@ -578,7 +609,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.6.6")
+  navigator.serviceWorker.register("/sw.js?v=0.6.7")
     .then((registration) => registration.update())
     .catch(() => {});
 }
