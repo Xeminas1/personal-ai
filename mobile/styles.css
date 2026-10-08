@@ -160,6 +160,19 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 .message.user .message-name { color: #6b8096; }
 .message.assistant .message-name { color: #a6c6e8; }
+.retry-reply-btn {
+  margin-top: 12px;
+  border: 1px solid rgba(143, 192, 255, 0.42);
+  background: rgba(9, 27, 44, 0.72);
+  color: #b9d7fa;
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.retry-reply-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
 .thinking {
   position: fixed;
   left: 50%;
