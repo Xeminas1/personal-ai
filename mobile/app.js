@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.4.2";
+const FRONTEND_VERSION = "0.4.3";
 
 const state = {
   bootstrap: null,
@@ -42,11 +42,18 @@ async function api(path, options = {}) {
     },
   };
   const response = await fetch(path, opts);
+  const contentType = response.headers.get("content-type") || "";
   let data;
   try {
     data = await response.json();
   } catch {
-    throw new Error(`XemAi server returned HTTP ${response.status}`);
+    if (!contentType.includes("application/json")) {
+      throw new Error(
+        `Mobile server/API mismatch: frontend v${FRONTEND_VERSION} received ` +
+        `${contentType || "non-JSON"} from ${path}. Restart the XemAi mobile server.`
+      );
+    }
+    throw new Error(`XemAi server returned unreadable JSON (HTTP ${response.status})`);
   }
   if (!response.ok || data.ok === false) {
     throw new Error(data.error || `HTTP ${response.status}`);
@@ -443,7 +450,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.4.2")
+  navigator.serviceWorker.register("/sw.js?v=0.4.3")
     .then((registration) => registration.update())
     .catch(() => {});
 }
