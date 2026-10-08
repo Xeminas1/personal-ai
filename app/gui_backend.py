@@ -7,6 +7,7 @@ from .capabilities import build_capability_status
 from .config import DATA_DIR, LOG_DIR, load_config, save_config
 from .database import Database
 from .learning import extract_and_store_memories
+from .hybrid import build_llm_client
 from .llm import OllamaClient
 from .logging_setup import setup_logging
 from .prompts import build_system_prompt
@@ -173,10 +174,10 @@ class ChatBackend:
         self.logger = setup_logging(LOG_DIR)
         self.db = Database(DATA_DIR / "personal_ai.db")
         self.user = self.db.get_user()
-        self.llm = OllamaClient(
-            base_url=self.config["ollama_url"],
-            model=self.config["model"],
-            logger=self.logger,
+        self.llm = build_llm_client(
+            self.config,
+            self.logger,
+            DATA_DIR,
         )
         self.runtime_model_info = {
             "model": self.config.get("model", "unknown"),
@@ -196,7 +197,11 @@ class ChatBackend:
             "running_qwen": [],
         }
 
-        if not self.config.get("auto_detect_ollama_model", True):
+        is_hybrid = bool(getattr(llm, "is_hybrid", False))
+        if (
+            not is_hybrid
+            and not self.config.get("auto_detect_ollama_model", True)
+        ):
             llm.model = info["model"]
             if client is None:
                 self.runtime_model_info = info
@@ -225,7 +230,10 @@ class ChatBackend:
 
     def health_error(self) -> str | None:
         if not self.llm.health_check():
-            return "XemAi cannot reach Ollama. Start Ollama, then reopen XemAi."
+            return (
+                "XemAi cannot reach a usable model. Start Ollama on the "
+                "always-on host, or bring the paired hybrid worker online."
+            )
         info = self.refresh_runtime_model()
         model = str(info.get("model", "unknown"))
         if not self.llm.model_available(model):
@@ -264,10 +272,10 @@ class ChatBackend:
                 raise RuntimeError(msg)
             save_ollama_api_key(DATA_DIR, api_key.strip())
         save_config(self.config)
-        self.llm = OllamaClient(
-            base_url=self.config["ollama_url"],
-            model=self.config["model"],
-            logger=self.logger,
+        self.llm = build_llm_client(
+            self.config,
+            self.logger,
+            DATA_DIR,
         )
         self.runtime_model_info = {
             "model": self.config.get("model", "unknown"),
@@ -364,10 +372,10 @@ class ChatBackend:
             feedback = worker_db.recent_chat_feedback(user["id"], limit=8)
 
             tools = ToolRegistry(BASE_DIR, DATA_DIR, self.logger)
-            llm = OllamaClient(
-                base_url=self.config["ollama_url"],
-                model=self.config["model"],
-                logger=self.logger,
+            llm = build_llm_client(
+                self.config,
+                self.logger,
+                DATA_DIR,
             )
             runtime_model_info = self.refresh_runtime_model(llm)
 
