@@ -75,12 +75,96 @@ def _schedule_mobile_server_restart() -> None:
     )
 
     def stop_current():
-        time.sleep(0.5)
+        time.sleep(1.5)
         # The response has already been sent. Exit immediately so the helper can
         # bind the same localhost port using the newly installed code.
         os._exit(0)
 
     threading.Thread(target=stop_current, daemon=True).start()
+
+
+def _active_chat_requests(server) -> int:
+    lock = getattr(server, "activity_lock", None)
+    if lock is None:
+        return 0
+    with lock:
+        return int(getattr(server, "active_chat_requests", 0))
+
+
+def _change_active_chat_requests(server, delta: int) -> None:
+    lock = getattr(server, "activity_lock", None)
+    if lock is None:
+        return
+    with lock:
+        current = int(getattr(server, "active_chat_requests", 0))
+        server.active_chat_requests = max(0, current + int(delta))
+
+
+def _auto_update_loop(server) -> None:
+    logger = getattr(server, "xemai_logger", None)
+    stop_event = getattr(server, "stop_event", None)
+    if stop_event is None:
+        return
+
+    # Give startup a moment to settle, then check periodically.
+    if stop_event.wait(8):
+        return
+
+    while not stop_event.is_set():
+        backend = None
+        try:
+            config = load_config()
+            enabled = bool(config.get("mobile_updates_enabled", True))
+            auto_install = bool(config.get("auto_install_updates", True))
+            interval = max(
+                30,
+                int(config.get("auto_update_interval_seconds", 60)),
+            )
+
+            if enabled and auto_install and _active_chat_requests(server) == 0:
+                update_lock = getattr(server, "update_lock", None)
+                acquired = update_lock.acquire(blocking=False) if update_lock else True
+                if acquired:
+                    try:
+                        backend = ChatBackend()
+                        manifest = backend.check_update()
+                        if manifest and _active_chat_requests(server) == 0:
+                            installed = backend.install_update(manifest)
+                            if logger:
+                                logger.info(
+                                    "Automatic update installed | from=%s to=%s",
+                                    VERSION,
+                                    installed,
+                                )
+                            _schedule_mobile_server_restart()
+                            return
+                    finally:
+                        if backend:
+                            backend.close()
+                            backend = None
+                        if update_lock:
+                            update_lock.release()
+
+            if stop_event.wait(interval):
+                return
+        except Exception as e:
+            if backend:
+                try:
+                    backend.close()
+                except Exception:
+                    pass
+                backend = None
+            if logger:
+                logger.warning("Automatic update check failed | error=%r", e)
+            try:
+                interval = max(
+                    30,
+                    int(load_config().get("auto_update_interval_seconds", 60)),
+                )
+            except Exception:
+                interval = 60
+            if stop_event.wait(interval):
+                return
 
 
 def _row_dict(row) -> dict:
@@ -346,6 +430,7 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
         match = re.fullmatch(r"/api/chats/(\d+)/messages", path)
         if match:
             backend = None
+            active_request = False
             try:
                 chat_id = int(match.group(1))
                 text = str(body.get("text", "")).strip()
@@ -362,6 +447,8 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     self._error("Chat not found.", HTTPStatus.NOT_FOUND)
                     return
 
+                _change_active_chat_requests(self.server, 1)
+                active_request = True
                 answer = backend.send(chat_id, text)
                 updated_chat = backend.get_chat(chat_id)
                 self._json({
@@ -372,6 +459,8 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             except Exception as e:
                 self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
             finally:
+                if active_request:
+                    _change_active_chat_requests(self.server, -1)
                 if backend:
                     backend.close()
             return
@@ -467,6 +556,10 @@ def run_mobile_server() -> int:
         return 0
 
     server.xemai_logger = logger
+    server.update_lock = threading.Lock()
+    server.activity_lock = threading.Lock()
+    server.active_chat_requests = 0
+    server.stop_event = threading.Event()
     state_path = DATA_DIR / "mobile_server.json"
     state = {
         "pid": os.getpid(),
@@ -486,11 +579,18 @@ def run_mobile_server() -> int:
         "Mobile server start | version=%s host=%s port=%s pid=%s",
         VERSION, host, port, os.getpid()
     )
+    threading.Thread(
+        target=_auto_update_loop,
+        args=(server,),
+        daemon=True,
+        name="XemAiAutoUpdater",
+    ).start()
     try:
         server.serve_forever(poll_interval=0.5)
     except KeyboardInterrupt:
         pass
     finally:
+        server.stop_event.set()
         server.server_close()
         try:
             if state_path.exists():
