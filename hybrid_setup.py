@@ -148,6 +148,7 @@ def setup_worker() -> int:
             ts,
             "serve",
             "--bg",
+            "--yes",
             f"--https={port}",
             f"localhost:{port}",
         ],
