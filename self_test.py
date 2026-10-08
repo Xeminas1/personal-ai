@@ -53,11 +53,15 @@ def run() -> None:
     assert "/api/update/install" in mobile_server
     assert 'r"/api/chats/(\\d+)/retry"' in mobile_server
     assert "record_user=False" in mobile_server
+    assert "MAX_ATTACHMENT_BYTES = 5_000_000" in mobile_server
+    assert 'r"/api/chats/(\\d+)/attachments"' in mobile_server
+    assert "_validated_attachment_refs" in mobile_server
+    assert "base64.b64decode" in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.6.7"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.6.8"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.6.7" in mobile_html
-    assert "/styles.css?v=0.6.7" in mobile_html
+    assert "/app.js?v=0.6.8" in mobile_html
+    assert "/styles.css?v=0.6.8" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
@@ -79,10 +83,22 @@ def run() -> None:
     assert "REPLY_ERROR_PREFIX" in mobile_js
     assert "retry-reply-btn" in mobile_js
     assert "async function retryLastMessage()" in mobile_js
+    assert "uploadSelectedFiles" in mobile_js
+    assert "pendingAttachments" in mobile_js
+    assert "fileToBase64" in mobile_js
+    assert "els.fileInput.click()" in mobile_js
+    assert 'els.newBtn.addEventListener("click", createChat)' not in mobile_js
+    assert "/attachments" in mobile_js
     assert "/retry" in mobile_js
     assert ".retry-reply-btn" in mobile_css
+    assert ".attachment-tray" in mobile_css
+    assert ".attachment-chip" in mobile_css
+    assert ".message-attachment" in mobile_css
     assert 'els.versionBadge.textContent = `v${data.version}`;' in mobile_js
     assert 'id="versionBadge"' in mobile_html
+    assert 'id="fileInput"' in mobile_html
+    assert 'id="attachmentTray"' in mobile_html
+    assert 'aria-label="Attach file"' in mobile_html
     assert ".version-badge" in mobile_css
     assert "rgba(15, 79, 132, 0.78)" in mobile_css
     assert 'chatTitle: $("chatTitle")' not in mobile_js
@@ -92,6 +108,10 @@ def run() -> None:
     assert "build_self_knowledge_fallback" in gui_backend_source
     assert "REPLY_ERROR_PREFIX" in gui_backend_source
     assert "record_user: bool = True" in gui_backend_source
+    assert "def _expand_attachment_message" in gui_backend_source
+    assert "ATTACHMENT_MARKER_PREFIX" in gui_backend_source
+    assert "ATTACHMENT_TEXT_BUDGET = 8_000" in gui_backend_source
+    assert "attachments=None" in gui_backend_source
     assert "Automatic memory extraction failed after successful reply" in gui_backend_source
     assert "Tap Retry to try the same message again." in gui_backend_source
     assert "explicitly naming or addressing" in gui_backend_source
@@ -143,9 +163,9 @@ def run() -> None:
         "I think XemAi currently lacks arbitrary shell/command execution, "
         "unrestricted filesystem access, and native image/audio analysis."
     )
-    assert is_newer_version("0.6.8", "0.6.7")
-    assert not is_newer_version("0.6.7", "0.6.7")
-    assert not is_newer_version("0.6.6", "0.6.7")
+    assert is_newer_version("0.6.9", "0.6.8")
+    assert not is_newer_version("0.6.8", "0.6.8")
+    assert not is_newer_version("0.6.7", "0.6.8")
     with tempfile.TemporaryDirectory() as temp:
         db = Database(Path(temp) / "test.db")
 
@@ -248,6 +268,8 @@ def run() -> None:
         assert "cross-chat long-term memory" in self_context.lower()
         assert "Cross-device live chat refresh" in self_context
         assert "Automatic official-channel updates" in self_context
+        assert "Shared file attachments" in self_context
+        assert "XemAi DOES support shared file attachments" in self_context
         assert "v0.3.0" in self_context
         assert "bubble-based" in self_context.lower()
         assert "Do not claim a 2023" in self_context
@@ -271,7 +293,7 @@ def run() -> None:
             registry,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.6.7" in safe_fallback
+        assert "v0.6.8" in safe_fallback
 
         calc = json.loads(registry.execute("calculator", {"expression": "2 + 3 * 4"}))
         assert calc["ok"] and calc["result"] == 14
