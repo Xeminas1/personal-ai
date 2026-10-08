@@ -14,6 +14,7 @@ from .self_knowledge import (
     build_ai_comparison_fallback,
     build_authoritative_self_context,
     build_self_knowledge_fallback,
+    comparison_answer_needs_retry,
     is_ai_comparison_query,
     is_self_knowledge_query,
     looks_like_stale_self_description,
@@ -210,23 +211,35 @@ class ChatBackend:
                 max_tool_rounds=int(self.config.get("max_tool_rounds", 6)),
             )
 
-            if self_query and looks_like_stale_self_description(answer):
+            invalid_self_answer = False
+            if self_query:
+                invalid_self_answer = (
+                    comparison_answer_needs_retry(text, answer)
+                    if comparison_query
+                    else looks_like_stale_self_description(answer)
+                )
+
+            if invalid_self_answer:
                 self.logger.warning(
-                    "Rejected stale XemAi self-description draft | chat_id=%s",
+                    "Rejected unreliable XemAi self/comparison draft | chat_id=%s",
                     chat_id,
                 )
                 retry_messages = list(messages)
                 retry_messages.append({
                     "role": "system",
                     "content": (
-                        "RESPONSE VALIDATION FAILURE: The previous draft used a "
-                        "stale or generic model self-description. Regenerate the "
-                        "answer now. You are XemAi, not an unnamed AI. Use the "
-                        "authoritative runtime self-knowledge above. Do not "
-                        "invent a training cutoff. Do not claim you cannot "
-                        "compare yourself with ChatGPT or another AI. Give a "
-                        "direct, reasoned answer and distinguish the underlying "
-                        "local model from XemAi as the complete application."
+                        "RESPONSE VALIDATION FAILURE: The previous draft did not "
+                        "meet XemAi's self-knowledge/comparison rules. Regenerate "
+                        "the answer now. State the actual opinion or comparison "
+                        "in the first sentence. Do not avoid the comparison with "
+                        "phrases like 'I don't directly compare myself'. Do not "
+                        "invent a training cutoff. Do not reduce ChatGPT to a "
+                        "standalone model. Do not claim XemAi excels, outperforms, "
+                        "or is better without benchmark evidence. Distinguish the "
+                        "underlying local model from XemAi as the complete "
+                        "application, and describe memory/local-control/tooling "
+                        "advantages as design advantages rather than proof of "
+                        "superior performance."
                     ),
                 })
                 answer = llm.agent_chat(
@@ -235,9 +248,14 @@ class ChatBackend:
                     max_tool_rounds=int(self.config.get("max_tool_rounds", 6)),
                 )
 
-                if looks_like_stale_self_description(answer):
+                second_invalid = (
+                    comparison_answer_needs_retry(text, answer)
+                    if comparison_query
+                    else looks_like_stale_self_description(answer)
+                )
+                if second_invalid:
                     self.logger.warning(
-                        "Second stale XemAi self-description rejected | chat_id=%s",
+                        "Second unreliable XemAi self/comparison draft rejected | chat_id=%s",
                         chat_id,
                     )
                     if comparison_query:
