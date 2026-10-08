@@ -80,6 +80,16 @@ button { -webkit-tap-highlight-color: transparent; }
   line-height: 1;
   letter-spacing: 0.25px;
 }
+.compute-badge {
+  margin-top: 4px;
+  color: #89a7c4;
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.15px;
+}
+.compute-badge[data-route="worker"] {
+  color: #8fc0ff;
+}
 .status {
   display: none;
 }
