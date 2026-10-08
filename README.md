@@ -439,3 +439,14 @@ Visual refinement update:
 - corrects the mobile background mood so the blue glow rises from the bottom rather than reading as the wrong-direction wash
 - refines the Windows desktop layout with an integrated status/header area, wider composer, styled scrollbars, stronger sidebar proportions, and corrected lower background glow
 - keeps the same chats, memories, updater, tools, and shared mobile/desktop data
+
+
+## v0.6.0
+
+Unified frontend release:
+- Windows and Android now use the same responsive HTML/CSS XemAi frontend
+- Windows `run.bat` launches XemAi in Microsoft Edge app mode for a standalone app window with native Windows controls
+- desktop mode keeps the sidebar permanently visible and uses desktop-sized bubbles and composer spacing
+- mobile mode keeps the slide-out drawer and phone layout
+- both platforms now share the same visual implementation instead of maintaining separate Tkinter and web designs
+- the previous Tkinter interface remains available as `LegacyDesktop.pyw` for fallback/troubleshooting
