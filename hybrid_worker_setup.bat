@@ -3,7 +3,7 @@ setlocal
 title XemAi Hybrid Worker Setup
 cd /d "%~dp0"
 
-net session >nul 2>&1
+powershell -NoProfile -Command "$p=[Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent(); if($p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){exit 0}else{exit 1}" >nul 2>&1
 if errorlevel 1 (
   echo XemAi needs an Administrator window once so Tailscale Serve can be configured.
   echo Requesting permission...
