@@ -472,3 +472,14 @@ Brand polish update:
 - applies the same branding to the desktop sidebar and mobile drawer title
 - keeps custom assistant names as normal single-color text
 - bumps frontend asset/cache versions so the change appears immediately after updating
+
+
+## v0.6.3
+
+Self-knowledge and AI-comparison reliability update:
+- treats questions such as "What's your opinion on ChatGPT?" as XemAi self/comparison questions and injects authoritative runtime self-knowledge
+- explicitly permits direct, reasoned comparisons with ChatGPT and other AI systems
+- requires XemAi to distinguish its underlying local model from the complete XemAi application
+- forbids invented training cutoffs, unsupported benchmark claims, and generic "I'm not any specific AI" disclaimers
+- rejects stale self-description drafts before they are saved, retries once with a corrective runtime prompt, then falls back to a deterministic truth-based XemAi answer if needed
+- keeps claims about external AI systems cautious unless current details have been verified
