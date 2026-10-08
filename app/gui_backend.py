@@ -11,7 +11,10 @@ from .logging_setup import setup_logging
 from .prompts import build_system_prompt
 from .secrets import save_ollama_api_key
 from .self_knowledge import (
+    build_ai_comparison_fallback,
     build_authoritative_self_context,
+    build_self_knowledge_fallback,
+    is_ai_comparison_query,
     is_self_knowledge_query,
     looks_like_stale_self_description,
 )
@@ -148,6 +151,7 @@ class ChatBackend:
                 chat_id, limit=int(self.config.get("history_messages", 30))
             )
             messages = [{"role": "system", "content": system_prompt}]
+            comparison_query = is_ai_comparison_query(text)
             self_query = is_self_knowledge_query(text)
 
             # For self-knowledge questions, old generic model self-descriptions
@@ -205,6 +209,44 @@ class ChatBackend:
                 tool_registry=tools,
                 max_tool_rounds=int(self.config.get("max_tool_rounds", 6)),
             )
+
+            if self_query and looks_like_stale_self_description(answer):
+                self.logger.warning(
+                    "Rejected stale XemAi self-description draft | chat_id=%s",
+                    chat_id,
+                )
+                retry_messages = list(messages)
+                retry_messages.append({
+                    "role": "system",
+                    "content": (
+                        "RESPONSE VALIDATION FAILURE: The previous draft used a "
+                        "stale or generic model self-description. Regenerate the "
+                        "answer now. You are XemAi, not an unnamed AI. Use the "
+                        "authoritative runtime self-knowledge above. Do not "
+                        "invent a training cutoff. Do not claim you cannot "
+                        "compare yourself with ChatGPT or another AI. Give a "
+                        "direct, reasoned answer and distinguish the underlying "
+                        "local model from XemAi as the complete application."
+                    ),
+                })
+                answer = llm.agent_chat(
+                    retry_messages,
+                    tool_registry=tools,
+                    max_tool_rounds=int(self.config.get("max_tool_rounds", 6)),
+                )
+
+                if looks_like_stale_self_description(answer):
+                    self.logger.warning(
+                        "Second stale XemAi self-description rejected | chat_id=%s",
+                        chat_id,
+                    )
+                    if comparison_query:
+                        answer = build_ai_comparison_fallback(text, self.config)
+                    else:
+                        answer = build_self_knowledge_fallback(
+                            text, self.config, tools
+                        )
+
             worker_db.add_message(chat_id, "assistant", answer)
 
             if self.config.get("auto_memory", True):
