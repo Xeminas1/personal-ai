@@ -11,9 +11,11 @@ from tkinter.scrolledtext import ScrolledText
 
 from app.gui_backend import ChatBackend
 from app.mobile_runtime import (
+    ensure_mobile_server_current,
     mobile_local_url,
     mobile_server_is_running,
-    start_mobile_server_process,
+    mobile_server_version,
+    restart_mobile_server_process,
 )
 from app.version import VERSION
 
@@ -354,8 +356,7 @@ class XemAiApp(tk.Tk):
         win.grid_columnconfigure(0, weight=1)
 
     def _mobile(self):
-        if not mobile_server_is_running():
-            start_mobile_server_process()
+        ensure_mobile_server_current()
         url = mobile_local_url()
         messagebox.showinfo(
             "XemAi Mobile",
@@ -371,7 +372,11 @@ class XemAiApp(tk.Tk):
 
     def _startup(self):
         if self.backend.config.get("mobile_server_autostart", True):
-            start_mobile_server_process()
+            if not ensure_mobile_server_current():
+                self.backend.logger.warning(
+                    "Could not bring mobile server to current version | app=%s server=%s",
+                    VERSION, mobile_server_version()
+                )
         err = self.backend.health_error()
         if err:
             messagebox.showerror("XemAi", err, parent=self)
@@ -411,6 +416,7 @@ class XemAiApp(tk.Tk):
 
     def _restart(self):
         self.backend.close()
+        restart_mobile_server_process()
         script = BASE_DIR / "XemAi.pyw"
         exe = Path(sys.executable)
         pythonw = exe.with_name("pythonw.exe")
