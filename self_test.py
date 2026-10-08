@@ -362,6 +362,7 @@ def run() -> None:
             def warning(self, *args, **kwargs):
                 pass
 
+        registry = ToolRegistry(Path(temp), Path(temp) / "data", DummyLogger())
         nhs_score, _ = _source_authority(
             "https://www.nhs.uk/conditions/common-cold/",
             "Common cold",
@@ -426,7 +427,6 @@ def run() -> None:
         assert "https://www.nhs.uk/conditions/common-cold/" in appendix
         assert research_bundle["sources"][0]["quote"] in appendix
 
-        registry = ToolRegistry(Path(temp), Path(temp) / "data", DummyLogger())
         runtime_info = {
             "model": "qwen3:1.7b",
             "source": "ollama_installed_recent",
