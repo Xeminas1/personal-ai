@@ -49,6 +49,7 @@ class HybridOllamaClient(OllamaClient):
         self.worker_client = worker_client
         self.local_fallback_model = str(local_fallback_model or local_client.model)
         self.active_client: OllamaClient = local_client
+        self.worker_failed_for_request = False
         self.route_info: dict[str, Any] = {
             "model": local_client.model,
             "source": "hybrid_local_fallback",
@@ -135,6 +136,7 @@ class HybridOllamaClient(OllamaClient):
         *,
         preferred: str | None = None,
     ) -> dict[str, Any]:
+        self.worker_failed_for_request = False
         return self.refresh_route()
 
     def health_check(self) -> bool:
@@ -163,7 +165,10 @@ class HybridOllamaClient(OllamaClient):
     ) -> dict[str, Any]:
         # Refresh at the first call of a turn so powering the strong PC on/off
         # is detected without restarting XemAi.
-        if self.active_client is self.local_client:
+        if (
+            self.active_client is self.local_client
+            and not self.worker_failed_for_request
+        ):
             self.refresh_route()
 
         if self.active_client is self.worker_client:
@@ -183,6 +188,7 @@ class HybridOllamaClient(OllamaClient):
                     self.worker_client.model,
                     e,
                 )
+                self.worker_failed_for_request = True
                 self._local_info()
 
         response = self.local_client.chat_raw(
