@@ -1,5 +1,44 @@
 # Personal AI v0.1
 
+## v0.9.11 clearer evidence and source references
+
+Research supplies bounded topical passages with nearby qualifications instead
+of the beginning of a page. Short direct quotations must be complete source
+sentences, so a word limit cannot silently cut off a negative conclusion.
+Source records distinguish fetched pages from search snippets, and the answer's
+source list says which pages were read. Reading a page or verifying its wording
+does not establish that a factual claim is supported.
+
+Comparable research results prefer distinct hosts without replacing stronger
+topic relevance or source authority. Exact hostname handling also fixes official
+sources such as WHO and W3C being misclassified. Selection remains a lexical
+and domain heuristic, not independent verification of a publisher or claim.
+
+Each chat turn has a source catalog with stable IDs across automatic research,
+model-requested research, ordinary search and page fetching. Repeating the same
+research query reuses that turn's evidence instead of fetching it again. The
+catalog is capped at twelve sources and does not persist between turns.
+
+Numbered citations and URLs explicitly presented as sources are checked against
+material retrieved in that turn, including research attempts with no usable
+sources. Clearly invalid references trigger at most one additional, tool-free
+model correction. If correction fails, the original draft is retained with an
+explicit unverified-reference notice and its original answering model label.
+Code, indexing, common array/vector notation and ordinary navigation links are
+excluded from this check. Valid references alone do not establish factual
+accuracy, and clean references incur no extra review inference.
+
+An explicit no-web request hides and blocks search, page-fetch and research
+tools for the current reply. Factual questions receive topical memories plus a
+small set of high-confidence preferences rather than unrelated stored facts.
+Explicit personal-memory, project and preference recall remains available.
+Stored memories, chats, model choices and hybrid fallback are preserved.
+
+Prompt guidance asks for the actual question to be answered first, distinguishes
+subjective rankings from objective facts, and requires attention to evidence
+scope and caveats. Offline regressions verify these application behaviors; no
+live-model accuracy score or improvement on a particular PC is claimed.
+
 ## v0.9.10 fallback overhead and reply source
 
 A failed worker health check now selects local fallback once for that chat

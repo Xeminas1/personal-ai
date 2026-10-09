@@ -21,7 +21,8 @@ def build_capability_status(
         if str(name).strip()
     ]
 
-    web_state = (
+    web_disabled_for_turn = getattr(tool_registry, "web_allowed", True) is False
+    web_state = "disabled for this reply at the user's request" if web_disabled_for_turn else (
         "configured; use the Web Test control to verify the saved Ollama key"
         if tool_registry.web_search_enabled
         else "not configured"
@@ -39,12 +40,17 @@ def build_capability_status(
         "Recent 0-10 feedback is available as a future-response optimisation signal",
         f"Live web search: {web_state}",
         (
+            "Evidence-backed reputable-source research: disabled for this reply at the user's request"
+            if web_disabled_for_turn else
             "Evidence-backed reputable-source research: enabled with ranked sources, "
             "verbatim quote extraction and source URLs"
             if tool_registry.web_search_enabled
             else "Evidence-backed reputable-source research: unavailable until web search is configured"
         ),
-        "Direct HTTP/HTTPS webpage fetching: enabled",
+        (
+            "Direct HTTP/HTTPS webpage fetching: disabled for this reply at the user's request"
+            if web_disabled_for_turn else "Direct HTTP/HTTPS webpage fetching: enabled"
+        ),
         "Calculator: enabled",
         "Current date/time lookup: enabled",
         "Sandboxed local workspace file listing/reading/writing: enabled",

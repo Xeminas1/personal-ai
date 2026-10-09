@@ -285,11 +285,15 @@ def _research_terms(query: str) -> set[str]:
     }
 
 
-def _source_authority(url: str, title: str = "", content: str = "") -> tuple[int, str]:
+def _source_host(url: str) -> str:
     try:
-        host = (urlparse(url).hostname or "").lower().lstrip("www.")
+        return (urlparse(url).hostname or "").lower().removeprefix("www.")
     except Exception:
-        host = ""
+        return ""
+
+
+def _source_authority(url: str, title: str = "", content: str = "") -> tuple[int, str]:
+    host = _source_host(url)
 
     score = 0
     label = "General web source"
@@ -346,10 +350,45 @@ def _research_query_variant(query: str) -> str:
     return f"{query} primary source official evidence"
 
 
+def extract_relevant_passage(content: str, query: str, max_chars: int = 1200) -> str:
+    """Keep a bounded topical passage and nearby qualifications from page text."""
+    clean = " ".join(str(content).split())
+    if not clean:
+        return ""
+    limit = max(1, min(2400, int(max_chars)))
+    terms = _topic_terms(query)
+    sentences = re.split(r"(?<=[.!?])\s+", clean)
+    ranked = [(len(terms & _topic_terms(sentence)), -index, index)
+              for index, sentence in enumerate(sentences)]
+    overlap, _, best = max(ranked)
+    if terms and not overlap:
+        return ""
+
+    focus = sentences[best]
+    if len(focus) > limit:
+        # Very long sentences have no usable boundary. Keep the topic in the
+        # bounded fragment; provenance marks the excerpt as incomplete.
+        anchor = next((match.start() for match in re.finditer(r"[a-z0-9][a-z0-9'\-]*", focus.lower())
+                       if _topic_word(match.group()) in terms), 0)
+        start = max(0, min(anchor - limit // 4, len(focus) - limit))
+        return focus[start:start + limit]
+
+    start = end = best
+    size = len(focus)
+    # Following sentences often contain a limitation or conflicting result.
+    for index in range(best + 1, min(len(sentences), best + 3)):
+        if size + 1 + len(sentences[index]) > limit:
+            break
+        end, size = index, size + 1 + len(sentences[index])
+    if best and size + 1 + len(sentences[best - 1]) <= limit:
+        start = best - 1
+    return " ".join(sentences[start:end + 1])
+
+
 def extract_exact_quote(content: str, query: str, max_words: int = 24) -> str:
     """
-    Pick a short verbatim fragment from fetched page text. The returned words
-    are copied from the normalized fetched source text; nothing is paraphrased.
+    Pick a complete short sentence from fetched page text. Never cut off a
+    qualification to fit the quotation limit; the passage carries that context.
     """
     clean = " ".join(str(content).split())
     if not clean:
@@ -379,15 +418,15 @@ def extract_exact_quote(content: str, query: str, max_words: int = 24) -> str:
         ranked.append((overlap * 5 + evidence_bonus + length_bonus, -index, sentence))
 
     if not ranked:
-        words = clean.split()
-        quote = " ".join(words[:max(1, int(max_words))])
-        return quote if not terms or terms & _topic_terms(quote) else ""
+        return ""
 
     ranked.sort(reverse=True)
     sentence = ranked[0][2]
-    words = sentence.split()
-    quote = " ".join(words[:max(1, min(25, int(max_words)))])
-    return quote if not terms or terms & _topic_terms(quote) else ""
+    if len(sentence.split()) > max(1, min(25, int(max_words))):
+        return ""
+    if not re.search(r"[.!?][\"'’”)]*$", sentence):
+        return ""
+    return sentence
 
 
 def format_research_appendix(bundle: dict[str, Any]) -> str:
@@ -395,19 +434,44 @@ def format_research_appendix(bundle: dict[str, Any]) -> str:
     if not sources:
         return ""
 
-    lines = ["Evidence checked:"]
+    all_opened = all(source.get("content_origin") == "fetched_page"
+                     and source.get("page_fetched") is True for source in sources)
+    lines = ["Sources read:" if all_opened else "Sources retrieved:"]
+    if all_opened:
+        lines.append("Pages read; each citation still needs to support its claim.")
     for source in sources:
         sid = int(source.get("id", len(lines)))
         title = str(source.get("title") or source.get("domain") or "Source")
         authority = str(source.get("authority") or "Source")
-        quote = str(source.get("quote") or "").strip()
+        opened = source.get("content_origin") == "fetched_page" and source.get("page_fetched") is True
+        quote = (str(source.get("quote") or "").strip()
+                 if opened and source.get("quote_verified_from_fetched_page") is True else "")
         url = str(source.get("url") or "").strip()
         lines.append(f"[{sid}] {title} — {authority}")
+        lines.append("Page read." if opened else "Search result snippet; page not read.")
         if quote:
             lines.append(f'> "{quote}"')
         if url:
             lines.append(url)
     return "\n".join(lines)
+
+
+def _prefer_independent_candidates(ordered: list[dict]) -> list[dict]:
+    """Prefer another host only among equally topical, equally strong results."""
+    remaining, result, used = list(ordered), [], set()
+    while remaining:
+        index = 0
+        first = remaining[0]
+        if first["domain"] and first["domain"] in used:
+            index = next((i for i, item in enumerate(remaining)
+                          if item["domain"] and item["domain"] not in used
+                          and item["topic_overlap"] == first["topic_overlap"]
+                          and item.get("page_fetched") == first.get("page_fetched")
+                          and item["base_authority"] >= first["base_authority"]), 0)
+        selected = remaining.pop(index)
+        result.append(selected)
+        used.add(selected["domain"])
+    return result
 
 
 
@@ -910,6 +974,7 @@ class ToolRegistry:
                 if topic_terms and not overlap:
                     continue
                 score, authority = _source_authority(url, title, snippet)
+                base_authority = score
                 score += max(0, 16 - rank * 2)
                 if search_index == 0:
                     score += 3
@@ -920,6 +985,8 @@ class ToolRegistry:
                     "score": score,
                     "authority": authority,
                     "topic_overlap": overlap,
+                    "base_authority": base_authority,
+                    "domain": _source_host(url),
                 }
 
         ordered = sorted(
@@ -927,13 +994,14 @@ class ToolRegistry:
             key=lambda item: (item["topic_overlap"], item["score"]),
             reverse=True,
         )
+        ordered = _prefer_independent_candidates(ordered)
 
         sources = []
-        fallback_sources = []
+        fetched_sources = 0
         fetch_attempts = 0
 
         for item in ordered:
-            if len(sources) >= max_sources:
+            if fetched_sources >= max_sources:
                 break
             if fetch_attempts >= 6:
                 break
@@ -968,20 +1036,28 @@ class ToolRegistry:
             # (for example a privacy notice) suitable evidence for the topic.
             if topic_terms and not topic_terms & _topic_terms(source_text):
                 continue
+            excerpt = extract_relevant_passage(source_text, query)
+            if not excerpt:
+                continue
             score, authority = _source_authority(
                 item["url"], source_title, source_text
             )
+            base_authority = score
             score += max(0, int(item["score"]) // 5)
 
             quote = (
                 extract_exact_quote(
-                    page_content,
+                    excerpt,
                     query,
                     max_words=24,
                 )
                 if page_content
                 else ""
             )
+            if quote and quote not in re.split(r"(?<=[.!?])\s+", page_content):
+                # A bounded window can start inside a very long sentence.
+                # Its fragment must never become a verified complete quote.
+                quote = ""
 
             if authority.startswith("Low-priority"):
                 continue
@@ -990,38 +1066,43 @@ class ToolRegistry:
                 "id": 0,
                 "title": source_title or item["url"],
                 "url": item["url"],
-                "domain": (urlparse(item["url"]).hostname or "").lower(),
+                "domain": _source_host(item["url"]),
                 "authority": authority,
                 "authority_score": score,
+                "base_authority": base_authority,
                 "quote": quote,
-                "excerpt": source_text[:1200],
+                "excerpt": excerpt,
+                "excerpt_truncated": excerpt != source_text,
+                "topic_overlap": len(topic_terms & _topic_terms(excerpt)),
+                "content_origin": "fetched_page" if page_content else "search_snippet",
+                "page_fetched": bool(page_content),
                 "quote_verified_from_fetched_page": bool(quote and page_content),
             }
-
-            if quote:
-                sources.append(source)
-            else:
-                fallback_sources.append(source)
-
-        for source in fallback_sources:
-            if len(sources) >= max_sources:
-                break
             sources.append(source)
+            if page_content:
+                fetched_sources += 1
+
+        # A short quotable sentence does not make a weaker source better than
+        # a more relevant passage that needs its full qualification.
+        sources.sort(key=lambda source: (source["topic_overlap"], source["page_fetched"], source["authority_score"]), reverse=True)
+        sources = _prefer_independent_candidates(sources)[:max_sources]
 
         for index, source in enumerate(sources, start=1):
+            source.pop("base_authority", None)
             source["id"] = index
 
         return {
             "query": query,
             "method": (
                 "Ranked live-web research prioritising topic relevance, then government, academic, "
-                "peer-reviewed, standards and official primary sources."
+                "peer-reviewed, standards and official primary sources; comparable results prefer distinct hosts."
             ),
             "sources": sources,
             "source_count": len(sources),
             "quote_rule": (
                 "Only quote text where quote_verified_from_fetched_page is true. "
-                "Quotes are short verbatim fragments from the fetched page."
+                "Quotes are complete short verbatim sentences from the fetched page. "
+                "Reading a page or verifying its wording does not verify every claim in an answer."
             ),
         }
 

@@ -70,7 +70,7 @@ _TIMING_NUMBERS = {
 }
 _CHAT_PHASES = {
     "route", "prepared", "research", "answer", "retry", "visible_reply",
-    "memory", "complete", "failed",
+    "source_review", "memory", "complete", "failed",
 }
 _REASONS = {
     "Tailscale executable unavailable", "No central-host Serve route detected",

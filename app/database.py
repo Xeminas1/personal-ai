@@ -7,6 +7,61 @@ from pathlib import Path
 from typing import Iterable
 
 
+_MEMORY_STOPWORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "been", "being", "but",
+    "by", "can", "could", "did", "do", "does", "for", "from", "had",
+    "has", "have", "he", "her", "his", "how", "i", "if", "in", "is",
+    "it", "its", "it's", "me", "my", "of", "on", "or", "our", "she",
+    "should", "so", "than", "that", "the", "their", "them", "there",
+    "these", "they", "this", "those", "to", "us", "was", "we", "were",
+    "what", "what's", "when", "where", "which", "who", "why", "will",
+    "with", "would", "you", "your", "about", "also", "any", "just",
+    "know", "please", "tell", "user", "answer", "question", "information",
+    "project", "prefer", "prefers", "preference", "believe", "believes",
+    "belief", "want", "wants", "need", "needs",
+}
+
+
+def _memory_tokens(text: str) -> set[str]:
+    normalized = str(text).lower().replace("’", "'")
+    tokens = re.findall(r"[^\W_]+(?:'[^\W_]+)*", normalized)
+    return {
+        word.removesuffix("'s") for word in tokens
+        if len(word) >= 2 and word not in _MEMORY_STOPWORDS
+        and word.removesuffix("'s") not in _MEMORY_STOPWORDS
+    }
+
+
+def _memory_recall_kind(query: str) -> str | None:
+    """Recognize explicit personal recall, without widening factual queries."""
+    normalized = " ".join(str(query).lower().replace("’", "'").split())
+    normalized = normalized.strip(" .!?")
+    normalized = re.sub(r"^please[, ]+|[, ]+please$", "", normalized)
+    if re.fullmatch(
+        r"(?:what (?:do|can) you (?:remember|recall|know) about me"
+        r"|(?:show|list|recall)(?: me)? my (?:saved |stored )?memories"
+        r"|what (?:have you|do you have) (?:saved|stored|remembered) about me)",
+        normalized,
+    ):
+        return "all"
+    if re.fullmatch(
+        r"(?:(?:what|which) projects? (?:am i|are we) (?:currently )?(?:working on|building|planning)"
+        r"|(?:what|which) (?:are )?(?:my|our) (?:current |ongoing |active )?projects?"
+        r"|(?:show|list|recall)(?: me)? (?:my|our) (?:current |ongoing |active )?projects?"
+        r"|what (?:do|can) you (?:remember|recall|know) about my projects?)",
+        normalized,
+    ):
+        return "project"
+    if re.fullmatch(
+        r"(?:(?:what|which) (?:are )?my (?:saved |stored |known |communication |interaction )?preferences"
+        r"|(?:show|list|recall)(?: me)? my (?:saved |stored |communication |interaction )?preferences"
+        r"|what (?:do|can) you (?:remember|recall|know) about my preferences)",
+        normalized,
+    ):
+        return "preference"
+    return None
+
+
 def now_iso() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
@@ -368,6 +423,9 @@ class Database:
         query: str,
         limit: int = 25,
     ):
+        limit = max(0, int(limit))
+        if not limit:
+            return []
         memories = self.conn.execute(
             """
             SELECT * FROM memories
@@ -378,40 +436,27 @@ class Database:
             (user_id,),
         ).fetchall()
 
-        q_tokens = {
-            t for t in re.findall(r"[a-zA-Z0-9_'-]{3,}", query.lower())
-        }
-
-        scored = []
-        for recency_index, row in enumerate(memories):
-            content_tokens = {
-                t for t in re.findall(
-                    r"[a-zA-Z0-9_'-]{3,}", row["content"].lower()
-                )
-            }
-            overlap = len(q_tokens & content_tokens)
-            kind_bonus = 1.0 if row["kind"] in {
-                "preference", "profile", "project", "successful_strategy"
-            } else 0.0
-            recency_bonus = max(0.0, 1.0 - recency_index / 300.0) * 0.25
-            score = overlap * 2.0 + kind_bonus + recency_bonus
-
-            if row["kind"] in {"preference", "profile"} and row["confidence"] >= 0.85:
-                score += 2.0
-
-            scored.append((score, row))
-
-        scored.sort(key=lambda x: x[0], reverse=True)
-        selected = [row for score, row in scored[:limit] if score > 0]
-
-        if len(selected) < min(5, limit):
-            selected_ids = {r["id"] for r in selected}
+        recall_kind = _memory_recall_kind(query)
+        if recall_kind:
+            selected = [
+                row for row in memories
+                if recall_kind == "all" or row["kind"] == recall_kind
+            ][:limit]
+        else:
+            q_tokens = _memory_tokens(query)
+            topical = []
+            global_preferences = []
             for row in memories:
-                if row["id"] not in selected_ids:
-                    selected.append(row)
-                    selected_ids.add(row["id"])
-                if len(selected) >= min(5, limit):
-                    break
+                overlap = len(q_tokens & _memory_tokens(row["content"]))
+                if overlap:
+                    topical.append((overlap, row))
+                elif row["kind"] == "preference" and row["confidence"] >= 0.85:
+                    global_preferences.append(row)
+
+            # SQL already orders newest first; the stable sort preserves that
+            # order for equal relevance. Unrelated facts are never padding.
+            topical.sort(key=lambda item: item[0], reverse=True)
+            selected = ([row for _, row in topical] + global_preferences[:5])[:limit]
 
         if selected:
             ids = [r["id"] for r in selected]
@@ -426,7 +471,7 @@ class Database:
             )
             self.conn.commit()
 
-        return selected[:limit]
+        return selected
 
     def add_feedback(
         self,

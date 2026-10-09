@@ -385,10 +385,10 @@ def run() -> None:
     assert '"compute_name"' in mobile_server
     assert '"worker_available"' in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.9.10"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.9.11"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.9.10" in mobile_html
-    assert "/styles.css?v=0.9.10" in mobile_html
+    assert "/app.js?v=0.9.11" in mobile_html
+    assert "/styles.css?v=0.9.11" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
@@ -498,7 +498,7 @@ def run() -> None:
     assert "EVIDENCE RESEARCH RESULT" in gui_backend_source
     assert "RESEARCH ATTEMPTED BUT NO SOURCES" in gui_backend_source
     assert "format_research_appendix" in gui_backend_source
-    assert "Evidence checked:" in gui_backend_source
+    assert "reference_issues" in gui_backend_source
     assert "Tap Retry to try the same message again." in gui_backend_source
     assert "explicitly naming or addressing" in gui_backend_source
     desktop_ui = (project_root / "ui.py").read_text(encoding="utf-8")
@@ -715,7 +715,7 @@ def run() -> None:
             for source in research_bundle["sources"]
         )
         appendix = format_research_appendix(research_bundle)
-        assert "Evidence checked:" in appendix
+        assert "Sources read:" in appendix
         assert "Common cold - NHS" in appendix
         assert "https://www.nhs.uk/conditions/common-cold/" in appendix
         assert research_bundle["sources"][0]["quote"] in appendix
@@ -777,7 +777,7 @@ def run() -> None:
             runtime_info,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.9.10" in safe_fallback
+        assert "v0.9.11" in safe_fallback
         assert "qwen3:1.7b" in safe_fallback
 
         hybrid_local = OllamaClient(
