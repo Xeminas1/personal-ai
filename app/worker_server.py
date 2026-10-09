@@ -60,17 +60,37 @@ def _recommended_model(client: OllamaClient) -> tuple[str, list[str], list[str]]
     except Exception:
         running = []
 
-    # A running model is treated as deliberate. Otherwise choose the largest
-    # installed Qwen model on the stronger worker PC.
-    pool = running or installed
-    selected = max(
-        pool,
-        key=lambda item: (
-            _parameter_billions(item),
-            str(item.get("modified_at", "")),
+    # Keep the worker's configured everyday model stable even when a larger
+    # teacher model is temporarily running after a review. Only fall back to
+    # normal discovery when that configured model is not installed.
+    configured = str(client.model or "").strip().lower()
+    selected = next(
+        (
+            item for item in installed
+            if _model_name(item).lower() == configured
+            or _model_name(item).lower() == configured + ":latest"
         ),
-        default=None,
+        None,
     )
+    if selected is None:
+        teacher_names = {"qwen3:14b", "qwen3:30b"}
+        ordinary_running = [
+            item for item in running
+            if _model_name(item).lower().replace(":latest", "") not in teacher_names
+        ]
+        ordinary_installed = [
+            item for item in installed
+            if _model_name(item).lower().replace(":latest", "") not in teacher_names
+        ]
+        pool = ordinary_running or ordinary_installed or running or installed
+        selected = max(
+            pool,
+            key=lambda item: (
+                _parameter_billions(item),
+                str(item.get("modified_at", "")),
+            ),
+            default=None,
+        )
     model = _model_name(selected) if selected else ""
     return (
         model,
