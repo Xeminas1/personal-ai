@@ -161,6 +161,38 @@ class WorkerLatencyTests(unittest.TestCase):
         self.assertFalse(self.timing()[3])
         self.assertNotIn("test private generation failure", repr(self.logger.timings))
 
+    def test_health_uses_inventory_once_without_a_duplicate_connectivity_probe(self):
+        self.ollama.allow_running = True
+
+        def duplicate_probe():
+            self.fail("Inventory already checks model connectivity")
+
+        self.ollama.health_check = duplicate_probe
+        request = urllib.request.Request(self.base + "/api/health", headers={
+            "Authorization": "Bearer " + self.server.worker_token,
+        })
+        with self.opener.open(request, timeout=3) as response:
+            self.assertEqual(response.status, 200)
+            health = json.load(response)
+        self.assertTrue(health["ok"])
+        self.assertEqual(health["recommended_model"], "qwen3:1.7b")
+        self.assertEqual(self.ollama.installed_calls, 1)
+        self.assertEqual(self.ollama.running_calls, 1)
+
+    def test_unreachable_ollama_health_keeps_service_unavailable_status(self):
+        def unavailable():
+            raise RuntimeError("private-connection-error")
+
+        self.ollama.installed_models = unavailable
+        request = urllib.request.Request(self.base + "/api/health", headers={
+            "Authorization": "Bearer " + self.server.worker_token,
+        })
+        with self.assertRaises(urllib.error.HTTPError) as caught:
+            self.opener.open(request, timeout=3)
+        with caught.exception as response:
+            self.assertEqual(response.status, 503)
+            self.assertNotIn("private-connection-error", response.read().decode())
+
 
 if __name__ == "__main__":
     unittest.main()

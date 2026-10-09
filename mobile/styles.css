@@ -802,3 +802,9 @@ button { -webkit-tap-highlight-color: transparent; }
     border-color: rgba(111, 159, 203, 0.38);
   }
 }
+.message-inference {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  margin-top: 5px;
+}

@@ -39,6 +39,12 @@ class ChatTimingTests(unittest.TestCase):
                 # The client can already read the answer before memory starts.
                 self.assertIsNone(status[-1])
                 self.assertEqual(db.get_recent_messages(chat_id)[-1]["content"], "answer-private-sentinel")
+                reply = db.get_recent_messages(chat_id)[-1]
+                self.assertEqual(reply["inference_model"], "qwen3:8b")
+                self.assertEqual(reply["inference_compute"], "remote_worker")
+                # Later memory routing must not relabel the saved answer.
+                llm.model = "qwen3:1.7b"
+                llm.route_info = {"model": "qwen3:1.7b", "compute": "local_host"}
                 clock[0] += 30
                 raise RuntimeError("Memory unavailable")
 
@@ -68,6 +74,11 @@ class ChatTimingTests(unittest.TestCase):
             self.assertEqual(phases["memory"]["elapsed_ms"], 30000)
             self.assertEqual(phases["complete"]["elapsed_ms"], 45000)
             self.assertEqual(phases["visible_reply"]["compute"], "remote_worker")
+            self.assertEqual(phases["memory"]["compute"], "local_host")
+            self.assertEqual(db.get_recent_messages(chat_id)[-1]["inference_model"], "qwen3:8b")
+            turn_ids = {event["turn_id"] for event in exported}
+            self.assertEqual(len(turn_ids), 1)
+            self.assertRegex(next(iter(turn_ids)), r"^[a-f0-9]{16}$")
             self.assertNotIn("private-sentinel", "\n".join(timing))
 
 

@@ -54,6 +54,15 @@ class Database:
                 FOREIGN KEY(chat_id) REFERENCES chats(id) ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS message_inference (
+                message_id INTEGER PRIMARY KEY,
+                model TEXT,
+                compute_source TEXT NOT NULL CHECK(
+                    compute_source IN ('local_host','remote_worker','application')
+                ),
+                FOREIGN KEY(message_id) REFERENCES messages(id) ON DELETE CASCADE
+            );
+
             CREATE TABLE IF NOT EXISTS memories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -195,16 +204,71 @@ class Database:
         self.conn.commit()
         return int(cur.lastrowid)
 
+    def add_assistant_message(
+        self,
+        chat_id: int,
+        content: str,
+        *,
+        model: str | None = None,
+        compute_source: str | None = None,
+    ) -> int:
+        """Save a completed answer and optional provenance atomically.
+
+        Omitted provenance stays unknown. Invalid labels are rejected before
+        any write, without including their values in the error message.
+        Application-generated answers have no inference model.
+        """
+        if compute_source is not None and compute_source not in (
+            "local_host", "remote_worker", "application"
+        ):
+            raise ValueError("Invalid answer compute source.")
+        if model is not None:
+            if not isinstance(model, str):
+                raise ValueError("Invalid answer model label.")
+            model = model.strip()
+            if not model or len(model) > 256 or not model.isprintable():
+                raise ValueError("Invalid answer model label.")
+            if compute_source is None or compute_source == "application":
+                raise ValueError("Answer model requires an inference compute source.")
+
+        timestamp = now_iso()
+        with self.conn:
+            cur = self.conn.execute(
+                """
+                INSERT INTO messages(chat_id, role, content, created_at)
+                VALUES (?, 'assistant', ?, ?)
+                """,
+                (chat_id, content, timestamp),
+            )
+            message_id = int(cur.lastrowid)
+            if compute_source is not None:
+                self.conn.execute(
+                    """
+                    INSERT INTO message_inference(message_id, model, compute_source)
+                    VALUES (?, ?, ?)
+                    """,
+                    (message_id, model, compute_source),
+                )
+            self.conn.execute(
+                "UPDATE chats SET updated_at = ? WHERE id = ?",
+                (timestamp, chat_id),
+            )
+        return message_id
+
     def get_recent_messages(self, chat_id: int, limit: int = 30):
         rows = self.conn.execute(
             """
-            SELECT * FROM (
+            SELECT recent.*, inference.model AS inference_model,
+                inference.compute_source AS inference_compute
+            FROM (
                 SELECT * FROM messages
                 WHERE chat_id = ?
                 ORDER BY id DESC
                 LIMIT ?
-            )
-            ORDER BY id ASC
+            ) AS recent
+            LEFT JOIN message_inference AS inference
+                ON inference.message_id = recent.id
+            ORDER BY recent.id ASC
             """,
             (chat_id, limit),
         ).fetchall()

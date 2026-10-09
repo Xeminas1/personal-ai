@@ -141,6 +141,25 @@ class SupportAccessTests(unittest.TestCase):
         self.assertNotIn("phase", events[2])
         self.assertNotIn(sentinel, json.dumps(events))
 
+    def test_worker_attempt_export_keeps_safe_failure_codes_and_turn_id(self):
+        events = support.structured_log(
+            "2026-10-09 10:30:01,123 | INFO | personal_ai | Hybrid attempt | "
+            "turn_id=0123456789abcdef stage=worker_health elapsed_ms=15000 "
+            "success=False error_category=dns http_status=-1 errno=-2 winerror=-1 "
+            "raw_error=private-sentinel token=private-sentinel\n"
+            "2026-10-09 10:30:02,123 | INFO | personal_ai | Hybrid attempt | "
+            "turn_id=private-sentinel stage=private-sentinel error_category=private-sentinel "
+            "http_status=700 errno=9999999999 winerror=private-sentinel\n"
+        )
+        self.assertEqual(events[0]["turn_id"], "0123456789abcdef")
+        self.assertEqual(events[0]["stage"], "worker_health")
+        self.assertEqual(events[0]["error_category"], "dns")
+        self.assertEqual(events[0]["errno"], -2)
+        self.assertEqual(events[0]["elapsed_ms"], 15000)
+        self.assertFalse(events[0]["success"])
+        self.assertNotIn("private-sentinel", json.dumps(events))
+        self.assertEqual(set(events[1]), {"timestamp", "level", "event"})
+
 
 if __name__ == "__main__":
     unittest.main()

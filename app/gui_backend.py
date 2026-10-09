@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import secrets
 import time
 from pathlib import Path
 
@@ -324,13 +325,14 @@ class ChatBackend:
         # Tkinter stays on the UI thread. Use a separate SQLite connection for
         # response generation so the UI remains responsive and thread-safe.
         started = time.monotonic()
+        turn_id = secrets.token_hex(8)
         llm = None
 
         def timing(phase, phase_started):
             route = getattr(llm, "route_info", {}) or {}
             self.logger.info(
-                "Chat timing | chat_id=%d phase=%s elapsed_ms=%d model=%s compute=%s",
-                chat_id, phase, max(0, int((time.monotonic() - phase_started) * 1000)),
+                "Chat timing | chat_id=%d turn_id=%s phase=%s elapsed_ms=%d model=%s compute=%s",
+                chat_id, turn_id, phase, max(0, int((time.monotonic() - phase_started) * 1000)),
                 getattr(llm, "model", self.config.get("model", "unknown")),
                 route.get("compute", "local_host"),
             )
@@ -391,6 +393,9 @@ class ChatBackend:
                 self.logger,
                 DATA_DIR,
             )
+            for client in (llm, getattr(llm, "local_client", None), getattr(llm, "worker_client", None)):
+                if client is not None:
+                    client.turn_id = turn_id
             route_started = time.monotonic()
             runtime_model_info = self.refresh_runtime_model(llm)
             timing("route", route_started)
@@ -582,6 +587,7 @@ class ChatBackend:
                 )
 
             answer_started = time.monotonic()
+            application_answer = False
             answer = llm.agent_chat(
                 messages,
                 tool_registry=tools,
@@ -636,6 +642,7 @@ class ChatBackend:
                     else looks_like_stale_self_description(answer)
                 )
                 if second_invalid:
+                    application_answer = True
                     self.logger.warning(
                         "Second unreliable XemAi self/comparison draft rejected | chat_id=%s",
                         chat_id,
@@ -657,7 +664,17 @@ class ChatBackend:
                 if appendix and "Evidence checked:" not in answer:
                     answer = answer.rstrip() + "\n\n" + appendix
 
-            worker_db.add_message(chat_id, "assistant", answer)
+            if application_answer:
+                inference_model = None
+                inference_compute = "application"
+            else:
+                inference_model = str(llm.model)
+                route = getattr(llm, "route_info", {}) or {}
+                inference_compute = route.get("compute", "local_host")
+            worker_db.add_assistant_message(
+                chat_id, answer, model=inference_model,
+                compute_source=inference_compute,
+            )
             assistant_recorded = True
             timing("visible_reply", started)
             if status_callback:

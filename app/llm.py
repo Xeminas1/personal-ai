@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import ipaddress
 import math
+import re
 import time
 import urllib.error
 import urllib.request
@@ -294,8 +295,12 @@ class OllamaClient:
             timing_message = timing_message if isinstance(timing_message, dict) else {}
             thinking = timing_message.get("thinking", "")
             calls = timing_message.get("tool_calls", [])
+            turn_id = getattr(self, "turn_id", "none")
+            if not isinstance(turn_id, str) or not re.fullmatch(r"[a-f0-9]{16}", turn_id):
+                turn_id = "none"
             self.logger.info(
-                "LLM timing | provider=%s model=%s elapsed_ms=%d load_ms=%d prompt_ms=%d generation_ms=%d total_ms=%d prompt_tokens=%d generated_tokens=%d thinking_chars=%d tool_calls=%d success=%s",
+                "LLM timing | turn_id=%s provider=%s model=%s elapsed_ms=%d load_ms=%d prompt_ms=%d generation_ms=%d total_ms=%d prompt_tokens=%d generated_tokens=%d thinking_chars=%d tool_calls=%d success=%s",
+                turn_id,
                 self.provider_name,
                 self.model,
                 max(0, int((time.monotonic() - started) * 1000)),

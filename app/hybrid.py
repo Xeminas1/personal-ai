@@ -1,10 +1,71 @@
 from __future__ import annotations
 
+import errno
+import re
+import socket
+import ssl
+import time
+import urllib.error
 from pathlib import Path
 from typing import Any
 
 from .llm import OllamaClient
 from .secrets import load_hybrid_worker_client_token
+
+
+def _error_diagnostics(error: BaseException | None) -> dict:
+    """Inspect bounded typed causes only; never parse or export error text."""
+    result = {"error_category": "none", "http_status": -1, "errno": -1, "winerror": -1}
+    if error is None:
+        return result
+    result["error_category"] = "model_error"
+    pending, seen, priority = [error], set(), 99
+    while pending and len(seen) < 16:
+        current = pending.pop()
+        if not isinstance(current, BaseException) or id(current) in seen:
+            continue
+        seen.add(id(current))
+        for key in ("errno", "winerror"):
+            if isinstance(current, OSError):
+                value = getattr(current, key, None)
+                if isinstance(value, int) and not isinstance(value, bool) and -(2**31) <= value < 2**31 and result[key] == -1:
+                    result[key] = value
+        number = getattr(current, "errno", None) if isinstance(current, OSError) else None
+        windows = getattr(current, "winerror", None) if isinstance(current, OSError) else None
+        number = number if isinstance(number, int) and not isinstance(number, bool) else None
+        windows = windows if isinstance(windows, int) and not isinstance(windows, bool) else None
+        category, rank = "model_error", 90
+        if isinstance(current, urllib.error.HTTPError):
+            category, rank = "http", 0
+            code = current.code
+            if isinstance(code, int) and not isinstance(code, bool) and 100 <= code <= 599:
+                result["http_status"] = code
+        elif isinstance(current, ssl.SSLCertVerificationError):
+            category, rank = "tls_verification", 1
+        elif isinstance(current, ssl.SSLError):
+            category, rank = "tls", 2
+        elif isinstance(current, socket.gaierror):
+            category, rank = "dns", 3
+        elif isinstance(current, TimeoutError) or number == errno.ETIMEDOUT or windows == 10060:
+            category, rank = "timeout", 4
+        elif isinstance(current, ConnectionRefusedError) or number == errno.ECONNREFUSED or windows == 10061:
+            category, rank = "refused", 5
+        elif isinstance(current, ConnectionResetError) or number == errno.ECONNRESET or windows == 10054:
+            category, rank = "reset", 6
+        elif isinstance(current, ConnectionAbortedError) or number == errno.ECONNABORTED or windows == 10053:
+            category, rank = "aborted", 7
+        elif number in {errno.ENETUNREACH, errno.EHOSTUNREACH, errno.ENETDOWN} or windows in {10050, 10051, 10065}:
+            category, rank = "unreachable", 8
+        elif isinstance(current, (urllib.error.URLError, ConnectionError, OSError)):
+            category, rank = "connection", 80
+        if rank < priority:
+            result["error_category"], priority = category, rank
+        cause = current.__cause__ or current.__context__
+        if isinstance(cause, BaseException):
+            pending.append(cause)
+        if isinstance(current, urllib.error.URLError) and isinstance(current.reason, BaseException):
+            pending.append(current.reason)
+    return result
 
 
 class HybridWorkerClient(OllamaClient):
@@ -65,12 +126,8 @@ class HybridOllamaClient(OllamaClient):
             info = self.local_client.discover_runtime_model(
                 preferred=self.local_fallback_model
             )
-        except Exception as e:
-            self.logger.warning(
-                "Hybrid local model discovery failed | fallback=%s error=%r",
-                self.local_fallback_model,
-                e,
-            )
+        except Exception:
+            self.logger.warning("Hybrid local model discovery failed")
             self.local_client.model = self.local_fallback_model
             info = {
                 "model": self.local_fallback_model,
@@ -91,6 +148,7 @@ class HybridOllamaClient(OllamaClient):
         return dict(self.route_info)
 
     def refresh_route(self) -> dict[str, Any]:
+        started = time.monotonic()
         try:
             health = self.worker_client.worker_health()
             if not health.get("ok", False):
@@ -108,6 +166,7 @@ class HybridOllamaClient(OllamaClient):
 
             self.worker_client.model = model
             self.active_client = self.worker_client
+            self.worker_failed_for_request = False
             self.model = model
             self.route_info = {
                 "model": model,
@@ -122,14 +181,29 @@ class HybridOllamaClient(OllamaClient):
                 "installed_qwen": list(health.get("installed_qwen") or []),
                 "running_qwen": list(health.get("running_qwen") or []),
             }
+            self._log_attempt("worker_health", started)
             return dict(self.route_info)
         except Exception as e:
-            self.logger.info(
-                "Hybrid worker unavailable; using local fallback | url=%s error=%r",
-                self.worker_client.base_url,
-                e,
-            )
+            self._log_attempt("worker_health", started, e)
+            # Keep this turn on its selected fallback, including tool rounds,
+            # answer retries and memory extraction. The next turn can recover.
+            self.worker_failed_for_request = True
+            self.logger.info("Hybrid worker unavailable; using local fallback")
             return self._local_info()
+
+    def _log_attempt(self, stage: str, started: float, error: BaseException | None = None) -> None:
+        try:
+            details = _error_diagnostics(error)
+            turn_id = getattr(self, "turn_id", None)
+            turn_id = turn_id if isinstance(turn_id, str) and re.fullmatch(r"[0-9a-f]{16}", turn_id) else "none"
+            self.logger.info(
+                "Hybrid attempt | turn_id=%s stage=%s elapsed_ms=%d success=%s error_category=%s http_status=%d errno=%d winerror=%d",
+                turn_id, stage, max(0, int((time.monotonic() - started) * 1000)), error is None,
+                details["error_category"], details["http_status"], details["errno"], details["winerror"],
+            )
+        except Exception:
+            # Diagnostics must not change a valid response or fallback behavior.
+            pass
 
     def discover_runtime_model(
         self,
@@ -172,6 +246,7 @@ class HybridOllamaClient(OllamaClient):
             self.refresh_route()
 
         if self.active_client is self.worker_client:
+            started = time.monotonic()
             try:
                 response = self.worker_client.chat_raw(
                     messages,
@@ -179,15 +254,11 @@ class HybridOllamaClient(OllamaClient):
                     tools=tools,
                 )
                 self.model = self.worker_client.model
+                self._log_attempt("worker_chat", started)
                 return response
             except Exception as e:
-                self.logger.warning(
-                    "Hybrid worker generation failed; falling back locally | "
-                    "url=%s model=%s error=%r",
-                    self.worker_client.base_url,
-                    self.worker_client.model,
-                    e,
-                )
+                self._log_attempt("worker_chat", started, e)
+                self.logger.warning("Hybrid worker generation failed; falling back locally")
                 self.worker_failed_for_request = True
                 self._local_info()
 

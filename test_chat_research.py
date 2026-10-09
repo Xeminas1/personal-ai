@@ -128,6 +128,15 @@ class ChatResearchTests(unittest.TestCase):
         self.assertEqual(previous_users[-1], "Captain Jack Sparrow's ship is not Revenge, it's the Black Pearl.")
         self.assertIn("Black Pearl", self.tools.searches[0])
 
+    def test_application_fallback_is_not_labelled_as_model_generated(self):
+        with patch.object(gui_backend, "looks_like_stale_self_description", return_value=True), \
+             patch.object(gui_backend, "build_self_knowledge_fallback", return_value="Verified application snapshot"):
+            self.send("What version are you?")
+        reply = self.db.get_recent_messages(self.chat_id)[-1]
+        self.assertEqual(reply["content"], "Verified application snapshot")
+        self.assertEqual(reply["inference_compute"], "application")
+        self.assertIsNone(reply["inference_model"])
+
 
 if __name__ == "__main__":
     unittest.main()

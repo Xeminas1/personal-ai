@@ -154,13 +154,16 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
         client = self.server.ollama_client
         try:
             if self.path == "/api/health":
-                if not client.health_check():
+                try:
+                    # Inventory retrieval already checks Ollama connectivity;
+                    # avoid an extra /api/tags request before discovering it.
+                    model, installed, running = _recommended_model(client)
+                except Exception:
                     self._error(
                         "Worker can run, but local Ollama is unavailable.",
                         HTTPStatus.SERVICE_UNAVAILABLE,
                     )
                     return
-                model, installed, running = _recommended_model(client)
                 if not model:
                     self._error(
                         "No installed Qwen model was found on this worker.",

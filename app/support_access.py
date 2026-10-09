@@ -56,7 +56,12 @@ _EVENTS = {
     "Hybrid worker unavailable; using local fallback", "Hybrid local model discovery failed",
     "Hybrid worker generation failed; falling back locally", "Ollama runtime model discovery",
     "Mobile server not started", "Hybrid worker not started",
-    "Chat timing", "LLM timing", "Worker timing",
+    "Chat timing", "LLM timing", "Worker timing", "Hybrid attempt",
+}
+_TIMING_EVENTS = {"Chat timing", "LLM timing", "Worker timing", "Hybrid attempt"}
+_NETWORK_ERRORS = {
+    "none", "http", "tls_verification", "tls", "dns", "timeout",
+    "refused", "reset", "aborted", "unreachable", "connection", "model_error",
 }
 _TIMING_NUMBERS = {
     "elapsed_ms", "load_ms", "prompt_ms", "generation_ms", "total_ms",
@@ -293,8 +298,18 @@ def structured_log(text: str) -> list[dict]:
                     code = re.search(r"(?:HTTP(?:Error| Error)?\s+|HTTP\s+)([1-5]\d{2})\b", value)
                     if code:
                         entry["http_status"] = int(code[1])
-                elif event in {"Chat timing", "LLM timing", "Worker timing"}:
+                elif event in _TIMING_EVENTS:
                     if key in _TIMING_NUMBERS and re.fullmatch(r"-?\d{1,12}", value) and int(value) >= -1:
+                        entry[key] = int(value)
+                    elif key == "turn_id" and (value == "none" or re.fullmatch(r"[a-f0-9]{16}", value)):
+                        entry[key] = value
+                    elif event == "Hybrid attempt" and key == "stage" and value in {"worker_health", "worker_chat"}:
+                        entry[key] = value
+                    elif event == "Hybrid attempt" and key == "error_category" and value in _NETWORK_ERRORS:
+                        entry[key] = value
+                    elif event == "Hybrid attempt" and key == "http_status" and re.fullmatch(r"-?\d{1,3}", value) and (int(value) == -1 or 100 <= int(value) <= 599):
+                        entry[key] = int(value)
+                    elif event == "Hybrid attempt" and key in {"errno", "winerror"} and re.fullmatch(r"-?\d{1,10}", value) and -(2 ** 31) <= int(value) < 2 ** 31:
                         entry[key] = int(value)
                     elif key == "phase" and value in _CHAT_PHASES:
                         entry[key] = value

@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.9.9";
+const FRONTEND_VERSION = "0.9.10";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
@@ -100,7 +100,8 @@ function setComputeBadge(data) {
   const isWorker = data.compute_source === "remote_worker";
   const route = isWorker ? "Worker" : "Host";
   const model = String(data.runtime_model || data.model || "unknown");
-  els.computeBadge.textContent = `${route} · ${model}`;
+  els.computeBadge.textContent = `Available: ${route} · ${model}`;
+  els.computeBadge.title = "Current availability; each new reply shows which model answered.";
   els.computeBadge.dataset.route = isWorker ? "worker" : "host";
 }
 
@@ -454,7 +455,16 @@ function renderBody(text) {
   }).join("");
 }
 
-function appendMessage(role, text, createdAt = null, delivery = null) {
+function replyInferenceLabel(message) {
+  if (!message) return "";
+  if (message.inference_compute === "application") return "XemAi app reply";
+  if (!message.inference_model) return "";
+  const route = message.inference_compute === "remote_worker" ? "Worker"
+    : message.inference_compute === "local_host" ? "Host" : "";
+  return route ? `Answered by ${route} · ${message.inference_model}` : "";
+}
+
+function appendMessage(role, text, createdAt = null, delivery = null, inference = null) {
   const wrap = document.createElement("article");
   wrap.className = `message ${role}`;
   const name = role === "user"
@@ -476,6 +486,7 @@ function appendMessage(role, text, createdAt = null, delivery = null) {
     role === "assistant"
     && String(text).startsWith(REPLY_ERROR_PREFIX)
   );
+  const inferenceLabel = role === "assistant" && !retryable ? replyInferenceLabel(inference) : "";
   wrap.innerHTML = `
     <div class="bubble-wrap">
       ${role === "assistant" ? '<div class="tail"></div>' : ''}
@@ -493,6 +504,7 @@ function appendMessage(role, text, createdAt = null, delivery = null) {
             <span class="message-time">${escapeHtml(formatMessageTime(createdAt))}</span>
           `}
         </div>
+        ${inferenceLabel ? `<div class="message-inference">${escapeHtml(inferenceLabel)}</div>` : ""}
       </div>
       ${role === "user" ? '<div class="tail"></div>' : ''}
     </div>
@@ -545,7 +557,7 @@ function renderMessageList(messages) {
     return;
   }
   for (const msg of messages) {
-    appendMessage(msg.role, msg.content, msg.created_at);
+    appendMessage(msg.role, msg.content, msg.created_at, null, msg);
   }
 }
 
@@ -983,7 +995,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.9.9")
+  navigator.serviceWorker.register("/sw.js?v=0.9.10")
     .then((registration) => registration.update())
     .catch(() => {});
 }

@@ -1,5 +1,34 @@
 # Personal AI v0.1
 
+## v0.9.10 fallback overhead and reply source
+
+A failed worker health check now selects local fallback once for that chat
+turn, including tool rounds, answer retries and memory extraction. The next
+turn checks the worker again so a PC that has come back online can recover.
+Worker health also avoids a duplicate local Ollama inventory request.
+
+The phone header reports current availability. Each newly saved answer records
+the model and host or worker that actually produced it, before memory extraction
+can change the route. Application-generated fallback text has its own label;
+older answers remain unlabeled because their source was not recorded. An
+additive SQLite table preserves existing chats, messages and memories.
+
+Chat, LLM and hybrid connection events share a random turn identifier. Hybrid
+events retain only typed connection categories, HTTP status and OS error codes,
+without URLs, credentials, response bodies or chat content. The read-only support
+report retains these fields to distinguish a timeout from authentication, DNS,
+TLS or connection failures.
+
+The supplied timing report measured a laptop Qwen3:1.7B reply saved after 138
+seconds, followed by another 99 seconds of memory work. Its extra answer and
+memory delays were consistent with repeated fallback checks. This release
+removes that redundant work; it does not establish why the PC connection failed
+or change slow local generation, model thinking or GPU configuration. Current
+PC health does not establish its availability during the measured reply.
+
+Let both installations update, then restart the stronger PC once to load the
+worker health change. Refresh the phone interface to load the new reply labels.
+
 ## v0.9.9 contextual factual research
 
 Factual questions beginning with `What's`, `What’s` or `whats` now follow the
