@@ -207,8 +207,27 @@ def test_host_setup() -> None:
         assert save.call_args.args[0]["hybrid_enabled"] is True
 
 
+def test_hybrid_startup_recovery() -> None:
+    for initial_worker in (True, RuntimeError("Tailscale not ready")):
+        waits = iter((False, False, True))
+        stop = SimpleNamespace(is_set=lambda: False, wait=lambda seconds: next(waits))
+        class InlineThread:
+            def __init__(self, target, **kwargs):
+                self.target = target
+            def start(self):
+                self.target()
+        with patch.object(hybrid_autosetup.threading, "Thread", InlineThread), \
+             patch.object(hybrid_autosetup, "is_central_host", side_effect=(False, True)), \
+             patch.object(hybrid_autosetup, "_ensure_worker", side_effect=(initial_worker,)) as worker, \
+             patch.object(hybrid_autosetup, "try_auto_pair", return_value=True) as pair:
+            hybrid_autosetup.start_hybrid_auto_setup(stop)
+            worker.assert_called_once()
+            pair.assert_called_once()
+
+
 def run() -> None:
     test_host_setup()
+    test_hybrid_startup_recovery()
     from app.llm import open_model_request
     for url in (
         "https://reece-pc.tail52254c.ts.net:8766/api/health",
@@ -366,10 +385,10 @@ def run() -> None:
     assert '"compute_name"' in mobile_server
     assert '"worker_available"' in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.9.4"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.9.5"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.9.4" in mobile_html
-    assert "/styles.css?v=0.9.4" in mobile_html
+    assert "/app.js?v=0.9.5" in mobile_html
+    assert "/styles.css?v=0.9.5" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
@@ -758,7 +777,7 @@ def run() -> None:
             runtime_info,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.9.4" in safe_fallback
+        assert "v0.9.5" in safe_fallback
         assert "qwen3:1.7b" in safe_fallback
 
         hybrid_local = OllamaClient(

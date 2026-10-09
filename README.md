@@ -1,5 +1,14 @@
 # Personal AI v0.1
 
+## v0.9.5 hybrid startup recovery
+
+Hybrid setup now rechecks the host/worker role while Tailscale starts and retries
+after temporary setup failures. It no longer stops checking after an initial
+worker setup result. Logs identify missing Tailscale identity, missing host Serve
+route, unavailable local Qwen models, and unreachable worker candidates without
+printing tokens. The model badge still reports the route actually selected; a
+local model remains available while the worker cannot be reached.
+
 ## v0.9.4 hybrid pairing and shared chats
 
 - Paired worker PCs open the central laptop's chat interface on desktop and phone.

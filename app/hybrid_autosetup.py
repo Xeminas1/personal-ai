@@ -126,9 +126,13 @@ def try_auto_pair(logger=None) -> bool:
         return True
     ts = _tailscale_exe()
     if not ts or not is_central_host(ts):
+        if logger:
+            logger.info("Hybrid auto-pair waiting | reason=%s", "Tailscale executable unavailable" if not ts else "No central-host Serve route detected")
         return False
     host_id, peers = _peer_candidates(ts)
     if not host_id or not peers:
+        if logger:
+            logger.info("Hybrid auto-pair waiting | reason=%s", "Tailscale identity unavailable" if not host_id else "No online Tailscale peers")
         return False
 
     state = load_hybrid_pairing_state(DATA_DIR)
@@ -145,8 +149,13 @@ def try_auto_pair(logger=None) -> bool:
             status = _request_json(url + "/api/pair/status", timeout=2.5)
             if status.get("role") == "xemai_hybrid_worker" and status.get("ok"):
                 candidates.append((url, status))
-        except Exception:
+        except Exception as e:
+            if logger:
+                logger.info("Hybrid worker discovery failed | worker=%s error=%s", dns, type(e).__name__)
             continue
+
+    if not candidates and logger:
+        logger.info("Hybrid auto-pair waiting | reason=No reachable Qwen workers | peers=%d", len(peers))
 
     candidates.sort(
         key=lambda item: _model_size(str(item[1].get("recommended_model") or "")),
@@ -217,10 +226,14 @@ def _ensure_worker(logger=None) -> bool:
     if not tailscale_state or not str(
         (tailscale_state.get("Self") or {}).get("DNSName") or ""
     ).strip():
+        if logger:
+            logger.info("Hybrid worker setup waiting | reason=%s", "Tailscale executable unavailable" if not ts else "Tailscale identity unavailable")
         return False
     if is_central_host(ts):
         return True
     if not _has_local_qwen(logger):
+        if logger:
+            logger.info("Hybrid worker setup waiting | reason=Local Ollama has no reachable Qwen model")
         return False
     local_status = _request_worker_local_status()
     worker_port = str(int(load_config().get("hybrid_worker_port", 8766)))
@@ -275,24 +288,22 @@ def start_hybrid_auto_setup(stop_event, logger=None) -> threading.Thread:
     def loop() -> None:
         if stop_event.wait(15):
             return
-        # The laptop host pairs in the background. Other installations set up
-        # the worker once, after confirming Tailscale and a local Qwen model.
-        try:
-            if is_central_host():
-                while not stop_event.is_set():
-                    if try_auto_pair(logger):
-                        return
-                    if stop_event.wait(60):
-                        return
-            else:
-                while not stop_event.is_set():
-                    if _ensure_worker(logger):
-                        return
-                    if stop_event.wait(120):
-                        return
-        except Exception as e:
-            if logger:
-                logger.warning("Hybrid auto-setup check failed | error=%r", e)
+        # Tailscale can start or restore Serve routes after XemAi. Re-evaluate
+        # the role each time instead of permanently selecting it at startup.
+        while not stop_event.is_set():
+            try:
+                central = is_central_host()
+                if logger:
+                    logger.info("Hybrid auto-setup check | role=%s", "host" if central else "worker-or-waiting")
+                if central:
+                    try_auto_pair(logger)
+                else:
+                    _ensure_worker(logger)
+            except Exception as e:
+                if logger:
+                    logger.warning("Hybrid auto-setup check failed; will retry | error=%s", type(e).__name__)
+            if stop_event.wait(60):
+                return
 
     thread = threading.Thread(target=loop, daemon=True, name="XemAiHybridAutoSetup")
     thread.start()
