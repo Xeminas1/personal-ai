@@ -1,5 +1,47 @@
 # Personal AI v0.1
 
+## v0.9.15 clearer readiness and chat controls
+
+Skyrim tools shows a green tick only after the paired PC reports that its
+vision model is ready. The tick appears in the sidebar, chat-options menu and
+visual-analysis panel; the panel also shows an Activated button. Checking,
+downloading and unavailable states have their own indicators. Readiness is
+checked in the background while the page is visible, more often during a
+download, and when opening the panel. Status checks never download a model.
+An unavailable PC or offline browser removes the ready tick; reconnecting checks
+readiness again. This does not uninstall the PC's model.
+
+New assistant replies play a short, quiet two-tone chime after browser audio
+has been enabled by a click, tap or keypress. Old history, user messages,
+repeated polling and chat switching stay silent. A question sent from this
+page can still notify when its reply finishes after switching to another chat.
+Reply sounds in the three-dot menu toggles sound and saves that choice in the
+current browser. Muting stops queued/playing audio. Suspended/hidden browsers
+catch up when reopened; these are in-app sounds, not operating-system push
+notifications. Message text is not retained by the audio tracker.
+
+Recent chats sit directly below New chat and the Recent Chats label in a
+compact, independently scrolling list with a styled scrollbar. Ordering uses
+actual activity timestamps, then creation time and ID; new database activity
+uses millisecond precision to distinguish updates within one second. Old
+records are retained, and existing equal timestamps keep deterministic order.
+Scrolling survives list refreshes. The send control is a light circular button
+with an upward arrow and an accessible Send message label.
+
+Live support and Update XemAi controls are removed from the shared chat
+interface, including its three-dot menu. Capabilities is removed from the
+sidebar and remains accessible under the three dots. Automatic official-channel
+updates and version-aware reconnection continue without a manual update button.
+The sidebar keeps Skyrim tools and Rate this chat. Existing private support
+endpoints are retained for compatibility but are not presented as live support
+in the chat interface.
+
+Browser checks cover readiness transitions, actual reply audio, autoplay
+recovery, mute persistence, history/deletion silence, replies after switching
+chats, phone/desktop scrolling, ordering and send submission. Database checks
+cover user/assistant activity, ties and ownership. No real chats are altered by
+these tests or by installation.
+
 ## v0.9.13 Skyrim diagnostics and optional PC vision
 
 Chat options now includes Skyrim tools. Upload Vortex `plugins.txt` and
@@ -217,8 +259,9 @@ separate inspection; updating application files does not replace that process.
 
 ## v0.9.6 live read-only support
 
-Run `live_support.bat` on the PC whose installation needs inspection, or choose
-Live support in the chat menu. Enable read-only access to create a separate key
+This older release introduced `live_support.bat` for optional diagnostics.
+The Live support chat-menu entry has been removed in v0.9.15. The legacy helper
+can enable read-only access to create a separate key
 that expires in 24 hours; Turn off access revokes it immediately. Keys are shown
 only when created and are stored locally as hashes. Re-enabling rotates the key.
 

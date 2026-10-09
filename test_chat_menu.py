@@ -23,6 +23,7 @@ class ChatAPIFixture:
     def __init__(self, version):
         self.version = version
         self.chats = [self.chat(10, "Pirates"), self.chat(20, "Notes")]
+        self.chats[0]["updated_at"] = "2026-01-01T12:00:01+00:00"
         self.messages = {
             10: [self.message(101, "Pirates reply")],
             20: [self.message(201, "Notes reply")],
@@ -127,6 +128,7 @@ class ChatMenuBrowserTests(unittest.TestCase):
             raise unittest.SkipTest("Chromium is not installed")
         cls.browser = cls.playwright.chromium.launch(
             executable_path=executable, headless=True, args=["--no-sandbox"],
+            ignore_default_args=["--hide-scrollbars"],
         )
         cls.static_files = tempfile.TemporaryDirectory()
         directory = Path(cls.static_files.name)
@@ -199,7 +201,7 @@ class ChatMenuBrowserTests(unittest.TestCase):
                 page, fixture = self.open_app(desktop=desktop)
                 self.open_menu(page)
                 self.assertEqual(fixture.capability_reads, 0)
-                for label in ("New chat", "Rate this chat", "Delete chat", "Capabilities", "Live support", "Update XemAi"):
+                for label in ("New chat", "Rate this chat", "Delete chat", "Capabilities", "Skyrim tools", "Reply sounds: On"):
                     self.assertTrue(page.locator("#modal").get_by_role("button", name=label, exact=True).is_visible(), label)
                 page.keyboard.press("Escape")
                 page.wait_for_function("!document.querySelector('#modal').open")

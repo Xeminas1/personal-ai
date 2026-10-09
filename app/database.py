@@ -63,7 +63,7 @@ def _memory_recall_kind(query: str) -> str | None:
 
 
 def now_iso() -> str:
-    return datetime.now().astimezone().isoformat(timespec="seconds")
+    return datetime.now().astimezone().isoformat(timespec="milliseconds")
 
 
 class Database:

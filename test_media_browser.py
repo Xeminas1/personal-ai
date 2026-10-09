@@ -109,7 +109,7 @@ class BrowserMediaTests(unittest.TestCase):
                 path = urlparse(request.url).path
                 if path == "/api/vision/status":
                     self.status_reads += 1
-                    return self.respond(route, {"ok": True, "ready": False, "installing": False, "error": "Vision model is not installed yet."})
+                    return self.respond(route, {"ok": True, "ready": False, "installing": self.setup_requests > 0, "error": "Vision model is not installed yet."})
                 if path == "/api/vision/setup":
                     self.setup_requests += 1
                     return self.respond(route, {"ok": True, "ready": False, "installing": True})
@@ -287,7 +287,7 @@ class BrowserMediaTests(unittest.TestCase):
         self.page.locator("#moreBtn").click()
         self.page.locator('[data-chat-action="skyrim"]').click()
         self.page.wait_for_function("document.querySelector('#modalBody [role=status]').textContent.includes('not installed')")
-        self.assertEqual(fixture.status_reads, 1)
+        self.assertGreaterEqual(fixture.status_reads, 1)
         self.assertEqual(fixture.setup_requests, 0)
         self.assertIn("Vortex diagnostics", self.page.locator("#modalBody").inner_text())
         self.assertIn("original video and audio are not uploaded", self.page.locator("#modalBody").inner_text())
@@ -300,9 +300,9 @@ class BrowserMediaTests(unittest.TestCase):
         self.assertLessEqual(actions_bounds["y"] + actions_bounds["height"], modal_bounds["y"] + modal_bounds["height"])
         self.page.screenshot(path="/tmp/xemai-skyrim-tools-phone.png", full_page=True)
         self.page.get_by_role("button", name="Enable PC visual analysis", exact=True).click()
-        self.page.wait_for_function("document.querySelector('#modalBody [role=status]').textContent.includes('downloading')")
+        self.page.wait_for_function("document.querySelector('#modalBody [role=status]').textContent.toLowerCase().includes('downloading')")
         self.assertEqual(fixture.setup_requests, 1)
-        self.assertTrue(self.page.get_by_role("button", name="Enable PC visual analysis", exact=True).is_disabled())
+        self.assertTrue(self.page.locator("#visionSetupBtn").is_disabled())
 
     def test_chat_image_upload_sends_only_normalized_jpeg(self):
         fixture = self.open_chat_app()

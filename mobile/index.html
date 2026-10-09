@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>XemAi</title>
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="stylesheet" href="/styles.css?v=0.9.13">
+  <link rel="stylesheet" href="/styles.css?v=0.9.15">
 </head>
 <body>
   <div id="app">
@@ -18,7 +18,7 @@
       <button id="menuBtn" class="icon-btn" aria-label="Chats">☰</button>
       <div class="brand-wrap">
         <div id="brand" class="brand"><span class="brand-xem">Xem</span><span class="brand-ai">Ai</span></div>
-        <div id="versionBadge" class="version-badge">v0.9.13</div>
+        <div id="versionBadge" class="version-badge">v0.9.15</div>
         <div id="computeBadge" class="compute-badge">Compute: checking…</div>
         <div id="status" class="status">Connecting…</div>
       </div>
@@ -34,10 +34,7 @@
       <div class="drawer-section-label">Recent Chats</div>
       <div id="chatList" class="chat-list"></div>
       <div class="drawer-bottom">
-        <button id="capabilitiesBtn" class="drawer-action">Capabilities</button>
-        <button id="skyrimBtn" class="drawer-action">Skyrim tools</button>
-        <button id="supportBtn" class="drawer-action">Live support</button>
-        <button id="updateBtn" class="drawer-action">Update XemAi</button>
+        <button id="skyrimBtn" class="drawer-action" aria-label="Skyrim tools"><span>Skyrim tools</span><span id="visionSidebarIndicator" class="vision-sidebar-indicator" data-state="unchecked" role="status" aria-live="polite" aria-label="Visual analysis status" title="Visual analysis status has not been checked">○</span></button>
         <button id="feedbackBtn" class="drawer-action">Rate this chat</button>
       </div>
     </aside>
@@ -78,7 +75,7 @@
       <form id="composer" class="composer">
         <button id="newBtn" type="button" class="composer-plus" aria-label="Attach file">＋</button>
         <textarea id="input" rows="1" maxlength="50000" placeholder="Message XemAi..." autocomplete="off"></textarea>
-        <button id="sendBtn" type="submit" class="send-btn">➤</button>
+        <button id="sendBtn" type="submit" class="send-btn" aria-label="Send message"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 19V5m-6 6 6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </form>
       <div class="safe-pad"></div>
     </main>
@@ -90,7 +87,8 @@
     <div id="modalActions" class="modal-actions"></div>
   </dialog>
 
-  <script src="/media.js?v=0.9.13" defer></script>
-  <script src="/app.js?v=0.9.13" defer></script>
+  <script src="/media.js?v=0.9.15" defer></script>
+  <script src="/notifications.js?v=0.9.15" defer></script>
+  <script src="/app.js?v=0.9.15" defer></script>
 </body>
 </html>

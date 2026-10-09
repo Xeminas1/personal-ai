@@ -44,6 +44,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.3", "Forwards phone visits from a paired worker PC to the paired central host, while keeping direct desktop app visits local; updates worker setup messaging to use automatic pairing by default."),
     ("0.9.12", "Adds a working chat-options menu and confirmed shared chat deletion while preserving saved memories."),
     ("0.9.13", "Adds evidence-based Skyrim text diagnostics and optional paired-PC image and sampled-video-frame analysis with an explicit vision-model setup control."),
+    ("0.9.15", "Shows verified visual-readiness ticks, adds optional quiet reply sounds, improves recent-chat ordering and scrolling, and removes manual-update/live-support controls from the shared chat UI."),
 ]
 
 

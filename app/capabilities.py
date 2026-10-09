@@ -97,7 +97,7 @@ def build_capability_status(
             else "Automatic official-channel updates: disabled"
         ),
         "Private remote phone access can be routed through Tailscale Serve",
-        "Mobile update checks/install: enabled for the official configured XemAi update channel",
+        "Shared chat interface automatically reconnects after official-channel updates; manual update and live-support controls have been removed",
         "Desktop and mobile visual redesign: enabled with bubble-based chat UI",
         "General external API/app integrations: not yet implemented beyond configured tools",
     ]

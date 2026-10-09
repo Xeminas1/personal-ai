@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.9.13";
+const FRONTEND_VERSION = "0.9.15";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
@@ -18,6 +18,12 @@ const state = {
   chatMutation: false,
   loadingChat: false,
   chatViewRevision: 0,
+  visionStatus: { ready: false, installing: false, checking: true, error: "" },
+  visionRequest: null,
+  visionRevision: 0,
+  nextVisionCheckAt: 0,
+  offline: !navigator.onLine,
+  pendingReplyChats: new Set(),
 };
 
 const $ = (id) => document.getElementById(id);
@@ -51,10 +57,8 @@ const els = {
   composer: $("composer"),
   input: $("input"),
   sendBtn: $("sendBtn"),
-  capabilitiesBtn: $("capabilitiesBtn"),
   skyrimBtn: $("skyrimBtn"),
-  supportBtn: $("supportBtn"),
-  updateBtn: $("updateBtn"),
+  visionSidebarIndicator: $("visionSidebarIndicator"),
   feedbackBtn: $("feedbackBtn"),
   modal: $("modal"),
   modalTitle: $("modalTitle"),
@@ -376,6 +380,103 @@ function chatSignature(chats) {
     .join("|");
 }
 
+function trackPendingReply(chatId) {
+  state.pendingReplyChats.add(chatId);
+  while (state.pendingReplyChats.size > 16) {
+    state.pendingReplyChats.delete(state.pendingReplyChats.values().next().value);
+  }
+}
+
+async function checkOtherPendingReplies(selectedId, stale) {
+  const others = [...state.pendingReplyChats].filter((id) => id !== selectedId).slice(0, 2);
+  for (const chatId of others) {
+    try {
+      // Read activity first: if it finished, the saved reply is already visible
+      // in the following message read. It also avoids racing completion.
+      const activity = await api(`/api/chats/${chatId}/activity`);
+      if (stale()) return;
+      const data = await api(`/api/chats/${chatId}/messages`);
+      if (stale()) return;
+      window.XemAiNotifications?.observe(chatId, data.messages || []);
+      if (!activity.active) state.pendingReplyChats.delete(chatId);
+    } catch (err) {
+      if (err.status === 404) {
+        state.pendingReplyChats.delete(chatId);
+        window.XemAiNotifications?.forgetChat(chatId);
+      }
+    }
+  }
+}
+
+function orderedChats(chats) {
+  const timestamp = (value) => {
+    const parsed = Date.parse(value || "");
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const activity = (chat) => timestamp(chat.updated_at) ?? timestamp(chat.created_at) ?? 0;
+  return [...(chats || [])].sort((a, b) =>
+    activity(b) - activity(a)
+    || (timestamp(b.created_at) ?? 0) - (timestamp(a.created_at) ?? 0)
+    || Number(b.id) - Number(a.id));
+}
+
+function updateVisionIndicators() {
+  const result = state.visionStatus;
+  const ready = result.ready === true && result.installing !== true && !result.checking;
+  const phase = result.checking ? "checking" : ready ? "ready" : result.installing ? "installing" : "unavailable";
+  const description = result.checking ? "Checking PC visual analysis…"
+    : ready ? "✓ Visual analysis activated · PC ready"
+    : result.installing ? "Downloading the PC vision model…"
+    : result.error || "Visual analysis is not activated.";
+  for (const indicator of document.querySelectorAll("#visionSidebarIndicator, [data-vision-indicator]")) {
+    indicator.dataset.state = phase;
+    indicator.textContent = ready ? "✓" : (result.checking || result.installing) ? "…" : "○";
+    indicator.title = description;
+    indicator.setAttribute("aria-label", description);
+  }
+  const modalStatus = $("visionReadyState");
+  if (modalStatus) {
+    modalStatus.textContent = description;
+    modalStatus.dataset.state = phase;
+  }
+  const setup = $("visionSetupBtn");
+  if (setup) {
+    setup.disabled = state.offline || ready || !!result.installing || !!result.checking;
+    setup.textContent = ready ? "✓ Activated" : result.installing ? "Downloading…" : "Enable PC visual analysis";
+  }
+  const check = $("visionCheckBtn");
+  if (check) check.disabled = state.offline || !!result.checking;
+}
+
+async function refreshVisionStatus({ setup = false } = {}) {
+  if (state.offline) return;
+  if (state.visionRequest && !setup) return state.visionRequest;
+  const revision = ++state.visionRevision;
+  state.visionStatus = { ready: false, installing: false, checking: true, error: "" };
+  updateVisionIndicators();
+  const request = (async () => {
+    try {
+      const result = await api(setup ? "/api/vision/setup" : "/api/vision/status",
+        setup ? { method: "POST", body: JSON.stringify({}) } : {});
+      if (revision !== state.visionRevision) return;
+      state.visionStatus = { ready: result.ready === true, installing: result.installing === true,
+        checking: false, error: String(result.error || "") };
+    } catch (err) {
+      if (revision !== state.visionRevision) return;
+      state.visionStatus = { ready: false, installing: false, checking: false,
+        error: "PC visual analysis unavailable. Keep the paired PC awake." };
+    } finally {
+      if (revision === state.visionRevision) {
+        state.visionRequest = null;
+        state.nextVisionCheckAt = Date.now() + (state.visionStatus.installing ? 3000 : 30000);
+        updateVisionIndicators();
+      }
+    }
+  })();
+  state.visionRequest = request;
+  return request;
+}
+
 function scrollContainer() {
   if (window.matchMedia("(min-width: 1000px)").matches) {
     return els.messages;
@@ -549,17 +650,20 @@ function appendMessage(role, text, createdAt = null, delivery = null, inference 
 async function retryLastMessage() {
   if (state.busy || state.remoteActivity || state.chatMutation || state.loadingChat || !state.chatId) return;
 
+  const replyChatId = state.chatId;
   setBusy(true, "Sending retry…");
   try {
-    const data = await api(`/api/chats/${state.chatId}/retry`, {
+    const data = await api(`/api/chats/${replyChatId}/retry`, {
       method: "POST",
       body: JSON.stringify({}),
     });
+    trackPendingReply(replyChatId);
     setBusy(false, `Connected · v${state.bootstrap.version}`);
     setRemoteActivity(true, data.status || "XemAi is thinking");
     window.setTimeout(syncSharedState, 250);
   } catch (err) {
     if (isNetworkFetchError(err)) {
+      trackPendingReply(replyChatId);
       setBusy(false, "Connection interrupted");
       setStatus("Connection interrupted · checking XemAi…");
       window.setTimeout(syncSharedState, 500);
@@ -605,7 +709,14 @@ async function syncSharedState() {
   try {
     const chatsData = await api("/api/chats");
     if (stale()) return;
-    const nextChats = chatsData.chats || [];
+    const nextChats = orderedChats(chatsData.chats);
+    const nextIds = new Set(nextChats.map((chat) => chat.id));
+    for (const id of state.pendingReplyChats) {
+      if (!nextIds.has(id)) {
+        state.pendingReplyChats.delete(id);
+        window.XemAiNotifications?.forgetChat(id);
+      }
+    }
     const nextChatSignature = chatSignature(nextChats);
     if (nextChatSignature !== state.lastChatSignature) {
       state.chats = nextChats;
@@ -614,6 +725,7 @@ async function syncSharedState() {
     }
 
     if (selectedId && !nextChats.some((chat) => chat.id === selectedId)) {
+      window.XemAiNotifications?.forgetChat(selectedId);
       clearSelectedChat();
       if (nextChats.length) await loadChat(nextChats[0].id);
       return;
@@ -628,6 +740,9 @@ async function syncSharedState() {
       const messageData = await api(`/api/chats/${selectedId}/messages`);
       if (stale()) return;
       const nextMessageSignature = messageSignature(messageData.messages || []);
+      if (window.XemAiNotifications?.observe(selectedId, messageData.messages || [])) {
+        state.pendingReplyChats.delete(selectedId);
+      }
       if (nextMessageSignature !== state.lastMessageSignature) {
         state.lastMessageSignature = nextMessageSignature;
         renderMessageList(messageData.messages || []);
@@ -640,6 +755,9 @@ async function syncSharedState() {
       if (stale()) return;
       setRemoteActivity(activity.active, activity.status);
     }
+
+    await checkOtherPendingReplies(selectedId, stale);
+    if (stale()) return;
 
     state.syncCounter += 1;
     if (state.syncCounter % 10 === 0) {
@@ -676,8 +794,14 @@ async function syncSharedState() {
 
 function startBackgroundSync() {
   window.setInterval(syncSharedState, 1500);
+  window.setInterval(() => {
+    if (!document.hidden && Date.now() >= state.nextVisionCheckAt) refreshVisionStatus();
+  }, 3000);
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) syncSharedState();
+    if (!document.hidden) {
+      syncSharedState();
+      if (Date.now() >= state.nextVisionCheckAt) refreshVisionStatus();
+    }
   });
 }
 
@@ -692,6 +816,7 @@ async function bootstrap() {
     await refreshChats();
     setStatus(`Connected · v${data.version}`);
     startBackgroundSync();
+    refreshVisionStatus();
   } catch (err) {
     setStatus("Disconnected");
     showModal("Connection problem", String(err.message || err));
@@ -702,7 +827,7 @@ async function refreshChats(preferredId = null, createIfEmpty = true) {
   const revision = state.chatViewRevision;
   const data = await api("/api/chats");
   if (revision !== state.chatViewRevision) return;
-  state.chats = data.chats || [];
+  state.chats = orderedChats(data.chats);
   state.lastChatSignature = chatSignature(state.chats);
   renderChats();
 
@@ -728,6 +853,7 @@ async function refreshChats(preferredId = null, createIfEmpty = true) {
 }
 
 function renderChats() {
+  const scrollTop = els.chatList.scrollTop;
   els.chatList.innerHTML = "";
   for (const chat of state.chats) {
     const btn = document.createElement("button");
@@ -749,6 +875,7 @@ function renderChats() {
     });
     els.chatList.appendChild(btn);
   }
+  els.chatList.scrollTop = scrollTop;
 }
 
 async function loadChat(chatId) {
@@ -764,6 +891,7 @@ async function loadChat(chatId) {
       setRemoteActivity(false);
     }
     state.chatId = chatId;
+    window.XemAiNotifications?.observe(chatId, data.messages || [], { baseline: true });
     state.lastMessageSignature = messageSignature(data.messages || []);
     renderMessageList(data.messages || []);
     renderChats();
@@ -804,6 +932,7 @@ async function createChat() {
       body: JSON.stringify({}),
     });
     await refreshChats(data.chat.id);
+    els.chatList.scrollTop = 0;
     closeDrawer();
   } catch (err) {
     showModal("Could not create chat", err.message || String(err));
@@ -826,6 +955,7 @@ async function sendMessage(event) {
   }
 
   const outgoingAttachments = [...state.pendingAttachments];
+  const replyChatId = state.chatId;
   els.input.value = "";
   autoGrow();
   const localAttachments = outgoingAttachments.map((item) =>
@@ -841,13 +971,14 @@ async function sendMessage(event) {
   setBusy(true, "Sending…");
 
   try {
-    const data = await api(`/api/chats/${state.chatId}/messages`, {
+    const data = await api(`/api/chats/${replyChatId}/messages`, {
       method: "POST",
       body: JSON.stringify({
         text,
         attachments: outgoingAttachments,
       }),
     });
+    trackPendingReply(replyChatId);
     state.pendingAttachments = [];
     renderAttachmentTray();
     setBusy(false, `Connected · v${state.bootstrap.version}`);
@@ -857,6 +988,7 @@ async function sendMessage(event) {
     // A dropped mobile/Tailscale connection does not prove generation failed.
     // The server may already have accepted the message and be working on it.
     if (isNetworkFetchError(err)) {
+      trackPendingReply(replyChatId);
       setBusy(false, "Connection interrupted");
       setStatus("Connection interrupted · checking XemAi…");
       window.setTimeout(syncSharedState, 500);
@@ -895,8 +1027,7 @@ function showChatOptions() {
     ["Delete chat", "delete", confirmDeleteChat],
     ["Capabilities", "capabilities", showCapabilities],
     ["Skyrim tools", "skyrim", showSkyrimTools],
-    ["Live support", "support", () => { window.location.href = "/support"; }],
-    ["Update XemAi", "update", checkMobileUpdate],
+    ["Reply sounds", "sounds", () => {}],
   ];
   for (const [label, action, handler] of options) {
     const button = document.createElement("button");
@@ -904,6 +1035,30 @@ function showChatOptions() {
     button.className = "chat-option" + (action === "delete" ? " danger" : "");
     button.dataset.chatAction = action;
     button.textContent = label;
+    if (action === "skyrim") {
+      button.setAttribute("aria-label", label);
+      const indicator = document.createElement("span");
+      indicator.className = "vision-sidebar-indicator";
+      indicator.dataset.visionIndicator = "";
+      indicator.setAttribute("aria-hidden", "true");
+      button.appendChild(indicator);
+    }
+    if (action === "sounds") {
+      const updateSoundButton = () => {
+        const enabled = window.XemAiNotifications?.isEnabled() !== false;
+        button.setAttribute("aria-pressed", String(enabled));
+        button.textContent = `Reply sounds: ${enabled ? "On" : "Off"}`;
+      };
+      updateSoundButton();
+      button.addEventListener("click", () => {
+        const enabled = !window.XemAiNotifications.isEnabled();
+        window.XemAiNotifications.setEnabled(enabled);
+        if (enabled) window.XemAiNotifications.unlock();
+        updateSoundButton();
+      });
+      actions.appendChild(button);
+      continue;
+    }
     button.addEventListener("click", () => {
       els.modal.close();
       handler();
@@ -916,6 +1071,7 @@ function showChatOptions() {
   close.addEventListener("click", () => els.modal.close());
   els.modalActions.appendChild(close);
   updateChatActions();
+  updateVisionIndicators();
   els.moreBtn.setAttribute("aria-expanded", "true");
   els.modal.showModal();
 }
@@ -929,48 +1085,31 @@ async function showSkyrimTools() {
   const visualGuide = document.createElement("p");
   visualGuide.textContent = "Attach a screenshot or a clip up to 3 minutes / 250 MB. Clips are sampled locally into up to four timestamped frames; the original video and audio are not uploaded. Visual analysis needs a separate vision model on your awake, paired PC.";
   const status = document.createElement("p");
+  status.id = "visionReadyState";
+  status.className = "vision-ready-state";
   status.setAttribute("role", "status");
   status.textContent = "Checking PC visual analysis…";
   const download = document.createElement("p");
   download.textContent = "Enable PC visual analysis downloads the separate qwen2.5vl:7b model (several GB) to the stronger PC. Normal 8B/1.7B chat routing stays separate.";
-  els.modalBody.append(guide, visualGuide, status, download);
+  els.modalBody.append(status, guide, visualGuide, download);
   const setup = document.createElement("button");
   setup.type = "button";
+  setup.id = "visionSetupBtn";
   setup.textContent = "Enable PC visual analysis";
   setup.disabled = true;
   const check = document.createElement("button");
   check.type = "button";
+  check.id = "visionCheckBtn";
   check.textContent = "Check status";
   const close = document.createElement("button");
   close.textContent = "Close";
   close.addEventListener("click", () => els.modal.close());
   els.modalActions.append(setup, check, close);
   els.modal.showModal();
-  let pending = false;
-  const refresh = async (install = false) => {
-    if (pending) return;
-    pending = true;
-    setup.disabled = true;
-    check.disabled = true;
-    status.textContent = install ? "Starting the PC model download…" : "Checking PC visual analysis…";
-    try {
-      const result = await api(install ? "/api/vision/setup" : "/api/vision/status",
-        install ? { method: "POST", body: JSON.stringify({}) } : {});
-      status.textContent = result.ready ? "PC visual analysis is ready. You can attach screenshots or clips."
-        : result.installing ? "The PC is downloading the vision model. Keep it awake, then choose Check status."
-        : result.error || "Vision model is not installed yet.";
-      setup.disabled = !!result.ready || !!result.installing;
-    } catch (err) {
-      status.textContent = err.message || "Could not reach the PC visual service.";
-      setup.disabled = false;
-    } finally {
-      pending = false;
-      check.disabled = false;
-    }
-  };
-  setup.addEventListener("click", () => refresh(true));
-  check.addEventListener("click", () => refresh());
-  await refresh();
+  setup.addEventListener("click", () => refreshVisionStatus({ setup: true }));
+  check.addEventListener("click", () => refreshVisionStatus());
+  updateVisionIndicators();
+  await refreshVisionStatus();
 }
 
 function confirmDeleteChat() {
@@ -1004,6 +1143,8 @@ function confirmDeleteChat() {
         if (err.status !== 404) throw err;
         result = { attachment_cleanup_complete: true };
       }
+      window.XemAiNotifications?.forgetChat(targetId);
+      state.pendingReplyChats.delete(targetId);
       deleted = true;
       if (state.chatId === targetId) {
         els.input.value = "";
@@ -1051,111 +1192,6 @@ async function showCapabilities() {
     showModal("XemAi capabilities", data.capabilities.map((x) => `• ${x}`).join("\n"));
   } catch (err) {
     showModal("Capabilities", err.message || String(err));
-  }
-}
-
-async function waitForUpdatedServer(expectedVersion) {
-  setStatus(`Restarting into v${expectedVersion}…`);
-  const deadline = Date.now() + 45000;
-  let sawOffline = false;
-
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(
-        `/api/health?t=${Date.now()}`,
-        { cache: "no-store" }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        if (data.version === expectedVersion && (sawOffline || data.version !== state.bootstrap.version)) {
-          window.location.reload();
-          return;
-        }
-      }
-    } catch {
-      sawOffline = true;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 900));
-  }
-
-  setStatus(`Update installed · reopen XemAi if needed`);
-  showModal(
-    "Update installed",
-    `XemAi v${expectedVersion} was installed, but the phone could not reconnect automatically. Refresh the page in a moment.`
-  );
-}
-
-async function installMobileUpdate(version) {
-  try {
-    els.modal.close();
-    closeDrawer();
-    setBusy(true, `Installing v${version}…`);
-    const data = await api("/api/update/install", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
-
-    if (!data.restart) {
-      setBusy(false, `Up to date · v${data.installed}`);
-      return;
-    }
-
-    // Keep the composer disabled while the background server restarts.
-    state.busy = true;
-    els.thinking.classList.add("hidden");
-    await waitForUpdatedServer(data.installed);
-  } catch (err) {
-    setBusy(false, "Update failed");
-    showModal("Update failed", err.message || String(err));
-  }
-}
-
-async function checkMobileUpdate() {
-  setStatus("Checking for updates…");
-  closeDrawer();
-  try {
-    const data = await api("/api/update");
-    if (!data.enabled) {
-      showModal(
-        "Mobile updates disabled",
-        "Mobile update installation is disabled in the PC configuration."
-      );
-      setStatus(`Connected · v${state.bootstrap.version}`);
-      return;
-    }
-
-    if (!data.update) {
-      showModal(
-        "XemAi is up to date",
-        `You are running XemAi v${data.current_version}.`
-      );
-      setStatus(`Up to date · v${data.current_version}`);
-      return;
-    }
-
-    clearModal();
-    els.modalTitle.textContent = `Update to v${data.update.version}?`;
-    els.modalBody.textContent =
-      data.update.notes || "A newer XemAi release is available.";
-
-    const cancel = document.createElement("button");
-    cancel.textContent = "Not now";
-    cancel.addEventListener("click", () => {
-      els.modal.close();
-      setStatus(`Connected · v${state.bootstrap.version}`);
-    });
-
-    const install = document.createElement("button");
-    install.textContent = "Install";
-    install.addEventListener("click", () =>
-      installMobileUpdate(data.update.version)
-    );
-
-    els.modalActions.append(cancel, install);
-    els.modal.showModal();
-  } catch (err) {
-    setStatus("Update check failed");
-    showModal("Update check failed", err.message || String(err));
   }
 }
 
@@ -1249,10 +1285,7 @@ els.modal.addEventListener("cancel", (event) => {
   if (state.chatMutation) event.preventDefault();
 });
 els.drawerNewBtn.addEventListener("click", createChat);
-els.capabilitiesBtn.addEventListener("click", showCapabilities);
 els.skyrimBtn.addEventListener("click", showSkyrimTools);
-els.supportBtn.addEventListener("click", () => { window.location.href = "/support"; });
-els.updateBtn.addEventListener("click", checkMobileUpdate);
 els.feedbackBtn.addEventListener("click", showFeedback);
 els.composer.addEventListener("submit", sendMessage);
 els.input.addEventListener("input", autoGrow);
@@ -1263,11 +1296,30 @@ els.input.addEventListener("keydown", (event) => {
   }
 });
 
-window.addEventListener("online", () => setStatus("Reconnecting…"));
-window.addEventListener("offline", () => setStatus("Phone offline"));
+window.addEventListener("online", () => {
+  state.offline = false;
+  setStatus("Reconnecting…");
+  syncSharedState();
+  refreshVisionStatus();
+});
+window.addEventListener("offline", () => {
+  state.offline = true;
+  ++state.visionRevision;
+  state.visionRequest = null;
+  state.nextVisionCheckAt = 0;
+  state.visionStatus = { ready: false, installing: false, checking: false,
+    error: "Phone offline · reconnect to check PC readiness." };
+  updateVisionIndicators();
+  setStatus("Phone offline");
+});
+const unlockReplyAudio = (event) => {
+  if (!event.target.closest?.('[data-chat-action="sounds"]')) window.XemAiNotifications?.unlock();
+};
+document.addEventListener("pointerdown", unlockReplyAudio, { passive: true });
+document.addEventListener("keydown", unlockReplyAudio);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.9.13")
+  navigator.serviceWorker.register("/sw.js?v=0.9.15")
     .then((registration) => registration.update())
     .catch(() => {});
 }
