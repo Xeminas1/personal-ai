@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 
 from .capabilities import build_capability_status
@@ -321,6 +322,18 @@ class ChatBackend:
     ) -> str:
         # Tkinter stays on the UI thread. Use a separate SQLite connection for
         # response generation so the UI remains responsive and thread-safe.
+        started = time.monotonic()
+        llm = None
+
+        def timing(phase, phase_started):
+            route = getattr(llm, "route_info", {}) or {}
+            self.logger.info(
+                "Chat timing | chat_id=%d phase=%s elapsed_ms=%d model=%s compute=%s",
+                chat_id, phase, max(0, int((time.monotonic() - phase_started) * 1000)),
+                getattr(llm, "model", self.config.get("model", "unknown")),
+                route.get("compute", "local_host"),
+            )
+
         worker_db = Database(DATA_DIR / "personal_ai.db")
         user_recorded = False
         assistant_recorded = False
@@ -377,7 +390,9 @@ class ChatBackend:
                 self.logger,
                 DATA_DIR,
             )
+            route_started = time.monotonic()
             runtime_model_info = self.refresh_runtime_model(llm)
+            timing("route", route_started)
 
             system_prompt = build_system_prompt(
                 user,
@@ -439,6 +454,8 @@ class ChatBackend:
                 })
                 messages.append({"role": "user", "content": model_user_text})
 
+            timing("prepared", started)
+            research_started = time.monotonic()
             research_bundle = None
             research_mode = str(
                 self.config.get("evidence_research_mode", "auto")
@@ -530,6 +547,7 @@ class ChatBackend:
                     ),
                 })
 
+            timing("research", research_started)
             if status_callback:
                 status_callback(
                     "Synthesizing evidence"
@@ -537,11 +555,13 @@ class ChatBackend:
                     else "XemAi is thinking"
                 )
 
+            answer_started = time.monotonic()
             answer = llm.agent_chat(
                 messages,
                 tool_registry=tools,
                 max_tool_rounds=int(self.config.get("max_tool_rounds", 6)),
             )
+            timing("answer", answer_started)
 
             invalid_self_answer = False
             if self_query:
@@ -576,11 +596,13 @@ class ChatBackend:
                         "superior performance."
                     ),
                 })
+                retry_started = time.monotonic()
                 answer = llm.agent_chat(
                     retry_messages,
                     tool_registry=tools,
                     max_tool_rounds=int(self.config.get("max_tool_rounds", 6)),
                 )
+                timing("retry", retry_started)
 
                 second_invalid = (
                     comparison_answer_needs_retry(query_text, answer)
@@ -611,10 +633,12 @@ class ChatBackend:
 
             worker_db.add_message(chat_id, "assistant", answer)
             assistant_recorded = True
+            timing("visible_reply", started)
             if status_callback:
                 status_callback(None)
 
             if self.config.get("auto_memory", True):
+                memory_started = time.monotonic()
                 try:
                     extract_and_store_memories(
                         llm=llm,
@@ -631,6 +655,8 @@ class ChatBackend:
                         chat_id,
                         e,
                     )
+                finally:
+                    timing("memory", memory_started)
             return answer
         except Exception as e:
             self.logger.error(
@@ -664,6 +690,7 @@ class ChatBackend:
                     )
             raise
         finally:
+            timing("complete" if assistant_recorded else "failed", started)
             worker_db.close()
 
     def close(self):

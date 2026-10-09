@@ -1,5 +1,27 @@
 # Personal AI v0.1
 
+## v0.9.8 reply timing and worker overhead
+
+Worker inference requests that already specify a model now validate installed
+Qwen models without repeating running-model discovery. Requests without a model
+still use the worker's recommendation. Authentication, routing and fallback
+behavior are unchanged.
+
+New troubleshooting events separate host preparation, routing, research, answer
+generation, validation retries and background memory extraction. Ollama events
+record request elapsed time, model loading, prompt processing, generation time,
+token counts and thinking character counts. Worker events separate model checks,
+queue waits and inference. Missing model metrics appear as `-1`. These events
+contain no prompt, answer, internal reasoning text or credentials, and the
+read-only support report retains their typed fields.
+
+The answer timing ends when the assistant message is saved, before automatic
+memory extraction. Phone display polling can add a small delay after that point.
+This release helps diagnose long replies; it does not establish the cause of a
+reported three-minute answer or change model thinking, hardware use or streaming.
+After both PCs update, restart the stronger PC once to replace any older running
+worker process, then repeat the question to collect current timing events.
+
 ## v0.9.7 slow worker connections
 
 Hybrid worker discovery, pairing and health checks now allow 15 seconds per

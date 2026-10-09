@@ -56,6 +56,16 @@ _EVENTS = {
     "Hybrid worker unavailable; using local fallback", "Hybrid local model discovery failed",
     "Hybrid worker generation failed; falling back locally", "Ollama runtime model discovery",
     "Mobile server not started", "Hybrid worker not started",
+    "Chat timing", "LLM timing", "Worker timing",
+}
+_TIMING_NUMBERS = {
+    "elapsed_ms", "load_ms", "prompt_ms", "generation_ms", "total_ms",
+    "discovery_ms", "queue_ms", "prompt_tokens", "generated_tokens",
+    "thinking_chars", "tool_calls", "chat_id",
+}
+_CHAT_PHASES = {
+    "route", "prepared", "research", "answer", "retry", "visible_reply",
+    "memory", "complete", "failed",
 }
 _REASONS = {
     "Tailscale executable unavailable", "No central-host Serve route detected",
@@ -283,6 +293,15 @@ def structured_log(text: str) -> list[dict]:
                     code = re.search(r"(?:HTTP(?:Error| Error)?\s+|HTTP\s+)([1-5]\d{2})\b", value)
                     if code:
                         entry["http_status"] = int(code[1])
+                elif event in {"Chat timing", "LLM timing", "Worker timing"}:
+                    if key in _TIMING_NUMBERS and re.fullmatch(r"-?\d{1,12}", value) and int(value) >= -1:
+                        entry[key] = int(value)
+                    elif key == "phase" and value in _CHAT_PHASES:
+                        entry[key] = value
+                    elif key == "success" and value in {"True", "False"}:
+                        entry[key] = value == "True"
+                    elif key == "provider" and value in {"ollama", "ollama-local", "xemai-worker", "worker-local-ollama", "xemai-hybrid"}:
+                        entry[key] = value
             if reached_error:
                 break
         entries.append(entry)

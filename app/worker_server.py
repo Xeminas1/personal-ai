@@ -5,6 +5,7 @@ import os
 import platform
 import re
 import threading
+import time
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -238,13 +239,25 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
             self._error("Unknown worker endpoint.", HTTPStatus.NOT_FOUND)
             return
 
+        discovery_ms = queue_ms = generation_ms = 0
+        success = False
+        discovery_started = None
         try:
             payload = self._read_json()
             payload["stream"] = False
 
             client = self.server.ollama_client
-            recommended, installed, _ = _recommended_model(client)
-            requested = str(payload.get("model") or recommended).strip()
+            discovery_started = time.perf_counter()
+            if payload.get("model"):
+                # The host already selected its model. Validate it without a
+                # second running-model discovery before each inference call.
+                requested = str(payload["model"]).strip()
+                installed = [_model_name(item) for item in _qwen_only(client.installed_models())]
+            else:
+                requested, installed, _ = _recommended_model(client)
+                requested = requested.strip()
+            discovery_ms = max(0, int((time.perf_counter() - discovery_started) * 1000))
+            discovery_started = None
             if not requested:
                 self._error("No Qwen model is available on this worker.")
                 return
@@ -261,17 +274,33 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
                 return
 
             payload["model"] = requested
+            queue_started = time.perf_counter()
             with self.server.generation_lock:
-                result = client._request(
-                    "/api/chat",
-                    payload=payload,
-                    timeout=600,
-                )
+                generation_started = time.perf_counter()
+                queue_ms = max(0, int((generation_started - queue_started) * 1000))
+                try:
+                    result = client._request(
+                        "/api/chat",
+                        payload=payload,
+                        timeout=600,
+                    )
+                finally:
+                    generation_ms = max(0, int((time.perf_counter() - generation_started) * 1000))
+            success = True
             self._json(result)
         except ValueError as e:
             self._error(e, HTTPStatus.BAD_REQUEST)
         except Exception as e:
             self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
+        finally:
+            if discovery_started is not None:
+                discovery_ms = max(0, int((time.perf_counter() - discovery_started) * 1000))
+            logger = getattr(self.server, "xemai_logger", None)
+            if logger:
+                logger.info(
+                    "Worker timing | discovery_ms=%d queue_ms=%d generation_ms=%d success=%s",
+                    discovery_ms, queue_ms, generation_ms, success,
+                )
 
 
 class XemAiWorkerServer(ThreadingHTTPServer):

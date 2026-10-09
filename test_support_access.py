@@ -119,6 +119,28 @@ class SupportAccessTests(unittest.TestCase):
         self.assertEqual(report["logs"][0]["entries"][-1]["peers"], 3)
         self.assertNotIn(sentinel, json.dumps(report))
 
+    def test_timing_export_keeps_only_typed_diagnostics(self):
+        sentinel = "private-chat-secret-sentinel"
+        events = support.structured_log(
+            "2026-10-09 10:30:01,123 | INFO | personal_ai | LLM timing | "
+            "provider=xemai-worker model=qwen3:8b elapsed_ms=180000 load_ms=-1 "
+            "prompt_ms=1000 generation_ms=178000 prompt_tokens=100 generated_tokens=2000 "
+            f"thinking_chars=4000 tool_calls=0 success=True content={sentinel}\n"
+            "2026-10-09 10:30:02,123 | INFO | personal_ai | Worker timing | "
+            f"discovery_ms={sentinel} queue_ms=NaN generation_ms=-500 success={sentinel}\n"
+            "2026-10-09 10:30:03,123 | INFO | personal_ai | Chat timing | "
+            f"phase={sentinel} elapsed_ms=inf error=RuntimeError('{sentinel} elapsed_ms=999')\n"
+        )
+        self.assertEqual(events[0]["elapsed_ms"], 180000)
+        self.assertEqual(events[0]["load_ms"], -1)
+        self.assertEqual(events[0]["generated_tokens"], 2000)
+        self.assertIs(events[0]["success"], True)
+        for key in ["discovery_ms", "queue_ms", "generation_ms", "success"]:
+            self.assertNotIn(key, events[1])
+        self.assertNotIn("elapsed_ms", events[2])
+        self.assertNotIn("phase", events[2])
+        self.assertNotIn(sentinel, json.dumps(events))
+
 
 if __name__ == "__main__":
     unittest.main()

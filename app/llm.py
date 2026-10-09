@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import ipaddress
+import math
+import time
 import urllib.error
 import urllib.request
 from urllib.parse import urlparse
@@ -29,6 +31,19 @@ def open_model_request(request, *, timeout):
 
 class OllamaError(RuntimeError):
     pass
+
+
+def _timing_metric(value: Any, *, divisor: int = 1) -> int:
+    """Convert optional model metrics without trusting their JSON types."""
+    if isinstance(value, bool):
+        return -1
+    if isinstance(value, int) and value >= 0:
+        return value // divisor
+    if isinstance(value, float) and math.isfinite(value) and value >= 0:
+        if divisor == 1 and not value.is_integer():
+            return -1
+        return int(value / divisor)
+    return -1
 
 
 class OllamaClient:
@@ -251,23 +266,49 @@ class OllamaClient:
             len(tools or []),
         )
 
-        response = self._request("/api/chat", payload=payload)
-        message = response.get("message") or {}
-        content = message.get("content", "") or ""
-        tool_calls = message.get("tool_calls") or []
+        started = time.monotonic()
+        response = None
+        success = False
+        try:
+            response = self._request("/api/chat", payload=payload)
+            message = response.get("message") or {}
+            content = message.get("content", "") or ""
+            tool_calls = message.get("tool_calls") or []
 
-        self.logger.debug(
-            "LLM response | provider=%s model=%s chars=%d tool_calls=%d done=%s",
-            self.provider_name,
-            response.get("model", self.model),
-            len(content),
-            len(tool_calls),
-            response.get("done"),
-        )
+            self.logger.debug(
+                "LLM response | provider=%s model=%s chars=%d tool_calls=%d done=%s",
+                self.provider_name,
+                response.get("model", self.model),
+                len(content),
+                len(tool_calls),
+                response.get("done"),
+            )
 
-        if not content and not tool_calls:
-            raise OllamaError("The local model returned an empty response.")
-        return response
+            if not content and not tool_calls:
+                raise OllamaError("The local model returned an empty response.")
+            success = True
+            return response
+        finally:
+            metrics = response if isinstance(response, dict) else {}
+            timing_message = metrics.get("message")
+            timing_message = timing_message if isinstance(timing_message, dict) else {}
+            thinking = timing_message.get("thinking", "")
+            calls = timing_message.get("tool_calls", [])
+            self.logger.info(
+                "LLM timing | provider=%s model=%s elapsed_ms=%d load_ms=%d prompt_ms=%d generation_ms=%d total_ms=%d prompt_tokens=%d generated_tokens=%d thinking_chars=%d tool_calls=%d success=%s",
+                self.provider_name,
+                self.model,
+                max(0, int((time.monotonic() - started) * 1000)),
+                _timing_metric(metrics.get("load_duration"), divisor=1_000_000),
+                _timing_metric(metrics.get("prompt_eval_duration"), divisor=1_000_000),
+                _timing_metric(metrics.get("eval_duration"), divisor=1_000_000),
+                _timing_metric(metrics.get("total_duration"), divisor=1_000_000),
+                _timing_metric(metrics.get("prompt_eval_count")),
+                _timing_metric(metrics.get("eval_count")),
+                len(thinking) if isinstance(thinking, str) and response is not None else -1,
+                len(calls) if isinstance(calls, list) and response is not None else -1,
+                success,
+            )
 
     def chat(
         self,
