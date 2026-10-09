@@ -1,5 +1,25 @@
 # Personal AI v0.1
 
+## v0.9.13 local teacher review
+
+XemAi can now use the paired stronger PC as a free local teacher after it has
+already produced a substantive draft. The teacher is an independent second pass:
+it looks for factual mistakes, faulty reasoning, missed constraints, unsafe
+assumptions and important omissions, then returns a revised user-facing answer.
+The original draft is kept whenever the teacher is unavailable, still
+downloading, or fails.
+
+The worker detects available system RAM and NVIDIA VRAM conservatively. On
+suitable hardware it prepares qwen3:14b or qwen3:30b in the background through
+Ollama; normal XemAi remains usable while that download runs. The always-on host
+does not download the teacher model. Existing hybrid routing and the normal
+qwen3 model remain unchanged.
+
+Teacher review currently skips evidence-backed research turns and XemAi
+self-description/comparison validation so that a second model cannot silently
+damage verified source references or authoritative runtime facts. The feature
+is local-only and adds no paid API dependency.
+
 ## v0.9.12 chat options and deletion
 
 The top three-dot button opens Chat options with New chat, Rate this chat and
