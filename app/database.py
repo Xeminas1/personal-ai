@@ -226,6 +226,15 @@ class Database:
             "SELECT * FROM chats WHERE id = ?", (chat_id,)
         ).fetchone()
 
+    def delete_chat(self, user_id: int, chat_id: int) -> bool:
+        """Delete one owned chat; foreign keys retain its saved memories."""
+        with self.conn:
+            deleted = self.conn.execute(
+                "DELETE FROM chats WHERE id = ? AND user_id = ?",
+                (chat_id, user_id),
+            )
+        return deleted.rowcount == 1
+
     def rename_chat(self, chat_id: int, title: str) -> None:
         clean = " ".join(title.strip().split())[:80] or "Untitled"
         self.conn.execute(

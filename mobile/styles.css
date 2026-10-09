@@ -489,7 +489,7 @@ button { -webkit-tap-highlight-color: transparent; }
   background: linear-gradient(180deg, rgba(6, 17, 26, 0.98) 0%, rgba(10, 24, 38, 0.98) 100%);
   padding: max(14px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   box-shadow: 12px 0 40px rgba(0,0,0,.35);
 }
 .drawer.open { transform: translateX(0); }
@@ -589,6 +589,31 @@ button { -webkit-tap-highlight-color: transparent; }
   border-radius: 12px;
   padding: 10px 16px;
 }
+.chat-options-title {
+  color: var(--muted);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+  margin-bottom: 14px;
+}
+.chat-options {
+  display: grid;
+  gap: 8px;
+  white-space: normal;
+}
+.chat-option {
+  min-height: 44px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #102131;
+  color: var(--text);
+  text-align: left;
+}
+.chat-option[data-chat-action="capabilities"] { margin-top: 8px; }
+.chat-option.danger { color: #ff9a9a; border-color: rgba(255, 130, 130, 0.22); }
+.modal-actions button.danger { background: #a82e3b; color: #fff; }
+.chat-option:disabled, .modal-actions button:disabled { opacity: 0.45; }
+.chat-option:focus-visible, .modal-actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .rating-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .rating-row button {
   min-width: 38px;

@@ -206,6 +206,20 @@ def _start_chat_generation(
     attachments=None,
     record_user: bool = True,
 ) -> None:
+    with server.chat_operation_lock:
+        _start_chat_generation_locked(
+            server, chat_id, text, attachments=attachments, record_user=record_user,
+        )
+
+
+def _start_chat_generation_locked(
+    server,
+    chat_id: int,
+    text: str,
+    *,
+    attachments=None,
+    record_user: bool = True,
+) -> None:
     if _active_chat_requests(server) > 0:
         raise RuntimeError("XemAi is already working on another reply.")
     if _get_chat_activity(server, chat_id).get("active"):
@@ -316,7 +330,7 @@ def _validated_attachment_refs(chat_id: int, items) -> list[dict]:
             f"A maximum of {MAX_ATTACHMENTS_PER_MESSAGE} files can be attached to one message."
         )
 
-    root = _attachment_root(chat_id)
+    root = (DATA_DIR / "attachments" / f"chat_{int(chat_id)}").resolve()
     validated = []
     for item in items:
         if not isinstance(item, dict):
@@ -639,8 +653,75 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
 
         self._serve_static(path)
 
+    def do_DELETE(self):
+        parsed = urlparse(self.path)
+        match = re.fullmatch(r"/api/chats/(\d+)", parsed.path)
+        if not match:
+            self._error("Unknown endpoint.", HTTPStatus.NOT_FOUND)
+            return
+        origin = self.headers.get("Origin", "")
+        try:
+            origin_url = urlparse(origin)
+            same_origin = (origin_url.scheme in {"http", "https"}
+                           and origin_url.netloc.lower() == self.headers.get("Host", "").lower())
+        except ValueError:
+            same_origin = False
+        if (parsed.query or self.headers.get("Authorization") or not origin
+                or not same_origin
+                or self.headers.get("Sec-Fetch-Site", "") == "cross-site"
+                or not self.headers.get("Content-Type", "").startswith("application/json")):
+            self._error("Delete chats from the XemAi app.", HTTPStatus.FORBIDDEN)
+            return
+        try:
+            body = self._read_json()
+            if body:
+                self._error("Unexpected delete parameters.")
+                return
+        except ValueError as error:
+            self._error(error)
+            return
+        backend = None
+        try:
+            with self.server.chat_operation_lock:
+                if _active_chat_requests(self.server) > 0:
+                    self._error("XemAi is finishing a reply or saving memories. Try again when it finishes.", HTTPStatus.CONFLICT)
+                    return
+                update_lock = getattr(self.server, "update_lock", None)
+                if (getattr(self.server, "update_restarting", False)
+                        or (update_lock is not None and update_lock.locked())):
+                    self._error("XemAi is updating. Try again in a moment.", HTTPStatus.CONFLICT)
+                    return
+                backend = self._backend()
+                result = backend.delete_chat(int(match.group(1)))
+                if result is None:
+                    self._error("Chat not found.", HTTPStatus.NOT_FOUND)
+                    return
+            self._json({"ok": True, **result})
+        except Exception:
+            self._error("Could not delete the chat.", HTTPStatus.INTERNAL_SERVER_ERROR)
+        finally:
+            if backend:
+                backend.close()
+
     def do_POST(self):
         parsed = urlparse(self.path)
+        if re.fullmatch(r"/api/chats/\d+/(?:attachments|messages|retry|feedback)", parsed.path):
+            if self.headers.get("Authorization"):
+                self._post_request(parsed)
+                return
+            try:
+                body = self._read_json()
+            except ValueError as error:
+                self._error(error)
+                return
+            # Ownership validation, upload writes and reply reservation share
+            # the deletion lock so stale requests cannot recreate deleted data.
+            with self.server.chat_operation_lock:
+                self._post_request(parsed, body)
+        else:
+            self._post_request(parsed)
+
+    def _post_request(self, parsed, body=None):
         path = parsed.path
 
         if self.headers.get("Authorization") and not path.startswith("/api/support/"):
@@ -666,11 +747,12 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                 self._error("Could not update live support access.", HTTPStatus.INTERNAL_SERVER_ERROR)
             return
 
-        try:
-            body = self._read_json()
-        except ValueError as e:
-            self._error(e)
-            return
+        if body is None:
+            try:
+                body = self._read_json()
+            except ValueError as e:
+                self._error(e)
+                return
 
         if path == "/api/chats":
             backend = None
@@ -965,6 +1047,10 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
 class XemAiMobileServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.chat_operation_lock = threading.RLock()
 
 
 def run_mobile_server() -> int:

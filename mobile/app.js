@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.9.11";
+const FRONTEND_VERSION = "0.9.12";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
@@ -15,6 +15,9 @@ const state = {
   thinkingTimer: null,
   thinkingStartedAt: 0,
   remoteActivity: false,
+  chatMutation: false,
+  loadingChat: false,
+  chatViewRevision: 0,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -81,7 +84,9 @@ async function api(path, options = {}) {
     throw new Error(`XemAi server returned unreadable JSON (HTTP ${response.status})`);
   }
   if (!response.ok || data.ok === false) {
-    throw new Error(data.error || `HTTP ${response.status}`);
+    const error = new Error(data.error || `HTTP ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
   return data;
 }
@@ -138,7 +143,7 @@ function isMobileLayout() {
 }
 
 function openAttachmentMenu() {
-  if (state.busy || state.remoteActivity || state.uploadingAttachments) return;
+  if (!state.chatId || state.busy || state.remoteActivity || state.chatMutation || state.loadingChat || state.uploadingAttachments) return;
   if (!isMobileLayout()) {
     els.fileInput.click();
     return;
@@ -168,6 +173,7 @@ function formatBytes(bytes) {
 
 function renderAttachmentTray() {
   if (!els.attachmentTray) return;
+  updateChatActions();
   els.attachmentTray.innerHTML = "";
 
   if (!state.pendingAttachments.length && !state.uploadingAttachments) {
@@ -224,7 +230,8 @@ function fileToBase64(file) {
 }
 
 async function uploadSelectedFiles(files) {
-  if (!state.chatId || state.busy) return;
+  if (!state.chatId || state.busy || state.chatMutation || state.loadingChat) return;
+  const uploadChatId = state.chatId;
 
   const selected = Array.from(files || []);
   if (!selected.length) return;
@@ -236,6 +243,7 @@ async function uploadSelectedFiles(files) {
   }
 
   for (const file of selected.slice(0, remainingSlots)) {
+    if (state.chatId !== uploadChatId || state.chatMutation) break;
     if (file.size > 5000000) {
       showModal(
         "File too large",
@@ -250,7 +258,8 @@ async function uploadSelectedFiles(files) {
 
     try {
       const encoded = await fileToBase64(file);
-      const data = await api(`/api/chats/${state.chatId}/attachments`, {
+      if (state.chatId !== uploadChatId) break;
+      const data = await api(`/api/chats/${uploadChatId}/attachments`, {
         method: "POST",
         body: JSON.stringify({
           name: file.name,
@@ -258,7 +267,7 @@ async function uploadSelectedFiles(files) {
           data: encoded,
         }),
       });
-      state.pendingAttachments.push(data.attachment);
+      if (state.chatId === uploadChatId) state.pendingAttachments.push(data.attachment);
     } catch (err) {
       showModal("Attachment failed", err.message || String(err));
     } finally {
@@ -318,6 +327,22 @@ function setBusy(value, label = null) {
   }
 
   setStatus(label || (value ? "XemAi is thinking…" : "Ready"));
+  updateChatActions();
+}
+
+function updateChatActions() {
+  const blocked = state.busy || state.chatMutation || state.loadingChat;
+  els.input.disabled = blocked || !state.chatId;
+  els.sendBtn.disabled = blocked || !state.chatId || state.remoteActivity;
+  els.newBtn.disabled = blocked || !state.chatId || state.remoteActivity || state.uploadingAttachments > 0;
+  els.drawerNewBtn.disabled = blocked || state.uploadingAttachments > 0;
+  els.input.placeholder = state.chatId ? "Message XemAi..." : "Create a new chat to start...";
+  const create = els.modalBody.querySelector('[data-chat-action="new"]');
+  const remove = els.modalBody.querySelector('[data-chat-action="delete"]');
+  const rate = els.modalBody.querySelector('[data-chat-action="rate"]');
+  if (create) create.disabled = blocked || state.uploadingAttachments > 0;
+  if (remove) remove.disabled = blocked || !state.chatId || state.remoteActivity || state.uploadingAttachments > 0;
+  if (rate) rate.disabled = state.chatMutation || state.loadingChat || !state.chatId;
 }
 
 function escapeHtml(text) {
@@ -412,6 +437,7 @@ function startThinkingProgress(initial = "XemAi is thinking") {
 function setRemoteActivity(active, status = "XemAi is thinking") {
   const wasActive = state.remoteActivity;
   state.remoteActivity = Boolean(active);
+  updateChatActions();
   if (state.busy) return;
 
   if (state.remoteActivity) {
@@ -436,6 +462,7 @@ function setRemoteActivity(active, status = "XemAi is thinking") {
     els.newBtn.disabled = state.busy || state.uploadingAttachments > 0;
     setStatus(`Connected · v${state.bootstrap.version}`);
   }
+  updateChatActions();
 }
 
 
@@ -515,7 +542,7 @@ function appendMessage(role, text, createdAt = null, delivery = null, inference 
 }
 
 async function retryLastMessage() {
-  if (state.busy || state.remoteActivity || !state.chatId) return;
+  if (state.busy || state.remoteActivity || state.chatMutation || state.loadingChat || !state.chatId) return;
 
   setBusy(true, "Sending retry…");
   try {
@@ -562,13 +589,17 @@ function renderMessageList(messages) {
 }
 
 async function syncSharedState() {
-  if (!state.bootstrap || state.syncInFlight || state.busy || document.hidden) {
+  if (!state.bootstrap || state.syncInFlight || state.busy || state.chatMutation || state.loadingChat || document.hidden) {
     return;
   }
 
   state.syncInFlight = true;
+  const revision = state.chatViewRevision;
+  const selectedId = state.chatId;
+  const stale = () => revision !== state.chatViewRevision || state.chatMutation || selectedId !== state.chatId;
   try {
     const chatsData = await api("/api/chats");
+    if (stale()) return;
     const nextChats = chatsData.chats || [];
     const nextChatSignature = chatSignature(nextChats);
     if (nextChatSignature !== state.lastChatSignature) {
@@ -577,9 +608,20 @@ async function syncSharedState() {
       renderChats();
     }
 
-    if (state.chatId) {
+    if (selectedId && !nextChats.some((chat) => chat.id === selectedId)) {
+      clearSelectedChat();
+      if (nextChats.length) await loadChat(nextChats[0].id);
+      return;
+    }
+    if (!selectedId && nextChats.length) {
+      await loadChat(nextChats[0].id);
+      return;
+    }
+
+    if (selectedId) {
       const wasNearBottom = isNearBottom();
-      const messageData = await api(`/api/chats/${state.chatId}/messages`);
+      const messageData = await api(`/api/chats/${selectedId}/messages`);
+      if (stale()) return;
       const nextMessageSignature = messageSignature(messageData.messages || []);
       if (nextMessageSignature !== state.lastMessageSignature) {
         state.lastMessageSignature = nextMessageSignature;
@@ -588,18 +630,21 @@ async function syncSharedState() {
       }
     }
 
-    if (state.chatId && !state.busy) {
-      const activity = await api(`/api/chats/${state.chatId}/activity`);
+    if (selectedId && !state.busy) {
+      const activity = await api(`/api/chats/${selectedId}/activity`);
+      if (stale()) return;
       setRemoteActivity(activity.active, activity.status);
     }
 
     state.syncCounter += 1;
     if (state.syncCounter % 10 === 0) {
       const compute = await api("/api/compute");
+      if (stale()) return;
       setComputeBadge(compute);
     }
     if (state.syncCounter % 3 === 0) {
       const health = await api(`/api/health?t=${Date.now()}`);
+      if (stale()) return;
       if (health.version && health.version !== state.bootstrap.version) {
         window.location.reload();
         return;
@@ -609,10 +654,16 @@ async function syncSharedState() {
     if (!state.busy && !state.remoteActivity) {
       setStatus(`Connected · v${state.bootstrap.version}`);
     }
-  } catch {
+  } catch (err) {
     // The shared server may be restarting for an automatic update. The next
     // sync tick will reconnect and reload once the new version is available.
-    setStatus("Reconnecting…");
+    if (!stale()) {
+      if (err.status === 404 && selectedId) {
+        await refreshChats(null, false).catch(() => setStatus("Reconnecting…"));
+      } else {
+        setStatus("Reconnecting…");
+      }
+    }
   } finally {
     state.syncInFlight = false;
   }
@@ -642,20 +693,27 @@ async function bootstrap() {
   }
 }
 
-async function refreshChats(preferredId = null) {
+async function refreshChats(preferredId = null, createIfEmpty = true) {
+  const revision = state.chatViewRevision;
   const data = await api("/api/chats");
+  if (revision !== state.chatViewRevision) return;
   state.chats = data.chats || [];
   state.lastChatSignature = chatSignature(state.chats);
   renderChats();
 
-  if (!state.chats.length) {
+  if (!state.chats.length && createIfEmpty) {
     const created = await api("/api/chats", {
       method: "POST",
       body: JSON.stringify({}),
     });
+    if (revision !== state.chatViewRevision) return;
     state.chats = [created.chat];
     state.lastChatSignature = chatSignature(state.chats);
     renderChats();
+  }
+  if (!state.chats.length) {
+    clearSelectedChat();
+    return;
   }
 
   const ids = new Set(state.chats.map((c) => c.id));
@@ -675,42 +733,85 @@ function renderChats() {
       <span class="chat-time">${escapeHtml(updated)}</span>
     `;
     btn.addEventListener("click", async () => {
-      if (state.busy) return;
-      await loadChat(chat.id);
-      closeDrawer();
+      if (state.busy || state.chatMutation || state.uploadingAttachments) return;
+      try {
+        await loadChat(chat.id);
+        closeDrawer();
+      } catch (err) {
+        if (err.status === 404) await refreshChats(null, false);
+        else showModal("Could not open chat", err.message || String(err));
+      }
     });
     els.chatList.appendChild(btn);
   }
 }
 
 async function loadChat(chatId) {
-  if (state.chatId !== chatId) {
-    state.pendingAttachments = [];
-    renderAttachmentTray();
-    setRemoteActivity(false);
+  const revision = ++state.chatViewRevision;
+  state.loadingChat = true;
+  updateChatActions();
+  try {
+    const data = await api(`/api/chats/${chatId}/messages`);
+    if (revision !== state.chatViewRevision) return;
+    if (state.chatId !== chatId) {
+      state.pendingAttachments = [];
+      renderAttachmentTray();
+      setRemoteActivity(false);
+    }
+    state.chatId = chatId;
+    state.lastMessageSignature = messageSignature(data.messages || []);
+    renderMessageList(data.messages || []);
+    renderChats();
+    scrollBottom();
+  } catch (err) {
+    if (revision !== state.chatViewRevision) return;
+    throw err;
+  } finally {
+    if (revision === state.chatViewRevision) {
+      state.loadingChat = false;
+      updateChatActions();
+    }
   }
-  const data = await api(`/api/chats/${chatId}/messages`);
-  state.chatId = chatId;
-  state.lastMessageSignature = messageSignature(data.messages || []);
-  renderMessageList(data.messages || []);
+}
+
+function clearSelectedChat() {
+  state.chatViewRevision += 1;
+  state.chatId = null;
+  state.loadingChat = false;
+  state.lastMessageSignature = "";
+  state.pendingAttachments = [];
+  setRemoteActivity(false);
+  renderAttachmentTray();
+  els.messages.innerHTML = "";
+  appendMessage("assistant", "No chats yet. Choose New chat to start a conversation.");
   renderChats();
-  scrollBottom();
+  updateChatActions();
 }
 
 async function createChat() {
-  if (state.busy) return;
-  const data = await api("/api/chats", {
-    method: "POST",
-    body: JSON.stringify({}),
-  });
-  await refreshChats(data.chat.id);
-  closeDrawer();
-  els.input.focus();
+  if (state.busy || state.chatMutation || state.loadingChat || state.uploadingAttachments) return;
+  state.chatMutation = true;
+  state.chatViewRevision += 1;
+  updateChatActions();
+  try {
+    const data = await api("/api/chats", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    await refreshChats(data.chat.id);
+    closeDrawer();
+  } catch (err) {
+    showModal("Could not create chat", err.message || String(err));
+  } finally {
+    state.chatMutation = false;
+    updateChatActions();
+    if (state.chatId) els.input.focus();
+  }
 }
 
 async function sendMessage(event) {
   event?.preventDefault();
-  if (state.busy || state.remoteActivity || !state.chatId) return;
+  if (state.busy || state.remoteActivity || state.chatMutation || state.loadingChat || !state.chatId) return;
 
   const text = els.input.value.trim();
   if (!text && !state.pendingAttachments.length) return;
@@ -763,9 +864,115 @@ async function sendMessage(event) {
 }
 
 function clearModal() {
+  els.moreBtn.setAttribute("aria-expanded", "false");
   els.modalTitle.textContent = "";
   els.modalBody.innerHTML = "";
   els.modalActions.innerHTML = "";
+}
+
+function showChatOptions() {
+  clearModal();
+  closeDrawer();
+  closeAttachmentMenu();
+  els.modalTitle.textContent = "Chat options";
+  const chat = state.chats.find((item) => item.id === state.chatId);
+  if (chat) {
+    const title = document.createElement("div");
+    title.className = "chat-options-title";
+    title.textContent = chat.title;
+    els.modalBody.appendChild(title);
+  }
+  const actions = document.createElement("div");
+  actions.className = "chat-options";
+  const options = [
+    ["New chat", "new", createChat],
+    ["Rate this chat", "rate", showFeedback],
+    ["Delete chat", "delete", confirmDeleteChat],
+    ["Capabilities", "capabilities", showCapabilities],
+    ["Live support", "support", () => { window.location.href = "/support"; }],
+    ["Update XemAi", "update", checkMobileUpdate],
+  ];
+  for (const [label, action, handler] of options) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "chat-option" + (action === "delete" ? " danger" : "");
+    button.dataset.chatAction = action;
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      els.modal.close();
+      handler();
+    });
+    actions.appendChild(button);
+  }
+  els.modalBody.appendChild(actions);
+  const close = document.createElement("button");
+  close.textContent = "Close";
+  close.addEventListener("click", () => els.modal.close());
+  els.modalActions.appendChild(close);
+  updateChatActions();
+  els.moreBtn.setAttribute("aria-expanded", "true");
+  els.modal.showModal();
+}
+
+function confirmDeleteChat() {
+  if (!state.chatId || state.busy || state.chatMutation || state.loadingChat || state.remoteActivity || state.uploadingAttachments) return;
+  const targetId = state.chatId;
+  const title = state.chats.find((chat) => chat.id === targetId)?.title || "this chat";
+  clearModal();
+  els.modalTitle.textContent = "Delete chat?";
+  els.modalBody.textContent = `Delete “${title}” and its messages and attachments? This cannot be undone. Saved memories will remain.`;
+  const cancel = document.createElement("button");
+  cancel.textContent = "Cancel";
+  cancel.autofocus = true;
+  cancel.addEventListener("click", () => els.modal.close());
+  const remove = document.createElement("button");
+  remove.textContent = "Delete chat";
+  remove.className = "danger";
+  remove.addEventListener("click", async () => {
+    if (state.chatMutation || state.busy || state.uploadingAttachments) return;
+    state.chatMutation = true;
+    state.chatViewRevision += 1;
+    remove.disabled = cancel.disabled = true;
+    remove.textContent = "Deleting…";
+    updateChatActions();
+    setStatus("Deleting chat…");
+    let deleted = false;
+    try {
+      let result;
+      try {
+        result = await api(`/api/chats/${targetId}`, { method: "DELETE", body: JSON.stringify({}) });
+      } catch (err) {
+        if (err.status !== 404) throw err;
+        result = { attachment_cleanup_complete: true };
+      }
+      deleted = true;
+      if (state.chatId === targetId) {
+        els.input.value = "";
+        autoGrow();
+        clearSelectedChat();
+      }
+      els.modal.close();
+      closeDrawer();
+      await refreshChats(null, false);
+      setStatus("Chat deleted");
+      if (result.attachment_cleanup_complete === false) {
+        showModal("Chat deleted", "The chat and messages were deleted, but some attached files could not be removed.");
+      }
+    } catch (err) {
+      els.modal.close();
+      if (deleted) {
+        showModal("Chat deleted", "The chat was deleted. The chat list will refresh when XemAi reconnects.");
+      } else {
+        showModal("Could not delete chat", err.message || String(err));
+      }
+    } finally {
+      state.chatMutation = false;
+      updateChatActions();
+    }
+  });
+  els.modalActions.append(cancel, remove);
+  els.modal.showModal();
+  cancel.focus();
 }
 
 function showModal(title, body) {
@@ -894,7 +1101,8 @@ async function checkMobileUpdate() {
 }
 
 function showFeedback() {
-  if (!state.chatId) return;
+  if (!state.chatId || state.chatMutation || state.loadingChat) return;
+  const targetId = state.chatId;
   clearModal();
   els.modalTitle.textContent = "Rate this chat";
 
@@ -931,7 +1139,7 @@ function showFeedback() {
   save.addEventListener("click", async () => {
     if (selected === null) return;
     try {
-      await api(`/api/chats/${state.chatId}/feedback`, {
+      await api(`/api/chats/${targetId}/feedback`, {
         method: "POST",
         body: JSON.stringify({ score: selected, note: note.value.trim() }),
       });
@@ -976,7 +1184,11 @@ for (const input of [
     uploadSelectedFiles(input.files)
   );
 }
-els.moreBtn.addEventListener("click", showCapabilities);
+els.moreBtn.addEventListener("click", showChatOptions);
+els.modal.addEventListener("close", () => els.moreBtn.setAttribute("aria-expanded", "false"));
+els.modal.addEventListener("cancel", (event) => {
+  if (state.chatMutation) event.preventDefault();
+});
 els.drawerNewBtn.addEventListener("click", createChat);
 els.capabilitiesBtn.addEventListener("click", showCapabilities);
 els.supportBtn.addEventListener("click", () => { window.location.href = "/support"; });
@@ -995,7 +1207,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.9.11")
+  navigator.serviceWorker.register("/sw.js?v=0.9.12")
     .then((registration) => registration.update())
     .catch(() => {});
 }

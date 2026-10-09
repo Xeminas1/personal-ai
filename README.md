@@ -1,5 +1,33 @@
 # Personal AI v0.1
 
+## v0.9.12 chat options and deletion
+
+The top three-dot button opens Chat options with New chat, Rate this chat and
+Delete chat, plus Capabilities, Live support and Update XemAi. Capabilities now
+opens only when selected. The menu and confirmation work on phone and desktop;
+Escape dismisses the dialog and deletion initially focuses Cancel.
+
+Select a chat, open the three-dot menu and choose Delete chat. Confirmation names
+the selected chat and explains that its messages and attachments are removed
+while saved memories remain. Deletion also removes that chat's ratings and
+answer-source metadata. Cancelling or a rejected deletion preserves the draft.
+An attachment cleanup failure is reported separately from a successful chat
+deletion. No real user chats are changed by installing this update.
+
+Deletion is scoped to the current user and requires a same-origin JSON request;
+read-only support credentials cannot delete chats. The shared web server blocks
+deletion while reply generation or its background memory work is active and
+serializes deletion with sends, retries, uploads and ratings. These activity
+guards apply to the shared web desktop and phone, not a separately running
+legacy Tk/console process.
+
+Clients recover when another device deletes their selected chat, and stale
+loads or polling responses cannot restore the old selection. Deleting the last
+chat leaves a New chat action instead of creating another chat during polling.
+Browser regressions cover both layouts, confirmation and focus, drafts, deletion
+errors, shared-list recovery and delayed responses; SQLite/HTTP tests cover
+data preservation, ownership, attachments and concurrent deletion requests.
+
 ## v0.9.11 clearer evidence and source references
 
 Research supplies bounded topical passages with nearby qualifications instead

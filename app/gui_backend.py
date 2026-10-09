@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import secrets
+import shutil
 import time
 from pathlib import Path
 
@@ -262,6 +263,37 @@ class ChatBackend:
 
     def create_chat(self):
         return self.db.create_chat(self.user["id"], "New chat")
+
+    def delete_chat(self, chat_id: int) -> dict | None:
+        if not self.db.delete_chat(self.user["id"], chat_id):
+            return None
+        complete = self._remove_chat_attachments(chat_id)
+        if not complete:
+            try:
+                self.logger.warning("Chat attachment cleanup incomplete | chat_id=%d", chat_id)
+            except Exception:
+                pass
+        return {"deleted_chat_id": int(chat_id), "attachment_cleanup_complete": complete}
+
+    def _remove_chat_attachments(self, chat_id: int) -> bool:
+        """Remove this chat's upload folder without following folder links."""
+        try:
+            data = DATA_DIR.resolve()
+            parent = DATA_DIR / "attachments"
+            folder = parent / f"chat_{int(chat_id)}"
+            if parent.is_symlink() or parent.resolve().parent != data:
+                return False
+            if folder.is_symlink():
+                return False
+            if not folder.exists():
+                return True
+            if not folder.is_dir() or folder.resolve().parent != parent.resolve():
+                return False
+            # shutil.rmtree removes nested links themselves, never their targets.
+            shutil.rmtree(folder)
+            return True
+        except OSError:
+            return False
 
     def messages(self, chat_id: int):
         return self.db.get_recent_messages(chat_id, limit=500)
