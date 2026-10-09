@@ -81,6 +81,13 @@ class HybridWorkerClient(OllamaClient):
     def worker_health(self) -> dict[str, Any]:
         return self._request("/api/health", timeout=15)
 
+    def teacher_review(self, question: str, draft: str) -> dict[str, Any]:
+        return self._request(
+            "/api/teacher/review",
+            payload={"question": question, "draft": draft},
+            timeout=900,
+        )
+
 
 class HybridOllamaClient(OllamaClient):
     """
@@ -229,6 +236,25 @@ class HybridOllamaClient(OllamaClient):
 
     def running_models(self) -> list[dict[str, Any]]:
         return self.active_client.running_models()
+
+
+    def review_answer(self, question: str, draft: str) -> dict[str, Any] | None:
+        """Ask the stronger worker-only teacher for one independent second pass."""
+        if self.active_client is not self.worker_client or self.worker_failed_for_request:
+            return None
+        started = time.monotonic()
+        try:
+            result = self.worker_client.teacher_review(question, draft)
+            if not result.get("ok") or not str(result.get("answer") or "").strip():
+                return None
+            self._log_attempt("teacher_review", started)
+            return result
+        except Exception as e:
+            # Teacher review is optional. A missing/downloading teacher must never
+            # turn a successful XemAi reply into an error or force host fallback.
+            self._log_attempt("teacher_review", started, e)
+            self.logger.info("Local teacher unavailable; keeping original draft")
+            return None
 
     def chat_raw(
         self,
