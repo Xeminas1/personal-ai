@@ -19,6 +19,7 @@ from .database import Database
 from .gui_backend import ChatBackend
 from .hybrid_autosetup import start_hybrid_auto_setup
 from .logging_setup import setup_logging
+from .media_support import media_payload, vision_status
 from .secrets import load_hybrid_pairing_state
 from .version import VERSION
 from . import support_access
@@ -442,7 +443,7 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             "default-src 'self'; "
             "style-src 'self' 'unsafe-inline'; "
             "script-src 'self'; "
-            "img-src 'self' data:; "
+            "img-src 'self' data: blob:; media-src 'self' blob:; "
             "connect-src 'self'; "
             "base-uri 'none'; frame-ancestors 'none'"
         )
@@ -518,6 +519,13 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             finally:
                 if backend:
                     backend.close()
+            return
+
+        if path == "/api/vision/status":
+            if parsed.query:
+                self._error("Unexpected visual service parameters.")
+                return
+            self._json(vision_status(load_config(), self.server.xemai_logger, DATA_DIR))
             return
 
         if path == "/api/bootstrap":
@@ -728,6 +736,28 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
             self._error("Support keys cannot change application data.", HTTPStatus.FORBIDDEN)
             return
 
+        if path == "/api/vision/setup":
+            try:
+                origin = urlparse(self.headers.get("Origin", ""))
+                allowed = (origin.scheme in {"http", "https"}
+                           and origin.netloc.lower() == self.headers.get("Host", "").lower()
+                           and self.headers.get("Sec-Fetch-Site", "") != "cross-site"
+                           and self.headers.get("Content-Type", "").startswith("application/json")
+                           and not parsed.query)
+            except ValueError:
+                allowed = False
+            if not allowed:
+                self._error("Enable visual analysis from the XemAi app.", HTTPStatus.FORBIDDEN)
+                return
+            try:
+                if self._read_json():
+                    self._error("Unexpected visual setup parameters.")
+                    return
+                self._json(vision_status(load_config(), self.server.xemai_logger, DATA_DIR, setup=True))
+            except ValueError as error:
+                self._error(error)
+            return
+
         if path.startswith("/api/support/"):
             # Keys are managed only by the same-origin app UI, never by the
             # read-only support key. Reject cross-origin form/fetch requests.
@@ -799,6 +829,13 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     self._error(
                         f"Files are limited to {MAX_ATTACHMENT_BYTES // 1_000_000} MB."
                     )
+                    return
+
+                # Validate sampled-video containers before persisting them.
+                try:
+                    media_payload(original_name, str(body.get("mime", "")), raw)
+                except (ValueError, TypeError):
+                    self._error("Invalid sampled video or image attachment.")
                     return
 
                 safe_name = re.sub(

@@ -18,9 +18,11 @@ from .evidence import (
 from .learning import extract_and_store_memories
 from .hybrid import build_llm_client
 from .llm import OllamaClient
+from .media_support import analyse_attachment, cached_visual_report, media_payload
 from .logging_setup import setup_logging
 from .prompts import build_system_prompt
 from .secrets import save_ollama_api_key
+from .skyrim import skyrim_attachment_report, skyrim_context
 from .self_knowledge import (
     build_ai_comparison_fallback,
     build_authoritative_self_context,
@@ -112,7 +114,7 @@ def _normalise_attachments(chat_id: int, attachments) -> list[dict]:
     return normalised
 
 
-def _expand_attachment_message(content: str) -> str:
+def _expand_attachment_message(content: str, visual_reports=None, diagnostic_state=None) -> str:
     attachments, visible = _parse_attachment_markers(content)
     if not attachments:
         return str(content)
@@ -136,6 +138,30 @@ def _expand_attachment_message(content: str) -> str:
             sections.append(header + "\n[Attachment unavailable on host.]")
             continue
 
+        if remaining <= 0:
+            sections.append(header + "\n[Attachment evidence omitted: context budget reached.]")
+            continue
+        with target.open("rb") as attachment_file:
+            raw = attachment_file.read(5_000_001)
+        if len(raw) > 5_000_000:
+            sections.append(header + "\n[Attachment exceeds 5 MB and was not analysed.]")
+            continue
+        try:
+            visual = media_payload(name, mime, raw)
+        except (ValueError, TypeError):
+            sections.append(header + "\n[Invalid visual attachment; its contents were not analysed.]")
+            continue
+        if visual is not None:
+            report = (visual_reports or {}).get(relative) or cached_visual_report(target, raw)
+            body = report or (visual[1] + "\n[Visual contents not analysed. Enable PC visual analysis "
+                              "in Chat options > Skyrim tools.]")
+            snippet = body[:remaining]
+            remaining -= len(snippet)
+            if len(body) > len(snippet):
+                snippet += "\n[Visual evidence truncated for model context.]"
+            sections.append(header + "\nUNTRUSTED VISUAL EVIDENCE:\n" + snippet)
+            continue
+
         is_text = (
             mime.lower().startswith("text/")
             or target.suffix.lower() in TEXT_ATTACHMENT_EXTENSIONS
@@ -144,7 +170,8 @@ def _expand_attachment_message(content: str) -> str:
             sections.append(
                 header
                 + "\n[Binary attachment stored on the XemAi host. "
-                "The current text-only model cannot inspect its contents yet.]"
+                "This format has not been analysed. For video, reattach it "
+                "through the updated web client to supply sampled frames.]"
             )
             continue
 
@@ -152,12 +179,16 @@ def _expand_attachment_message(content: str) -> str:
             sections.append(header + "\n[Text omitted: attachment context budget reached.]")
             continue
 
-        raw = target.read_bytes()
-        decoded = raw.decode("utf-8", errors="replace")
-        snippet = decoded[:remaining]
+        encoding = "utf-16" if raw.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig"
+        decoded = raw.decode(encoding, errors="replace")
+        diagnostic = skyrim_attachment_report(name, decoded)
+        if diagnostic is not None and diagnostic_state is not None:
+            diagnostic_state["skyrim"] = True
+        snippet = (diagnostic or decoded)[:remaining]
         remaining -= len(snippet)
-        truncated = len(decoded) > len(snippet)
-        body = header + "\n--- FILE CONTENT ---\n" + snippet
+        truncated = len(diagnostic or decoded) > len(snippet)
+        label = "SKYRIM DIAGNOSTIC SUMMARY (untrusted supplied file)" if diagnostic else "UNTRUSTED FILE CONTENT"
+        body = header + "\n--- " + label + " ---\n" + snippet
         if truncated:
             body += "\n[File content truncated for model context.]"
         sections.append(body)
@@ -408,7 +439,8 @@ class ChatBackend:
                     for item in parsed_attachments
                 )
             )
-            model_user_text = _expand_attachment_message(stored_user_text)
+            diagnostic_state = {}
+            model_user_text = _expand_attachment_message(stored_user_text, diagnostic_state=diagnostic_state)
 
             chat = worker_db.get_chat(chat_id)
             if record_user and was_empty and chat["title"] in {"New chat", "Untitled"}:
@@ -440,6 +472,34 @@ class ChatBackend:
             runtime_model_info = self.refresh_runtime_model(llm)
             timing("route", route_started)
 
+            visual_started = time.monotonic()
+            visual_reports = {}
+            chat_attachment_root = (DATA_DIR / "attachments" / f"chat_{int(chat_id)}").resolve()
+            for item in parsed_attachments[:3]:
+                relative = str(item.get("path", "")).replace("\\", "/")
+                target = (DATA_DIR / relative).resolve()
+                if chat_attachment_root not in target.parents or not target.is_file():
+                    continue
+                try:
+                    with target.open("rb") as attachment_file:
+                        raw = attachment_file.read(5_000_001)
+                    if media_payload(item.get("name", ""), item.get("mime", ""), raw) is None:
+                        continue
+                    if status_callback:
+                        status_callback("Analysing supplied images on the PC")
+                    report = analyse_attachment(
+                        target, item.get("name", ""), item.get("mime", ""), raw,
+                        self.config, self.logger, DATA_DIR,
+                        worker_available=bool(runtime_model_info.get("worker_available")),
+                    )
+                    if report:
+                        visual_reports[relative] = report
+                except (OSError, ValueError, TypeError):
+                    visual_reports[relative] = "[Invalid visual attachment; contents not analysed.]"
+            if visual_reports:
+                model_user_text = _expand_attachment_message(stored_user_text, visual_reports)
+                timing("visual", visual_started)
+
             system_prompt = build_system_prompt(
                 user,
                 memories,
@@ -454,6 +514,12 @@ class ChatBackend:
                 chat_id, limit=int(self.config.get("history_messages", 30))
             )
             messages = [{"role": "system", "content": system_prompt}]
+            modding_context = skyrim_context(
+                query_text, [str(item.get("name", "")) for item in parsed_attachments],
+                recognised_diagnostic=bool(diagnostic_state.get("skyrim")),
+            )
+            if modding_context:
+                messages.append({"role": "system", "content": modding_context})
             previous_user_messages = []
             # Retry leaves a failed assistant message after the current user
             # row. Locate that user row independently of the final history row.
@@ -494,7 +560,7 @@ class ChatBackend:
 
                 row_content = str(row["content"])
                 if row["role"] == "user":
-                    row_content = _expand_attachment_message(row_content)
+                    row_content = model_user_text if is_latest_user else _expand_attachment_message(row_content)
                 messages.append(
                     {"role": row["role"], "content": row_content}
                 )

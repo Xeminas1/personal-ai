@@ -564,12 +564,15 @@ button { -webkit-tap-highlight-color: transparent; }
   color: var(--text);
 }
 .modal::backdrop { background: rgba(0,0,0,.68); }
+.modal[open] { display: flex; flex-direction: column; }
 .modal-title {
+  flex-shrink: 0;
   font-weight: 700;
   font-size: 20px;
   padding: 18px 18px 8px;
 }
 .modal-body {
+  min-height: 0;
   padding: 8px 18px 18px;
   overflow: auto;
   line-height: 1.5;
@@ -577,10 +580,12 @@ button { -webkit-tap-highlight-color: transparent; }
   white-space: pre-wrap;
 }
 .modal-actions {
+  flex-shrink: 0;
   padding: 0 18px 18px;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  flex-wrap: wrap;
 }
 .modal-actions button {
   border: 0;

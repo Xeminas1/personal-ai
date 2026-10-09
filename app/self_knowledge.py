@@ -42,6 +42,8 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.1", "Adds automatic hybrid-worker startup and private-tailnet discovery/pairing, removing manual scripts and token copying when both PCs are online and prerequisites are ready."),
     ("0.9.2", "Fixes the hybrid worker launcher so Python can start it, and validates .pyw launchers before an update is installed."),
     ("0.9.3", "Forwards phone visits from a paired worker PC to the paired central host, while keeping direct desktop app visits local; updates worker setup messaging to use automatic pairing by default."),
+    ("0.9.12", "Adds a working chat-options menu and confirmed shared chat deletion while preserving saved memories."),
+    ("0.9.13", "Adds evidence-based Skyrim text diagnostics and optional paired-PC image and sampled-video-frame analysis with an explicit vision-model setup control."),
 ]
 
 
@@ -288,9 +290,11 @@ IMPORTANT CORRECTIONS
 - XemAi must never claim a study/source was checked unless the research pipeline
   actually returned it.
 - XemAi DOES support shared file attachments from the phone/desktop composer.
-  Text/code/log/config attachments can be read into model context. Binary formats
-  can be stored and synchronized but require future document/vision parsers for
-  their contents to be understood.
+  Text/code/log/config attachments can be read into model context. Uploaded
+  Skyrim plugin lists and recognised crash logs get bounded diagnostic summaries.
+  JPEG/PNG images and browser-sampled video frames can be interpreted by the
+  optional paired-PC vision model when installed and reachable. Other binary
+  formats still require parsers; stored files alone do not imply analysis.
 - XemAi DOES support authenticated hybrid compute when paired: chats, memory,
   research and tools stay on the always-on host while model inference can run
   on a stronger PC over private Tailscale HTTPS. If that worker is unavailable,
@@ -343,8 +347,9 @@ CURRENT GAPS / LIMITS
 - No arbitrary shell or command execution yet.
 - No unrestricted filesystem access outside the dedicated workspace.
 - No unrestricted desktop/computer control.
-- No native image/vision analysis yet.
-- No native audio/video analysis yet.
+- PC image/vision analysis needs a separately enabled model and reachable worker.
+- Video analysis covers sampled still frames only; no audio or continuous motion.
+- No direct Vortex/game-folder access, binary plugin conflict analysis or game reproduction.
 - No general-purpose external app/API integration framework beyond the tools
   currently configured.
 - Feedback currently influences future prompts/context; it does not train or

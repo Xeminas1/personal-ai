@@ -20,6 +20,7 @@ from .secrets import (
     load_hybrid_pairing_state,
 )
 from .version import VERSION
+from .vision import VisionService, is_vision_model
 
 MAX_BODY = 8_000_000
 
@@ -48,6 +49,7 @@ def _qwen_only(items) -> list[dict]:
     return [
         item for item in items
         if isinstance(item, dict) and "qwen" in _model_name(item).lower()
+        and not is_vision_model(item)
     ]
 
 
@@ -153,6 +155,14 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
 
         client = self.server.ollama_client
         try:
+            if self.path == "/api/vision/status":
+                service = getattr(self.server, "vision_service", None)
+                if service is None:
+                    self._error("Vision service is unavailable on this worker.", HTTPStatus.SERVICE_UNAVAILABLE)
+                else:
+                    self._json({"ok": True, **service.status()})
+                return
+
             if self.path == "/api/health":
                 try:
                     # Inventory retrieval already checks Ollama connectivity;
@@ -237,6 +247,27 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
             return
 
         if not self._require_auth():
+            return
+        if self.path in {"/api/vision/setup", "/api/vision/analyse"}:
+            try:
+                service = getattr(self.server, "vision_service", None)
+                if service is None:
+                    self._error("Vision service is unavailable on this worker.", HTTPStatus.SERVICE_UNAVAILABLE)
+                    return
+                payload = self._read_json()
+                if self.path == "/api/vision/setup":
+                    if payload:
+                        raise ValueError("Vision setup accepts no model or request options.")
+                    result = service.start_setup()
+                else:
+                    if set(payload) - {"images", "prompt"}:
+                        raise ValueError("Invalid visual-analysis request fields.")
+                    result = service.analyse(payload.get("images"), payload.get("prompt"))
+                self._json({"ok": True, **result})
+            except ValueError as error:
+                self._error(error, HTTPStatus.BAD_REQUEST)
+            except Exception:
+                self._error("Vision service could not complete this request.", HTTPStatus.SERVICE_UNAVAILABLE)
             return
         if self.path != "/api/chat":
             self._error("Unknown worker endpoint.", HTTPStatus.NOT_FOUND)
@@ -341,6 +372,7 @@ def run_worker_server() -> int:
     server.ollama_client = ollama
     server.generation_lock = threading.Lock()
     server.pairing_lock = threading.Lock()
+    server.vision_service = VisionService(ollama, server.generation_lock, logger)
 
     state_path = DATA_DIR / "hybrid_worker.json"
     try:

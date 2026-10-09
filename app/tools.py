@@ -157,6 +157,10 @@ def research_query_for_turn(text: str, previous_user_messages) -> str:
     return " ; ".join(value[:limit] for value in selected) + suffix
 
 _REPUTABLE_DOMAINS = {
+    "skse.silverlock.org": (108, "Official Skyrim Script Extender source"),
+    "loot.github.io": (102, "Official LOOT documentation"),
+    "wiki.nexusmods.com": (92, "Nexus Mods mod-manager documentation"),
+    "nexusmods.com": (78, "Mod hosting; verify the specific mod author's description and requirements"),
     "pubmed.ncbi.nlm.nih.gov": (120, "PubMed / biomedical research"),
     "ncbi.nlm.nih.gov": (112, "NCBI / biomedical research"),
     "nih.gov": (112, "US National Institutes of Health"),

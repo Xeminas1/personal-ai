@@ -1,5 +1,59 @@
 # Personal AI v0.1
 
+## v0.9.13 Skyrim diagnostics and optional PC vision
+
+Chat options now includes Skyrim tools. Upload Vortex `plugins.txt` and
+`loadorder.txt`, MO2 `modlist.txt`, or a recognised Skyrim Crash Logger,
+Trainwreck or NET Script Framework text log. Include the exact executable
+runtime, SKSE version and the action that reproduces the issue. The parser
+scans the bounded supplied text before summarising counts, duplicate entries,
+activation markers, explicit versions and crash references with line numbers.
+UTF-16 exports are decoded. Summary omissions are disclosed and personal paths
+are reduced to filenames. Ordinary unrelated text remains ordinary text.
+
+Diagnostic prompts distinguish facts, hypotheses and reversible checks. A
+stack/plugin mention is not a confirmed culprit; plugin lists alone do not
+establish masters, ESL flags, record conflicts or deployed file winners.
+Vortex deployment is distinguished from plugin order. Relevant research gives
+SKSE, LOOT and mod-author documentation appropriate source context, without
+treating domain reputation or a source citation as proof of compatibility.
+This build does not access Vortex or the game folder automatically, run LOOT,
+inspect binary plugins, change mods/saves or reproduce a game crash.
+
+For visual evidence, choose **Skyrim tools > Enable PC visual analysis**. This
+explicit action downloads the separate `qwen2.5vl:7b` model (several GB) using
+Ollama on the paired PC. Merely opening the menu, attaching a file or chatting
+does not download a model. Keep that PC awake. Both installations need this
+update; an older running worker must be restarted to load the visual endpoints.
+Model readiness requires Ollama to report vision capability. Installation
+does not hold the inference lock, while vision and text inference share it.
+The vision helper unloads after inference and cannot replace the text model
+during automatic model selection. Normal worker/host text fallback remains.
+
+JPEG, PNG and WebP images up to 25 MB are normalised in the browser to bounded
+JPEG attachments, at most 1280 pixels on the longer side. Browser-decodable
+clips up to 180 seconds and 250 MB become at most four chronological,
+timestamped JPEG frames. Only those frames and sampling metadata are uploaded;
+the original video and audio stay on the device. The resulting attachment
+retains the existing 5 MB server limit. Unsupported codecs and invalid frame
+containers fail explicitly instead of claiming analysis.
+
+The PC vision model supplies bounded observations to the normal chat model.
+Reports disclose sampled times, no audio/continuous-motion analysis, and that
+visual descriptions are model interpretations rather than verified mod causes.
+Successful observations are cached against the supplied file's SHA256 for
+follow-ups; changed files invalidate the cache. Missing/offline vision leaves
+an explicit not-analysed notice and text/log diagnostics remain usable. Cached
+observations can still be consulted while the PC sleeps. Chat deletion removes
+the attached frames and their observation caches.
+
+Offline checks cover parsers, cache/ownership, real HTTP authentication and
+setup guards, model-selection isolation and real Chromium image/video sampling,
+uploads and phone controls. These checks do not establish model accuracy,
+Skyrim diagnosis quality, inference speed or GPU operation on the user's PC.
+Chromium/Playwright and FFmpeg are optional development-test dependencies;
+the app adds no Python package, FFmpeg or shell-execution requirement.
+
 ## v0.9.12 chat options and deletion
 
 The top three-dot button opens Chat options with New chat, Rate this chat and

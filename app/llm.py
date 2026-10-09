@@ -129,9 +129,11 @@ class OllamaClient:
 
     @classmethod
     def _qwen_models(cls, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        from .vision import is_vision_model
+
         return [
             item for item in items
-            if "qwen" in cls._model_name(item).lower()
+            if "qwen" in cls._model_name(item).lower() and not is_vision_model(item)
         ]
 
     def discover_runtime_model(

@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.9.12";
+const FRONTEND_VERSION = "0.9.13";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
@@ -52,6 +52,7 @@ const els = {
   input: $("input"),
   sendBtn: $("sendBtn"),
   capabilitiesBtn: $("capabilitiesBtn"),
+  skyrimBtn: $("skyrimBtn"),
   supportBtn: $("supportBtn"),
   updateBtn: $("updateBtn"),
   feedbackBtn: $("feedbackBtn"),
@@ -244,7 +245,9 @@ async function uploadSelectedFiles(files) {
 
   for (const file of selected.slice(0, remainingSlots)) {
     if (state.chatId !== uploadChatId || state.chatMutation) break;
-    if (file.size > 5000000) {
+    const visualFile = /^(image|video)\//i.test(file.type)
+      || /\.(?:jpe?g|png|webp|gif|bmp|mp4|webm|mov|m4v)$/i.test(file.name);
+    if (!visualFile && file.size > 5000000) {
       showModal(
         "File too large",
         `${file.name} is larger than the current 5 MB attachment limit.`
@@ -257,14 +260,16 @@ async function uploadSelectedFiles(files) {
     setStatus(`Uploading ${file.name}…`);
 
     try {
-      const encoded = await fileToBase64(file);
+      const prepared = visualFile
+        ? await window.XemAiMedia.prepare(file)
+        : { data: await fileToBase64(file), name: file.name, mime: file.type || "application/octet-stream" };
       if (state.chatId !== uploadChatId) break;
       const data = await api(`/api/chats/${uploadChatId}/attachments`, {
         method: "POST",
         body: JSON.stringify({
-          name: file.name,
-          mime: file.type || "application/octet-stream",
-          data: encoded,
+          name: prepared.name,
+          mime: prepared.mime,
+          data: prepared.data,
         }),
       });
       if (state.chatId === uploadChatId) state.pendingAttachments.push(data.attachment);
@@ -889,6 +894,7 @@ function showChatOptions() {
     ["Rate this chat", "rate", showFeedback],
     ["Delete chat", "delete", confirmDeleteChat],
     ["Capabilities", "capabilities", showCapabilities],
+    ["Skyrim tools", "skyrim", showSkyrimTools],
     ["Live support", "support", () => { window.location.href = "/support"; }],
     ["Update XemAi", "update", checkMobileUpdate],
   ];
@@ -912,6 +918,59 @@ function showChatOptions() {
   updateChatActions();
   els.moreBtn.setAttribute("aria-expanded", "true");
   els.modal.showModal();
+}
+
+async function showSkyrimTools() {
+  clearModal();
+  closeDrawer();
+  els.modalTitle.textContent = "Skyrim tools";
+  const guide = document.createElement("p");
+  guide.textContent = "For Vortex diagnostics, attach plugins.txt, loadorder.txt and a recent Skyrim crash log using ＋ → Files. Include your exact game runtime, SKSE version and what triggers the problem. XemAi reads the supplied files; it does not automatically access Vortex or your game folder.";
+  const visualGuide = document.createElement("p");
+  visualGuide.textContent = "Attach a screenshot or a clip up to 3 minutes / 250 MB. Clips are sampled locally into up to four timestamped frames; the original video and audio are not uploaded. Visual analysis needs a separate vision model on your awake, paired PC.";
+  const status = document.createElement("p");
+  status.setAttribute("role", "status");
+  status.textContent = "Checking PC visual analysis…";
+  const download = document.createElement("p");
+  download.textContent = "Enable PC visual analysis downloads the separate qwen2.5vl:7b model (several GB) to the stronger PC. Normal 8B/1.7B chat routing stays separate.";
+  els.modalBody.append(guide, visualGuide, status, download);
+  const setup = document.createElement("button");
+  setup.type = "button";
+  setup.textContent = "Enable PC visual analysis";
+  setup.disabled = true;
+  const check = document.createElement("button");
+  check.type = "button";
+  check.textContent = "Check status";
+  const close = document.createElement("button");
+  close.textContent = "Close";
+  close.addEventListener("click", () => els.modal.close());
+  els.modalActions.append(setup, check, close);
+  els.modal.showModal();
+  let pending = false;
+  const refresh = async (install = false) => {
+    if (pending) return;
+    pending = true;
+    setup.disabled = true;
+    check.disabled = true;
+    status.textContent = install ? "Starting the PC model download…" : "Checking PC visual analysis…";
+    try {
+      const result = await api(install ? "/api/vision/setup" : "/api/vision/status",
+        install ? { method: "POST", body: JSON.stringify({}) } : {});
+      status.textContent = result.ready ? "PC visual analysis is ready. You can attach screenshots or clips."
+        : result.installing ? "The PC is downloading the vision model. Keep it awake, then choose Check status."
+        : result.error || "Vision model is not installed yet.";
+      setup.disabled = !!result.ready || !!result.installing;
+    } catch (err) {
+      status.textContent = err.message || "Could not reach the PC visual service.";
+      setup.disabled = false;
+    } finally {
+      pending = false;
+      check.disabled = false;
+    }
+  };
+  setup.addEventListener("click", () => refresh(true));
+  check.addEventListener("click", () => refresh());
+  await refresh();
 }
 
 function confirmDeleteChat() {
@@ -1191,6 +1250,7 @@ els.modal.addEventListener("cancel", (event) => {
 });
 els.drawerNewBtn.addEventListener("click", createChat);
 els.capabilitiesBtn.addEventListener("click", showCapabilities);
+els.skyrimBtn.addEventListener("click", showSkyrimTools);
 els.supportBtn.addEventListener("click", () => { window.location.href = "/support"; });
 els.updateBtn.addEventListener("click", checkMobileUpdate);
 els.feedbackBtn.addEventListener("click", showFeedback);
@@ -1207,7 +1267,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.9.12")
+  navigator.serviceWorker.register("/sw.js?v=0.9.13")
     .then((registration) => registration.update())
     .catch(() => {});
 }
