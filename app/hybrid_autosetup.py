@@ -146,7 +146,7 @@ def try_auto_pair(logger=None) -> bool:
     for dns in peers:
         url = f"https://{dns}:{int(config.get('hybrid_worker_port', 8766))}"
         try:
-            status = _request_json(url + "/api/pair/status", timeout=2.5)
+            status = _request_json(url + "/api/pair/status", timeout=15)
             if status.get("role") == "xemai_hybrid_worker" and status.get("ok"):
                 candidates.append((url, status))
         except Exception as e:
@@ -166,7 +166,7 @@ def try_auto_pair(logger=None) -> bool:
             claimed = _request_json(
                 url + "/api/pair/claim",
                 payload={"host_id": host_id, "token": token},
-                timeout=4,
+                timeout=15,
             )
             if not claimed.get("ok"):
                 continue
@@ -174,7 +174,7 @@ def try_auto_pair(logger=None) -> bool:
                 url + "/api/health",
                 headers={"Authorization": f"Bearer {token}"},
             )
-            with open_model_request(health_req, timeout=5) as response:
+            with open_model_request(health_req, timeout=15) as response:
                 health = json.loads(response.read().decode("utf-8"))
             if not health.get("ok"):
                 continue

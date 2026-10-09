@@ -19,7 +19,7 @@ class SupportHTTPTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         (self.root / "app").mkdir()
         (self.root / "app/version.py").write_text('VERSION = "test"\n')
-        (self.root / "main.py").write_text("# allowed source\n")
+        (self.root / "main.py").write_bytes(b"# allowed source\n")
         (self.root / "config.json").write_text('{"model":"qwen3:1.7b", "password":"excluded-secret"}')
         self.addCleanup(patch.stopall)
         patch.object(mobile_server, "BASE_DIR", self.root).start()

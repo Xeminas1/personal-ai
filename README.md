@@ -1,5 +1,22 @@
 # Personal AI v0.1
 
+## v0.9.7 slow worker connections
+
+Hybrid worker discovery, pairing and health checks now allow 15 seconds per
+request. A reachable worker previously took about 4.2 seconds to respond and
+exceeded the shorter discovery and runtime health limits, leaving the laptop
+on its local fallback model. TLS verification and authentication are unchanged.
+
+Regression coverage uses a real delayed HTTP worker and checks discovery,
+pending-credential reuse, remote selection, local fallback and recovery. An
+unavailable worker can now take longer to fall back, and scanning several
+offline peers can take more than one request timeout.
+
+The local validation report confirmed real 8B worker inference, 1.7B fallback,
+shared chat lists and desktop forwarding. The historical authenticated HTTP 400
+was not reproduced. An older already-running PC worker process still requires
+separate inspection; updating application files does not replace that process.
+
 ## v0.9.6 live read-only support
 
 Run `live_support.bat` on the PC whose installation needs inspection, or choose

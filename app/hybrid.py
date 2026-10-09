@@ -18,7 +18,7 @@ class HybridWorkerClient(OllamaClient):
         )
 
     def worker_health(self) -> dict[str, Any]:
-        return self._request("/api/health", timeout=4)
+        return self._request("/api/health", timeout=15)
 
 
 class HybridOllamaClient(OllamaClient):
