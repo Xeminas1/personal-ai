@@ -1,5 +1,36 @@
 # Personal AI v0.1
 
+## v0.9.6 live read-only support
+
+Run `live_support.bat` on the PC whose installation needs inspection, or choose
+Live support in the chat menu. Enable read-only access to create a separate key
+that expires in 24 hours; Turn off access revokes it immediately. Keys are shown
+only when created and are stored locally as hashes. Re-enabling rotates the key.
+
+The authenticated `/api/support/files`, `/api/support/file?path=...`, and
+`/api/support/report` endpoints expose allowed source files, filtered settings,
+structured troubleshooting events and current installation/version metadata.
+Raw logs, keys, chat databases, attachments, workspace files and arbitrary paths
+are excluded. The support key cannot change application files or settings.
+The local mobile server and inference worker share this temporary support state.
+
+The agent needs a supported private network connection to your Tailscale network
+and a secure secret binding for the support key. Do not paste keys in chats or
+put them in URLs. Enabling support does not send files or grant connectivity.
+This release creates no public tunnel. After updating, restart the PCs once so
+any older inference-worker process is replaced before using its support endpoint.
+
+When connecting an agent through a VPN, restrict its Tailscale permissions to the
+support endpoint's worker port (8766 on the stronger PC). The normal mobile UI is
+still intended for trusted devices in the tailnet and has its existing chat and
+update controls; a support connection should use only the authenticated support
+API, not the ordinary chat UI.
+
+For the stronger PC, the cloud environment binding is `XEMAI_PC_SUPPORT_KEY`
+and the endpoint is `https://reece-pc.tail52254c.ts.net:8766/api/support`.
+Enter the key securely in environment settings; save and publish the cloud
+configuration. This does not itself establish private-network routing.
+
 ## v0.9.5 hybrid startup recovery
 
 Hybrid setup now rechecks the host/worker role while Tailscale starts and retries

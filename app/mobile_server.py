@@ -21,6 +21,8 @@ from .hybrid_autosetup import start_hybrid_auto_setup
 from .logging_setup import setup_logging
 from .secrets import load_hybrid_pairing_state
 from .version import VERSION
+from . import support_access
+from .support_http import handle_support_read, support_endpoints
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -444,6 +446,22 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
 
+        if self.headers.get("Authorization") and not path.startswith("/api/support/"):
+            self._error("Support keys are accepted only by read-only support endpoints.", HTTPStatus.FORBIDDEN)
+            return
+
+        if path == "/api/support/settings":
+            if parsed.query:
+                self._error("Unexpected support parameters.")
+                return
+            self._json({"ok": True, **support_access.status(BASE_DIR), "endpoints": support_endpoints(BASE_DIR)})
+            return
+        if handle_support_read(self, BASE_DIR):
+            return
+        if path == "/support":
+            self._serve_static("/support.html")
+            return
+
         redirect_url = _paired_host_redirect_url(
             path=path,
             query=parsed.query,
@@ -624,6 +642,29 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         parsed = urlparse(self.path)
         path = parsed.path
+
+        if self.headers.get("Authorization") and not path.startswith("/api/support/"):
+            self._error("Support keys cannot change application data.", HTTPStatus.FORBIDDEN)
+            return
+
+        if path.startswith("/api/support/"):
+            # Keys are managed only by the same-origin app UI, never by the
+            # read-only support key. Reject cross-origin form/fetch requests.
+            origin = self.headers.get("Origin", "")
+            fetch_site = self.headers.get("Sec-Fetch-Site", "")
+            if parsed.query or self.headers.get("Authorization") or not origin or urlparse(origin).netloc.lower() != self.headers.get("Host", "").lower() or fetch_site == "cross-site" or not self.headers.get("Content-Type", "").startswith("application/json"):
+                self._error("Open Live support in XemAi to manage access.", HTTPStatus.FORBIDDEN)
+                return
+            try:
+                if path == "/api/support/enable":
+                    self._json({"ok": True, **support_access.enable(BASE_DIR), "endpoints": support_endpoints(BASE_DIR)})
+                elif path == "/api/support/disable":
+                    self._json({"ok": True, **support_access.disable(BASE_DIR)})
+                else:
+                    self._error("Support access is read-only.", HTTPStatus.METHOD_NOT_ALLOWED)
+            except (ValueError, OSError):
+                self._error("Could not update live support access.", HTTPStatus.INTERNAL_SERVER_ERROR)
+            return
 
         try:
             body = self._read_json()

@@ -9,7 +9,8 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from .config import DATA_DIR, LOG_DIR, load_config
+from .config import BASE_DIR, DATA_DIR, LOG_DIR, load_config
+from .support_http import handle_support_read
 from .llm import OllamaClient
 from .logging_setup import setup_logging
 from .secrets import (
@@ -89,6 +90,7 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(raw)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(raw)
 
@@ -125,6 +127,8 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
         return value
 
     def do_GET(self):
+        if handle_support_read(self, BASE_DIR):
+            return
         if self.path == "/api/pair/status":
             client = self.server.ollama_client
             try:
@@ -190,6 +194,9 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
             self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
 
     def do_POST(self):
+        if self.path.startswith("/api/support/"):
+            self._error("Support access is read-only.", HTTPStatus.METHOD_NOT_ALLOWED)
+            return
         if self.path == "/api/pair/claim":
             try:
                 payload = self._read_json()

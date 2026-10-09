@@ -11,6 +11,7 @@ import urllib.request
 from pathlib import Path
 
 from .config import DATA_DIR, load_config
+from .llm import open_model_request
 from .version import VERSION
 
 
@@ -53,7 +54,7 @@ def mobile_server_health(timeout: float = 1.0) -> dict | None:
         headers={"Cache-Control": "no-cache", "User-Agent": f"XemAi/{VERSION}"},
     )
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with open_model_request(request, timeout=timeout) as response:
             raw = response.read().decode("utf-8")
             data = json.loads(raw)
             return data if isinstance(data, dict) else None

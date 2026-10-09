@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.9.5";
+const FRONTEND_VERSION = "0.9.6";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
@@ -49,6 +49,7 @@ const els = {
   input: $("input"),
   sendBtn: $("sendBtn"),
   capabilitiesBtn: $("capabilitiesBtn"),
+  supportBtn: $("supportBtn"),
   updateBtn: $("updateBtn"),
   feedbackBtn: $("feedbackBtn"),
   modal: $("modal"),
@@ -966,6 +967,7 @@ for (const input of [
 els.moreBtn.addEventListener("click", showCapabilities);
 els.drawerNewBtn.addEventListener("click", createChat);
 els.capabilitiesBtn.addEventListener("click", showCapabilities);
+els.supportBtn.addEventListener("click", () => { window.location.href = "/support"; });
 els.updateBtn.addEventListener("click", checkMobileUpdate);
 els.feedbackBtn.addEventListener("click", showFeedback);
 els.composer.addEventListener("submit", sendMessage);
@@ -981,7 +983,7 @@ window.addEventListener("online", () => setStatus("Reconnecting…"));
 window.addEventListener("offline", () => setStatus("Phone offline"));
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.9.5")
+  navigator.serviceWorker.register("/sw.js?v=0.9.6")
     .then((registration) => registration.update())
     .catch(() => {});
 }

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>XemAi Live support</title>
+  <link rel="stylesheet" href="/styles.css?v=0.9.6">
+  <style>
+    body {overflow:auto; padding:24px; max-width:760px; margin:auto;}
+    input {width:100%; padding:12px; margin:8px 0; background:#0e1723; color:inherit; border:1px solid #526073;}
+    button {padding:12px; margin:8px 8px 8px 0; cursor:pointer;}
+    #keyArea {margin-top:16px;} p {line-height:1.6;} #status {white-space:pre-wrap;}
+  </style>
+</head>
+<body>
+  <h1>Live support</h1>
+  <p>Give a support agent read-only access to this installation's source files,
+     safe settings and troubleshooting events. Chat databases, attachments,
+     saved keys and other folders are excluded. Access expires after 24 hours.</p>
+  <p>The agent needs a connection to your private Tailscale network. Enabling
+     access here does not connect the agent or send files anywhere.</p>
+  <p id="status" role="status">Checking access…</p>
+  <p id="endpoints"></p>
+  <button id="enable" type="button">Enable read-only access</button>
+  <button id="disable" type="button">Turn off access</button>
+  <div id="keyArea" hidden>
+    <label for="key">Support key</label>
+    <input id="key" type="password" readonly autocomplete="off">
+    <button id="copy" type="button">Copy key</button>
+    <p>Enter the key in the agent environment's secure secret settings. Keep it
+       out of chats and logs. Enabling access again replaces the previous key.</p>
+  </div>
+  <a href="/">Return to XemAi</a>
+  <script src="/support.js?v=0.9.6" defer></script>
+</body>
+</html>
