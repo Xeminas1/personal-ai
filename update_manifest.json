@@ -1,6 +1,6 @@
 {
   "version": "0.9.15",
-  "notes": "Show verified visual-analysis readiness ticks in Skyrim tools and the sidebar; update checking/download/unavailable states without automatic model downloads. Add a quiet local reply chime with a persistent per-browser mute toggle, no history/duplicate notifications, and notification of pending replies after switching chats. Move recent chats into a compact top-aligned scrolling list, sort by actual activity dates and improve same-second timestamp precision. Replace send glyph with an accessible upward-arrow control. Remove Live support and manual Update controls, plus sidebar Capabilities, while retaining automatic updates and shared data. Verify real browser audio, scrolling, status and chat flows.",
+  "notes": "Show verified visual-analysis readiness ticks in Skyrim tools and the sidebar; update checking/download/unavailable states without automatic model downloads. Add a quiet local reply chime with a persistent per-browser mute toggle, no history/duplicate notifications, and notification of pending replies after switching chats. Move recent chats into a compact top-aligned scrolling list, sort by actual activity dates and improve same-second timestamp precision. Replace send glyph with an accessible upward-arrow control. Remove Live support and manual Update controls, plus sidebar Capabilities, while retaining automatic updates and shared data. Verify real browser audio, scrolling, status and chat flows. Preserve the v0.9.14 local teacher feature, save reviewed answers with valid worker provenance, and isolate ordinary worker health/startup from optional teacher metadata failures.",
   "files": [
     {
       "path": "LegacyDesktop.pyw",
@@ -10,7 +10,7 @@
     {
       "path": "README.md",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.15/README.md",
-      "sha256": "fca320cafc7a562efec3d5b63d9e168912a38ddb3e03be70cb5a5bb4003e3437"
+      "sha256": "8b6d3585ab26fb8a2c7ccddc9496aa846c5ee96807f6ab9b90b8fd6df3b6f64e"
     },
     {
       "path": "XemAi.pyw",
@@ -45,7 +45,7 @@
     {
       "path": "app/config.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.15/app/config.py",
-      "sha256": "d6f59b035d732bc9018aba2f7cdd1fb660f7948a758d4df72872cfc4f2fc952d"
+      "sha256": "06cdb2356e813c10a01e40d7ca5501d4f9b13d8cb2f0800f7e0cf76106b2fc62"
     },
     {
       "path": "app/database.py",
@@ -60,12 +60,12 @@
     {
       "path": "app/gui_backend.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.15/app/gui_backend.py",
-      "sha256": "e50b2f4fec06d9d6dea65a9a99944b95f36df69d6c04f9e25110ddd13685a17c"
+      "sha256": "e40d0460a775553684b4283d54bf6f2eb4b484d4dab6f6e7c910854d402a2efe"
     },
     {
       "path": "app/hybrid.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.15/app/hybrid.py",
-      "sha256": "4fc69c3eaeb8d04a4f1a6caab24bb44b499e035890f04d193146a6d7c653e646"
+      "sha256": "bb3453ec2aa955159ec821d6aa3680ea77739a8dcacbdf41af6d735d831842ad"
     },
     {
       "path": "app/hybrid_autosetup.py",
@@ -115,7 +115,7 @@
     {
       "path": "app/self_knowledge.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.15/app/self_knowledge.py",
-      "sha256": "79cabbc86bb58cfe316b6f4384df6906732c7ed5ed6cb553b143d2b2e89059cd"
+      "sha256": "3ef2b322f682ecc29aa625dfb07934552b127b0084f91769fe2edf42d654c1cb"
     },
     {
       "path": "app/skyrim.py",
@@ -145,7 +145,7 @@
     {
       "path": "app/version.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.15/app/version.py",
-      "sha256": "372f82d1ed5c126571c005c3d35456333d02ab0237592c445dfb8b6eb096bf58"
+      "sha256": "bef0c487503db3139e3cfca3f6bf2e8e8455475b00bc526926e2abc7e673c6ab"
     },
     {
       "path": "app/vision.py",
@@ -155,7 +155,7 @@
     {
       "path": "app/worker_server.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.15/app/worker_server.py",
-      "sha256": "5c01548509fcddd16aabd3c15ef90f6892477019a650ecd2c6180f278bb1eafd"
+      "sha256": "ef7d5c9ddb51754741c560b277cabfa6a165700357445daaeda69053d3de111c"
     },
     {
       "path": "console.bat",
@@ -190,12 +190,12 @@
     {
       "path": "mobile/app.js",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.15/mobile/app.js",
-      "sha256": "b89b67c3c2a098691d168c786508f5e2fb6db2e90b4a74bfd601bc598148b6a7"
+      "sha256": "3242e9b6f6218f5f5caa1a2843224a0a2dc780c4a7f3a92e8d8c325e0283c0dd"
     },
     {
       "path": "mobile/index.html",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.15/mobile/index.html",
-      "sha256": "133cc2d674b2badcebbfedb087627d81e07c18d7503b76969e00df3ce54aca82"
+      "sha256": "d6833e8c7cb2601bf8aa8f7ca393bac7470145245f84476a70e04fe82317d56d"
     },
     {
       "path": "mobile/manifest.webmanifest",
@@ -230,7 +230,7 @@
     {
       "path": "mobile/sw.js",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.15/mobile/sw.js",
-      "sha256": "34e2a3d3ec9fac7fd8477e2864b5dafeef2d93e55c370b37600715a78c12673a"
+      "sha256": "7de1443fd32d126583b54f2410fec4d13a9c0a184d7a15d2640989bdc8b8f4b3"
     },
     {
       "path": "mobile_server.bat",
@@ -255,7 +255,7 @@
     {
       "path": "self_test.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.15/self_test.py",
-      "sha256": "a582c0e17a73eecd67643b385daf2a2242a71b7bcf11a05d19768d98c75fc5ab"
+      "sha256": "9d4981c2efe50a664a3a95b3ac398d28d54855fc49be4e22ebc2c30ec19542f2"
     },
     {
       "path": "test.bat",
@@ -361,6 +361,16 @@
       "path": "test_support_http.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.15/test_support_http.py",
       "sha256": "b0024688aa31568d1064455b88e9ddcb96820fbf8ea53e099e5b4dbf3c498d12"
+    },
+    {
+      "path": "test_teacher_health.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.15/test_teacher_health.py",
+      "sha256": "b1266c8f5e830e0653b329bc251c0e374c3c0aef695692262bf167ee14866ea9"
+    },
+    {
+      "path": "test_teacher_review.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.15/test_teacher_review.py",
+      "sha256": "2c724acc0a55cf0f0d04310e887cec3dcc314b7b878778885ec50566c3edf34e"
     },
     {
       "path": "test_ui_updates.py",

@@ -36,11 +36,35 @@ The sidebar keeps Skyrim tools and Rate this chat. Existing private support
 endpoints are retained for compatibility but are not presented as live support
 in the chat interface.
 
+The separate v0.9.14 local-teacher feature is retained. Teacher-reviewed replies
+save with the PC worker route and the teacher's actual model, and ordinary
+worker health does not wait for teacher hardware or model discovery.
+
 Browser checks cover readiness transitions, actual reply audio, autoplay
 recovery, mute persistence, history/deletion silence, replies after switching
 chats, phone/desktop scrolling, ordering and send submission. Database checks
 cover user/assistant activity, ties and ownership. No real chats are altered by
 these tests or by installation.
+
+## v0.9.14 local teacher review
+
+XemAi can now use the paired stronger PC as a free local teacher after it has
+already produced a substantive draft. The teacher checks the question and draft
+for possible factual mistakes, faulty reasoning, missed constraints, unsafe
+assumptions and important omissions, then returns a revised user-facing answer.
+This is another model opinion, not independent verification of facts or sources;
+it adds an inference pass and can increase reply time. If the teacher
+is unavailable, still downloading or fails, XemAi keeps its original answer.
+
+The stronger-PC worker detects available system RAM and NVIDIA VRAM
+conservatively. Suitable machines prepare qwen3:14b or qwen3:30b through Ollama
+in the background. The always-on host does not download the teacher model, and
+the existing everyday worker model remains the normal first-pass brain even
+while the larger teacher is loaded.
+
+Teacher review skips evidence-backed research turns and XemAi self-description
+validation so it cannot silently damage verified references or authoritative
+runtime facts. The feature is local-only and adds no paid API dependency.
 
 ## v0.9.13 Skyrim diagnostics and optional PC vision
 

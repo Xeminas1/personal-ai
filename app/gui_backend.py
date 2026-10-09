@@ -800,6 +800,63 @@ class ChatBackend:
                     if issues["ids"] or issues["urls"]:
                         answer = mark_unverified_references(answer, issues)
 
+            teacher_mode = str(
+                self.config.get("teacher_review_mode", "auto")
+            ).strip().lower()
+            try:
+                teacher_min_chars = max(
+                    0, min(50_000, int(self.config.get("teacher_min_answer_chars", 280)))
+                )
+            except (TypeError, ValueError, OverflowError):
+                teacher_min_chars = 280
+            can_teacher_review = (
+                bool(self.config.get("teacher_enabled", True))
+                and teacher_mode != "off"
+                and not application_answer
+                and not self_query
+                and not tools.evidence_attempted
+                and len(answer.strip()) >= teacher_min_chars
+                and callable(getattr(llm, "review_answer", None))
+            )
+            if can_teacher_review:
+                review_started = time.monotonic()
+                if status_callback:
+                    status_callback("Teacher reviewing")
+                try:
+                    teacher_result = llm.review_answer(query_text, answer)
+                    revised = teacher_result.get("answer") if isinstance(teacher_result, dict) else None
+                    teacher_model = teacher_result.get("model") if isinstance(teacher_result, dict) else None
+                    # Apply the answer and its actual model together. An invalid
+                    # optional review must not discard a successfully generated draft.
+                    if (
+                        isinstance(revised, str) and revised.strip()
+                        and isinstance(teacher_model, str) and teacher_model.strip()
+                        and len(teacher_model.strip()) <= 256
+                        and teacher_model.strip().isprintable()
+                    ):
+                        revised = revised.strip()
+                        teacher_model = teacher_model.strip()
+                        answer = revised
+                        answer_model = teacher_model
+                        answer_compute = "remote_worker"
+                        self.logger.info(
+                            "Teacher review applied | chat_id=%d turn_id=%s model=%s",
+                            chat_id,
+                            turn_id,
+                            teacher_model or "unknown",
+                        )
+                except Exception as e:
+                    self.logger.warning(
+                        "Teacher review skipped after successful draft | "
+                        "chat_id=%s error=%r",
+                        chat_id,
+                        e,
+                    )
+                finally:
+                    timing("teacher_review", review_started)
+                    if status_callback:
+                        status_callback("XemAi is thinking")
+
             if tools.sources:
                 appendix = format_research_appendix({"sources": tools.sources})
                 if appendix:
