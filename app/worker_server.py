@@ -64,7 +64,7 @@ def _recommended_model(client: OllamaClient) -> tuple[str, list[str], list[str]]
 
     # Keep the configured everyday worker model stable even when a larger
     # teacher is temporarily running after a review.
-    configured = str(client.model or "").strip().lower()
+    configured = str(getattr(client, "model", "") or "").strip().lower()
     selected = next(
         (
             item for item in installed
