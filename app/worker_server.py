@@ -6,6 +6,7 @@ import platform
 import re
 import subprocess
 import threading
+import shutil
 import time
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -77,6 +78,20 @@ def _recommended_model(client: OllamaClient) -> tuple[str, list[str], list[str]]
         [_model_name(item) for item in running if _model_name(item)],
     )
 
+
+
+def _ollama_executable() -> str:
+    found = shutil.which("ollama")
+    if found:
+        return found
+    candidates = [
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Ollama" / "ollama.exe",
+        Path(os.environ.get("ProgramFiles", "")) / "Ollama" / "ollama.exe",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return str(candidate)
+    return "ollama"
 
 def _system_ram_gb() -> float:
     try:
@@ -198,7 +213,7 @@ def _ensure_teacher_model_async(server) -> None:
                     hardware.get("gpu_vram_gb", 0),
                 )
             result = subprocess.run(
-                ["ollama", "pull", target],
+                [_ollama_executable(), "pull", target],
                 cwd=str(BASE_DIR),
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
