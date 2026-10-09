@@ -385,7 +385,7 @@ def run() -> None:
     assert '"compute_name"' in mobile_server
     assert '"worker_available"' in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.9.12"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.9.13"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
     assert "/app.js?v=0.9.12" in mobile_html
     assert "/styles.css?v=0.9.12" in mobile_html
@@ -777,7 +777,7 @@ def run() -> None:
             runtime_info,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.9.12" in safe_fallback
+        assert "v0.9.13" in safe_fallback
         assert "qwen3:1.7b" in safe_fallback
 
         hybrid_local = OllamaClient(
