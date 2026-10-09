@@ -1,5 +1,23 @@
 # Personal AI v0.1
 
+## v0.9.14 local teacher review
+
+XemAi can now use the paired stronger PC as a free local teacher after it has
+already produced a substantive draft. The teacher independently checks for
+factual mistakes, faulty reasoning, missed constraints, unsafe assumptions and
+important omissions, then returns a revised user-facing answer. If the teacher
+is unavailable, still downloading or fails, XemAi keeps its original answer.
+
+The stronger-PC worker detects available system RAM and NVIDIA VRAM
+conservatively. Suitable machines prepare qwen3:14b or qwen3:30b through Ollama
+in the background. The always-on host does not download the teacher model, and
+the existing everyday worker model remains the normal first-pass brain even
+while the larger teacher is loaded.
+
+Teacher review skips evidence-backed research turns and XemAi self-description
+validation so it cannot silently damage verified references or authoritative
+runtime facts. The feature is local-only and adds no paid API dependency.
+
 ## v0.9.13 Skyrim diagnostics and optional PC vision
 
 Chat options now includes Skyrim tools. Upload Vortex `plugins.txt` and

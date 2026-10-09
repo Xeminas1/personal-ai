@@ -4,6 +4,8 @@ import json
 import os
 import platform
 import re
+import shutil
+import subprocess
 import threading
 import time
 from http import HTTPStatus
@@ -60,23 +62,237 @@ def _recommended_model(client: OllamaClient) -> tuple[str, list[str], list[str]]
     except Exception:
         running = []
 
-    # A running model is treated as deliberate. Otherwise choose the largest
-    # installed Qwen model on the stronger worker PC.
-    pool = running or installed
-    selected = max(
-        pool,
-        key=lambda item: (
-            _parameter_billions(item),
-            str(item.get("modified_at", "")),
+    # Keep the configured everyday worker model stable even when a larger
+    # teacher is temporarily running after a review.
+    configured = str(getattr(client, "model", "") or "").strip().lower()
+    selected = next(
+        (
+            item for item in installed
+            if _model_name(item).lower() == configured
+            or _model_name(item).lower() == configured + ":latest"
         ),
-        default=None,
+        None,
     )
+    if selected is None:
+        teacher_names = {"qwen3:14b", "qwen3:30b"}
+        ordinary_running = [
+            item for item in running
+            if _model_name(item).lower().replace(":latest", "") not in teacher_names
+        ]
+        ordinary_installed = [
+            item for item in installed
+            if _model_name(item).lower().replace(":latest", "") not in teacher_names
+        ]
+        pool = ordinary_running or ordinary_installed or running or installed
+        selected = max(
+            pool,
+            key=lambda item: (
+                _parameter_billions(item),
+                str(item.get("modified_at", "")),
+            ),
+            default=None,
+        )
     model = _model_name(selected) if selected else ""
     return (
         model,
         [_model_name(item) for item in installed if _model_name(item)],
         [_model_name(item) for item in running if _model_name(item)],
     )
+
+
+def _ollama_executable() -> str:
+    found = shutil.which("ollama")
+    if found:
+        return found
+    candidates = [
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Ollama" / "ollama.exe",
+        Path(os.environ.get("ProgramFiles", "")) / "Ollama" / "ollama.exe",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return str(candidate)
+    return "ollama"
+
+
+def _system_ram_gb() -> float:
+    try:
+        import ctypes
+
+        class MEMORYSTATUSEX(ctypes.Structure):
+            _fields_ = [
+                ("dwLength", ctypes.c_ulong),
+                ("dwMemoryLoad", ctypes.c_ulong),
+                ("ullTotalPhys", ctypes.c_ulonglong),
+                ("ullAvailPhys", ctypes.c_ulonglong),
+                ("ullTotalPageFile", ctypes.c_ulonglong),
+                ("ullAvailPageFile", ctypes.c_ulonglong),
+                ("ullTotalVirtual", ctypes.c_ulonglong),
+                ("ullAvailVirtual", ctypes.c_ulonglong),
+                ("sullAvailExtendedVirtual", ctypes.c_ulonglong),
+            ]
+
+        status = MEMORYSTATUSEX()
+        status.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+        if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+            return round(status.ullTotalPhys / (1024 ** 3), 1)
+    except Exception:
+        pass
+    try:
+        if hasattr(os, "sysconf"):
+            pages = os.sysconf("SC_PHYS_PAGES")
+            size = os.sysconf("SC_PAGE_SIZE")
+            return round((pages * size) / (1024 ** 3), 1)
+    except Exception:
+        pass
+    return 0.0
+
+
+def _nvidia_vram_gb() -> float:
+    try:
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=memory.total",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=True,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        values = []
+        for line in result.stdout.splitlines():
+            try:
+                values.append(float(line.strip()) / 1024.0)
+            except ValueError:
+                pass
+        return round(max(values), 1) if values else 0.0
+    except Exception:
+        return 0.0
+
+
+def _teacher_target_model() -> tuple[str, dict]:
+    ram_gb = _system_ram_gb()
+    vram_gb = _nvidia_vram_gb()
+    if vram_gb >= 20 or ram_gb >= 48:
+        target = "qwen3:30b"
+    elif vram_gb >= 12 or ram_gb >= 24:
+        target = "qwen3:14b"
+    else:
+        target = ""
+    return target, {"system_ram_gb": ram_gb, "gpu_vram_gb": vram_gb}
+
+
+def _installed_model_names(client: OllamaClient) -> list[str]:
+    return [
+        _model_name(item)
+        for item in client.installed_models()
+        if isinstance(item, dict) and _model_name(item)
+    ]
+
+
+def _teacher_model(client: OllamaClient) -> tuple[str, dict]:
+    target, hardware = _teacher_target_model()
+    installed = _installed_model_names(client)
+    installed_lower = {
+        name.lower().replace(":latest", ""): name
+        for name in installed
+    }
+    for candidate in (target, "qwen3:30b", "qwen3:14b"):
+        key = candidate.lower().replace(":latest", "")
+        if candidate and key in installed_lower:
+            return installed_lower[key], hardware
+    return "", {**hardware, "target_model": target, "installed_models": installed}
+
+
+def _ensure_teacher_model_async(server) -> None:
+    if getattr(server, "teacher_install_started", False):
+        return
+    config = load_config()
+    if not bool(config.get("teacher_enabled", True)) or not bool(
+        config.get("teacher_auto_install", True)
+    ):
+        return
+    target, hardware = _teacher_target_model()
+    if not target:
+        return
+    try:
+        installed = {
+            name.lower().replace(":latest", "")
+            for name in _installed_model_names(server.ollama_client)
+        }
+    except Exception:
+        return
+    if target.lower() in installed:
+        return
+
+    server.teacher_install_started = True
+
+    def install() -> None:
+        logger = getattr(server, "xemai_logger", None)
+        try:
+            if logger:
+                logger.info(
+                    "Teacher model install start | target=%s ram_gb=%s vram_gb=%s",
+                    target,
+                    hardware.get("system_ram_gb", 0),
+                    hardware.get("gpu_vram_gb", 0),
+                )
+            result = subprocess.run(
+                [_ollama_executable(), "pull", target],
+                cwd=str(BASE_DIR),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=6 * 60 * 60,
+                check=False,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            if logger:
+                logger.info(
+                    "Teacher model install finish | target=%s returncode=%s",
+                    target,
+                    result.returncode,
+                )
+        except Exception as e:
+            if logger:
+                logger.warning(
+                    "Teacher model install failed | target=%s error=%r",
+                    target,
+                    e,
+                )
+        finally:
+            server.teacher_install_started = False
+
+    threading.Thread(
+        target=install,
+        daemon=True,
+        name="XemAiTeacherInstall",
+    ).start()
+
+
+def _teacher_review_prompt(question: str, draft: str) -> list[dict]:
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are XemAi's independent local teacher and critic. Review the "
+                "draft for factual mistakes, faulty reasoning, missed constraints, "
+                "unsafe assumptions and important omissions. Do not agree merely to "
+                "be polite. Return a better final answer only, written for the user. "
+                "Preserve correct useful details, avoid inventing facts or citations, "
+                "and state uncertainty when it remains."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "USER QUESTION:\n" + question.strip() + "\n\n"
+                "XEMAI DRAFT:\n" + draft.strip()
+            ),
+        },
+    ]
 
 
 class XemAiWorkerHandler(BaseHTTPRequestHandler):
@@ -188,6 +404,8 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
                     "recommended_model": model,
                     "installed_qwen": installed,
                     "running_qwen": running,
+                    "teacher_model": _teacher_model(client)[0],
+                    "teacher_hardware": _teacher_model(client)[1],
                 })
                 return
 
@@ -268,6 +486,74 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
                 self._error(error, HTTPStatus.BAD_REQUEST)
             except Exception:
                 self._error("Vision service could not complete this request.", HTTPStatus.SERVICE_UNAVAILABLE)
+            return
+        if self.path == "/api/teacher/review":
+            try:
+                config = load_config()
+                if not bool(config.get("teacher_enabled", True)):
+                    self._error(
+                        "Teacher review is disabled.",
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                    )
+                    return
+                payload = self._read_json()
+                if set(payload) - {"question", "draft"}:
+                    raise ValueError("Invalid teacher-review request fields.")
+                question = str(payload.get("question") or "").strip()
+                draft = str(payload.get("draft") or "").strip()
+                if not question or not draft:
+                    raise ValueError("Teacher review requires question and draft.")
+
+                model, hardware = _teacher_model(self.server.ollama_client)
+                if not model:
+                    _ensure_teacher_model_async(self.server)
+                    self._json(
+                        {
+                            "ok": False,
+                            "ready": False,
+                            "error": "A stronger local teacher model is not ready yet.",
+                            "target_model": hardware.get("target_model", ""),
+                            "hardware": hardware,
+                        },
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                    )
+                    return
+
+                review_payload = {
+                    "model": model,
+                    "messages": _teacher_review_prompt(question, draft),
+                    "stream": False,
+                }
+                with self.server.generation_lock:
+                    result = self.server.ollama_client._request(
+                        "/api/chat",
+                        payload=review_payload,
+                        timeout=900,
+                    )
+                message = result.get("message") or {}
+                content = str(message.get("content") or "").strip()
+                if not content:
+                    self._error(
+                        "Teacher model returned no review.",
+                        HTTPStatus.BAD_GATEWAY,
+                    )
+                    return
+                self._json(
+                    {
+                        "ok": True,
+                        "ready": True,
+                        "model": model,
+                        "answer": content,
+                        "hardware": hardware,
+                    }
+                )
+            except ValueError as e:
+                self._error(e, HTTPStatus.BAD_REQUEST)
+            except Exception:
+                self._error(
+                    "Teacher review could not complete.",
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                )
             return
         if self.path != "/api/chat":
             self._error("Unknown worker endpoint.", HTTPStatus.NOT_FOUND)
@@ -373,6 +659,8 @@ def run_worker_server() -> int:
     server.generation_lock = threading.Lock()
     server.pairing_lock = threading.Lock()
     server.vision_service = VisionService(ollama, server.generation_lock, logger)
+    server.teacher_install_started = False
+    _ensure_teacher_model_async(server)
 
     state_path = DATA_DIR / "hybrid_worker.json"
     try:
