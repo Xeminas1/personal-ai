@@ -21,19 +21,39 @@ class ToolError(RuntimeError):
     pass
 
 
+def _normalized_query(text: str) -> str:
+    lower = " ".join(str(text).lower().replace("’", "'").replace("‘", "'").split())
+    return re.sub(r"\bwhat(?:'s|s)\b", "what is", lower)
+
+
+def _web_search_disallowed(text: str) -> bool:
+    lower = _normalized_query(text)
+    return bool(re.search(
+        r"\b(?:don'?t|do not)\s+(?:search|research|browse|verify)\b"
+        r"|\b(?:don'?t|do not)\s+look(?:\s+(?:it|this|that))?\s+up\b"
+        r"|\b(?:no|without)\s+(?:web|internet|browsing|research(?:ing)?|search(?:ing)?)\b"
+        r"|\b(?:don'?t|do not)\s+(?:use|access)\s+(?:the\s+)?(?:web|internet)\b",
+        lower,
+    ))
+
+
 def should_force_web_search(text: str) -> bool:
     """
     Deterministic routing for requests that clearly require live search.
     This avoids relying entirely on a small local model to decide whether
     to call the web_search tool.
     """
-    lower = text.lower()
+    lower = _normalized_query(text)
+    if _web_search_disallowed(text):
+        return False
     explicit_phrases = (
         "search the web",
         "search online",
         "browse the web",
         "browse online",
         "look it up",
+        "look that up",
+        "look this up",
         "look up ",
         "check the web",
         "check online",
@@ -62,6 +82,79 @@ _RESEARCH_STOPWORDS = {
     "should", "that", "their", "there", "these", "they", "this", "those",
     "what", "when", "where", "which", "with", "would", "your",
 }
+
+_TOPIC_STOPWORDS = _RESEARCH_STOPWORDS | {
+    "a", "an", "and", "any", "are", "as", "at", "be", "but", "by", "can",
+    "did", "do", "for", "he", "her", "his", "i", "if", "in", "is", "it",
+    "me", "my", "no", "not", "of", "on", "or", "our", "so", "the", "to",
+    "us", "was", "we", "were", "why", "will", "you", "please", "using", "use",
+    "source", "sources", "cite", "citing", "citation", "citations", "reference",
+    "references", "evidence", "proof", "research", "verify", "verification",
+    "check", "checked", "fact", "facts", "factcheck", "information", "claim",
+    "claims", "answer", "answers", "response", "previous", "last", "above",
+    "saying", "said", "say", "show", "give", "get", "got", "tell", "support",
+    "look", "up", "online", "web", "search", "browse", "reliable", "official",
+    "primary", "reputable", "back", "backed", "true", "really", "about",
+    "famous", "fame", "good", "great", "better", "correct", "wrong", "incorrect",
+    "correction", "actually", "instead", "rather", "them", "they", "its", "it's",
+    "provide", "provided", "link", "links", "quote", "quotes", "fact-check",
+}
+
+
+def _topic_word(word: str) -> str:
+    word = word.removesuffix("'s")
+    if len(word) > 4 and word.endswith("ies"):
+        return word[:-3] + "y"
+    if len(word) > 4 and word.endswith("s") and not word.endswith(("ss", "us", "is")):
+        return word[:-1]
+    return word
+
+
+def _topic_terms(text: str) -> set[str]:
+    return {
+        _topic_word(word) for word in re.findall(r"[a-z0-9][a-z0-9'\-]*", _normalized_query(text))
+        if len(word) >= 2 and word not in _TOPIC_STOPWORDS
+        and _topic_word(word) not in _TOPIC_STOPWORDS
+    }
+
+
+def _generic_research_followup(text: str) -> bool:
+    lower = _normalized_query(text)
+    intent = re.search(
+        r"\b(?:sources?|citations?|references?|cite|evidence|proof|verify|verification|factcheck|research)\b"
+        r"|\b(?:fact[- ]check|check (?:this|that)|is (?:this|that) true|look it up)\b",
+        lower,
+    )
+    if not intent and not should_force_web_search(text):
+        return False
+    return not _topic_terms(text)
+
+
+def research_query_for_turn(text: str, previous_user_messages) -> str:
+    """Resolve generic sourcing follow-ups from bounded prior user topics only.
+
+    The caller supplies visible USER text, never assistant claims or attachments.
+    This query is tool input; the current user's actual message remains intact.
+    """
+    if not isinstance(text, str):
+        return ""
+    if _web_search_disallowed(text) or not _generic_research_followup(text):
+        return text
+    if not isinstance(previous_user_messages, (list, tuple)):
+        return text
+    topics = [" ".join(value.split()) for value in previous_user_messages[-12:]
+              if isinstance(value, str) and value.strip() and _topic_terms(value)
+              and not _generic_research_followup(value)]
+    if not topics:
+        return text
+    selected = [topics[-1]]
+    latest = _normalized_query(selected[0])
+    correction = re.search(r"\b(?:actually|wrong|incorrect|correction|instead|not)\b|\bi meant\b", latest)
+    if correction and len(topics) > 1 and _topic_terms(topics[-2]) & _topic_terms(selected[0]):
+        selected.insert(0, topics[-2])
+    suffix = " verify sources"
+    limit = (1200 - len(suffix) - (3 if len(selected) == 2 else 0)) // len(selected)
+    return " ; ".join(value[:limit] for value in selected) + suffix
 
 _REPUTABLE_DOMAINS = {
     "pubmed.ncbi.nlm.nih.gov": (120, "PubMed / biomedical research"),
@@ -136,15 +229,11 @@ def should_research_query(text: str) -> bool:
     the answer. This is intentionally broader than freshness-only web routing
     but excludes casual, creative and XemAi-local questions.
     """
-    lower = " ".join(str(text).lower().split())
+    lower = _normalized_query(text)
     if not lower:
         return False
 
-    no_research = (
-        "don't search", "do not search", "no web", "without web",
-        "don't research", "do not research",
-    )
-    if any(term in lower for term in no_research):
+    if _web_search_disallowed(text):
         return False
 
     casual_or_local = (
@@ -168,6 +257,8 @@ def should_research_query(text: str) -> bool:
         "evidence", "study", "studies", "paper", "peer reviewed",
         "peer-reviewed", "backed by", "what does the research",
         "what do studies", "scientific evidence",
+        "verify", "verification", "fact check", "fact-check", "factcheck", "references",
+        "check this", "check that", "is that true", "is this true",
     )
     if any(term in lower for term in explicit):
         return True
@@ -264,7 +355,7 @@ def extract_exact_quote(content: str, query: str, max_words: int = 24) -> str:
     if not clean:
         return ""
 
-    terms = _research_terms(query)
+    terms = _topic_terms(query)
     candidates = re.split(r"(?<=[.!?])\s+", clean)
     ranked = []
 
@@ -273,7 +364,9 @@ def extract_exact_quote(content: str, query: str, max_words: int = 24) -> str:
         if len(words) < 6:
             continue
         lower = sentence.lower()
-        overlap = sum(1 for term in terms if term in lower)
+        overlap = len(terms & _topic_terms(sentence))
+        if terms and not overlap:
+            continue
         evidence_bonus = sum(
             1 for marker in (
                 "found", "associated", "increased", "decreased", "reduced",
@@ -287,12 +380,14 @@ def extract_exact_quote(content: str, query: str, max_words: int = 24) -> str:
 
     if not ranked:
         words = clean.split()
-        return " ".join(words[:max(1, int(max_words))])
+        quote = " ".join(words[:max(1, int(max_words))])
+        return quote if not terms or terms & _topic_terms(quote) else ""
 
     ranked.sort(reverse=True)
     sentence = ranked[0][2]
     words = sentence.split()
-    return " ".join(words[:max(1, min(25, int(max_words)))])
+    quote = " ".join(words[:max(1, min(25, int(max_words)))])
+    return quote if not terms or terms & _topic_terms(quote) else ""
 
 
 def format_research_appendix(bundle: dict[str, Any]) -> str:
@@ -797,6 +892,7 @@ class ToolRegistry:
 
         max_sources = max(1, min(5, int(max_sources)))
         searches = [query]
+        topic_terms = _topic_terms(query)
         variant = _research_query_variant(query)
         if variant.lower() != query.lower():
             searches.append(variant)
@@ -810,6 +906,9 @@ class ToolRegistry:
                     continue
                 title = str(item.get("title", "")).strip()
                 snippet = " ".join(str(item.get("content", "")).split())
+                overlap = len(topic_terms & _topic_terms(f"{title} {snippet}"))
+                if topic_terms and not overlap:
+                    continue
                 score, authority = _source_authority(url, title, snippet)
                 score += max(0, 16 - rank * 2)
                 if search_index == 0:
@@ -820,11 +919,12 @@ class ToolRegistry:
                     "snippet": snippet,
                     "score": score,
                     "authority": authority,
+                    "topic_overlap": overlap,
                 }
 
         ordered = sorted(
             candidates.values(),
-            key=lambda item: item["score"],
+            key=lambda item: (item["topic_overlap"], item["score"]),
             reverse=True,
         )
 
@@ -864,6 +964,10 @@ class ToolRegistry:
                 else ""
             ) or item["title"]
             source_text = page_content or item["snippet"]
+            # A relevant search snippet cannot make an unrelated fetched page
+            # (for example a privacy notice) suitable evidence for the topic.
+            if topic_terms and not topic_terms & _topic_terms(source_text):
+                continue
             score, authority = _source_authority(
                 item["url"], source_title, source_text
             )
@@ -910,7 +1014,7 @@ class ToolRegistry:
         return {
             "query": query,
             "method": (
-                "Ranked live-web research prioritising government, academic, "
+                "Ranked live-web research prioritising topic relevance, then government, academic, "
                 "peer-reviewed, standards and official primary sources."
             ),
             "sources": sources,

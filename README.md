@@ -1,5 +1,31 @@
 # Personal AI v0.1
 
+## v0.9.9 contextual factual research
+
+Factual questions beginning with `What's`, `What’s` or `whats` now follow the
+same research routing as `What is`. Explicit no-web requests also suppress
+automatic forced search.
+
+Generic source and verification follow-ups use bounded recent user topic text
+and related corrections instead of searching the follow-up's literal wording.
+Assistant claims and attachment contents are excluded from that search context;
+the current user message remains unchanged in the model conversation. Retry
+also identifies the current user row when an error message follows it.
+
+Research now considers topic relevance before source authority and excludes
+results without meaningful query overlap. Relevant pages still need to support
+the actual claim: a reputable domain alone does not establish relevance or
+truth. Prompt guidance asks for short answers to simple questions and for
+related claims to be reassessed when a user requests verification or corrects
+an error.
+
+These changes address the missed pirate-question research and unrelated
+AI-citation search demonstrated in a pasted conversation. They do not guarantee
+error-free model answers or diagnose the reported reply delay. Research uses
+lexical relevance checks, which can miss sources phrased differently. Topic
+recovery adds no model inference call; live research still takes time. Existing
+worker routing, fallback, credentials and timing diagnostics are preserved.
+
 ## v0.9.8 reply timing and worker overhead
 
 Worker inference requests that already specify a model now validate installed
