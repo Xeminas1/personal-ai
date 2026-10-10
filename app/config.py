@@ -37,7 +37,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "mobile_server_autostart": True,
     "mobile_updates_enabled": True,
     "auto_install_updates": True,
-    "auto_update_interval_seconds": 60
+    "auto_update_interval_seconds": 15
 }
 
 

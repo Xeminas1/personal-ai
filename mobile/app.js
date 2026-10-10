@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.9.15";
+const FRONTEND_VERSION = "0.9.16";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
@@ -1319,7 +1319,7 @@ document.addEventListener("pointerdown", unlockReplyAudio, { passive: true });
 document.addEventListener("keydown", unlockReplyAudio);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=0.9.15")
+  navigator.serviceWorker.register("/sw.js?v=0.9.16")
     .then((registration) => registration.update())
     .catch(() => {});
 }

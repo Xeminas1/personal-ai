@@ -22,7 +22,7 @@ from .logging_setup import setup_logging
 from .media_support import media_payload, vision_status
 from .secrets import load_hybrid_pairing_state
 from .version import VERSION
-from . import support_access
+from . import support_access, updater
 from .support_http import handle_support_read, support_endpoints
 
 
@@ -105,8 +105,8 @@ def _schedule_mobile_server_restart() -> None:
 
     def stop_current():
         time.sleep(1.5)
-        # The response has already been sent. Exit immediately so the helper can
-        # bind the same localhost port using the newly installed code.
+        # Allow in-flight HTTP responses to flush before the helper binds the
+        # same localhost port using the newly installed code.
         os._exit(0)
 
     threading.Thread(target=stop_current, daemon=True).start()
@@ -247,6 +247,33 @@ def _start_chat_generation_locked(
         _change_active_chat_requests(server, -1)
         raise
 
+def _auto_update_interval(config: dict) -> int:
+    """Accelerate the saved legacy default without rewriting user settings."""
+    try:
+        raw = config.get("auto_update_interval_seconds", 15)
+        if isinstance(raw, bool):
+            return 15
+        interval = int(raw)
+    except (TypeError, ValueError, OverflowError):
+        return 15
+    if interval <= 0 or interval > threading.TIMEOUT_MAX or interval == 60:
+        return 15
+    return max(10, interval)
+
+
+def _reserve_update(server) -> str | None:
+    """Reserve an idle server atomically with reply generation; None succeeds."""
+    with server.chat_operation_lock:
+        if getattr(server, "update_restarting", False):
+            return "updating"
+        if _active_chat_requests(server) > 0:
+            return "busy"
+        lock = getattr(server, "update_lock", None)
+        if lock is not None and not lock.acquire(blocking=False):
+            return "updating"
+    return None
+
+
 def _auto_update_loop(server) -> None:
     logger = getattr(server, "xemai_logger", None)
     stop_event = getattr(server, "stop_event", None)
@@ -254,63 +281,72 @@ def _auto_update_loop(server) -> None:
         return
 
     # Give startup a moment to settle, then check periodically.
-    if stop_event.wait(8):
+    if stop_event.wait(2):
         return
 
+    pending = None
+    pending_channel = ""
     while not stop_event.is_set():
-        backend = None
+        interval = 15
         try:
             config = load_config()
-            enabled = bool(config.get("mobile_updates_enabled", True))
-            auto_install = bool(config.get("auto_install_updates", True))
-            interval = max(
-                30,
-                int(config.get("auto_update_interval_seconds", 60)),
+            interval = _auto_update_interval(config)
+            channel = str(config.get("update_manifest_url") or "").strip()
+            enabled = (
+                bool(config.get("mobile_updates_enabled", True))
+                and bool(config.get("auto_install_updates", True))
+                and bool(channel)
             )
-
-            if enabled and auto_install and _active_chat_requests(server) == 0:
-                update_lock = getattr(server, "update_lock", None)
-                acquired = update_lock.acquire(blocking=False) if update_lock else True
-                if acquired:
+            if not enabled or channel != pending_channel:
+                pending = None
+            if enabled and pending is None:
+                # Manifest checks are reads. Keep chats available while the
+                # network responds; install ownership is reserved only below.
+                manifest = updater.check_for_update(channel)
+                if stop_event.is_set():
+                    return
+                current = load_config()
+                interval = _auto_update_interval(current)
+                if (
+                    current.get("mobile_updates_enabled", True)
+                    and current.get("auto_install_updates", True)
+                    and str(current.get("update_manifest_url") or "").strip() == channel
+                ):
+                    pending = manifest
+                    pending_channel = channel
+            if pending is not None:
+                reason = _reserve_update(server)
+                if reason is None:
+                    update_lock = getattr(server, "update_lock", None)
                     try:
-                        backend = ChatBackend()
-                        manifest = backend.check_update()
-                        if manifest and _active_chat_requests(server) == 0:
-                            installed = backend.install_update(manifest)
-                            if logger:
-                                logger.info(
-                                    "Automatic update installed | from=%s to=%s",
-                                    VERSION,
-                                    installed,
-                                )
-                            server.update_restarting = True
-                            _schedule_mobile_server_restart()
+                        if stop_event.is_set():
                             return
+                        installed = updater.install_update(
+                            base_dir=BASE_DIR, manifest=pending, logger=logger,
+                        )
+                        if logger:
+                            logger.info(
+                                "Automatic update installed | from=%s to=%s",
+                                VERSION,
+                                installed,
+                            )
+                        server.update_restarting = True
+                        try:
+                            _schedule_mobile_server_restart()
+                        except Exception:
+                            server.update_restarting = False
+                            raise
+                        return
                     finally:
-                        if backend:
-                            backend.close()
-                            backend = None
                         if update_lock:
                             update_lock.release()
 
-            if stop_event.wait(interval):
+            if stop_event.wait(2 if pending is not None else interval):
                 return
         except Exception as e:
-            if backend:
-                try:
-                    backend.close()
-                except Exception:
-                    pass
-                backend = None
+            pending = None
             if logger:
                 logger.warning("Automatic update check failed | error=%r", e)
-            try:
-                interval = max(
-                    30,
-                    int(load_config().get("auto_update_interval_seconds", 60)),
-                )
-            except Exception:
-                interval = 60
             if stop_event.wait(interval):
                 return
 
@@ -1022,15 +1058,6 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     )
                     return
 
-                if update_lock is not None:
-                    acquired = update_lock.acquire(blocking=False)
-                    if not acquired:
-                        self._error(
-                            "An XemAi update is already in progress.",
-                            HTTPStatus.CONFLICT,
-                        )
-                        return
-
                 backend = self._backend()
                 if not backend.config.get("mobile_updates_enabled", True):
                     self._error(
@@ -1039,6 +1066,7 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     )
                     return
 
+                channel = str(backend.config.get("update_manifest_url") or "").strip()
                 manifest = backend.check_update()
                 if not manifest:
                     self._json({
@@ -1049,14 +1077,31 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     })
                     return
 
-                if _active_chat_requests(self.server) > 0:
+                current = load_config()
+                if not current.get("mobile_updates_enabled", True):
+                    self._error("Mobile updates are disabled.", HTTPStatus.FORBIDDEN)
+                    return
+                if str(current.get("update_manifest_url") or "").strip() != channel:
+                    self._error("The update channel changed. Check for updates again.", HTTPStatus.CONFLICT)
+                    return
+
+                reason = _reserve_update(self.server)
+                if reason is not None:
                     self._error(
-                        "XemAi became busy. The updater will retry shortly.",
+                        "XemAi became busy. The updater will retry shortly."
+                        if reason == "busy" else "An XemAi update is already in progress.",
                         HTTPStatus.CONFLICT,
                     )
                     return
+                acquired = True
 
                 installed = backend.install_update(manifest)
+                self.server.update_restarting = True
+                try:
+                    _schedule_mobile_server_restart()
+                except Exception:
+                    self.server.update_restarting = False
+                    raise
                 self._json({
                     "ok": True,
                     "installed": installed,
@@ -1067,8 +1112,6 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     ),
                 })
                 self.wfile.flush()
-                self.server.update_restarting = True
-                _schedule_mobile_server_restart()
             except Exception as e:
                 self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
             finally:

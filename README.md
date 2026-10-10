@@ -1,5 +1,28 @@
 # Personal AI v0.1
 
+## v0.9.16 faster automatic updates
+
+The shared server first checks about two seconds after startup, then every
+15 seconds by default. The old standard 60-second setting is treated as
+15 seconds without rewriting local configuration; other custom intervals are
+retained with a ten-second minimum. Invalid intervals use the new default.
+
+Manifest checks request fresh content and add a unique query parameter only
+for GitHub raw URLs, avoiding their five-minute cached update list. Custom or
+signed manifest URLs keep their original query. Release-file URLs stay pinned,
+and HTTPS, SHA-256 verification and staged Python checks remain enforced.
+
+Checking for a release runs without the installation lock or a chat backend.
+A found update waits for active replies and their memory work to finish, then
+retries installation ownership every two seconds. Waiting does not repeatedly
+fetch the manifest. Disabling updates or changing the channel discards the
+waiting update. Manual and automatic installation reserve ownership against
+chat starts under the same operation lock. Settings, chats and logs are retained.
+
+These intervals describe scheduling, not a guaranteed download or install time.
+This release itself is found using the old installed check policy; the faster
+policy applies after installation. No new manual update control is added.
+
 ## v0.9.15 clearer readiness and chat controls
 
 Skyrim tools shows a green tick only after the paired PC reports that its

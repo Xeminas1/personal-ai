@@ -7,7 +7,9 @@ import shutil
 import ssl
 import tempfile
 import urllib.error
+import urllib.parse
 import urllib.request
+import uuid
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -33,12 +35,22 @@ def is_newer_version(candidate: str, current: str = VERSION) -> bool:
     return _version_tuple(candidate) > _version_tuple(current)
 
 
-def _https_bytes(url: str, timeout: int = 120) -> bytes:
+def _https_bytes(url: str, timeout: int = 120, *, fresh: bool = False) -> bytes:
     if not url.lower().startswith("https://"):
         raise UpdateError("Update URLs must use HTTPS.")
+    headers = {"User-Agent": f"PersonalAI/{VERSION}"}
+    if fresh:
+        headers.update({"Cache-Control": "no-cache, max-age=0", "Pragma": "no-cache"})
+        parts = urllib.parse.urlsplit(url)
+        if parts.hostname == "raw.githubusercontent.com":
+            # GitHub's mutable branch URLs can be cached for five minutes.
+            # Preserve existing query bytes; signed/custom hosts stay untouched.
+            query = parts.query + ("&" if parts.query else "")
+            query += "_xemai_check=" + uuid.uuid4().hex
+            url = urllib.parse.urlunsplit(parts._replace(query=query))
     req = urllib.request.Request(
         url,
-        headers={"User-Agent": f"PersonalAI/{VERSION}"},
+        headers=headers,
         method="GET",
     )
     try:
@@ -52,7 +64,7 @@ def _https_bytes(url: str, timeout: int = 120) -> bytes:
 
 def _https_json(url: str, timeout: int = 20) -> dict[str, Any]:
     try:
-        parsed = json.loads(_https_bytes(url, timeout=timeout).decode("utf-8"))
+        parsed = json.loads(_https_bytes(url, timeout=timeout, fresh=True).decode("utf-8"))
     except json.JSONDecodeError as e:
         raise UpdateError("Update manifest was not valid JSON.") from e
     if not isinstance(parsed, dict):

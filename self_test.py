@@ -311,7 +311,7 @@ def run() -> None:
     assert '"hybrid_worker_url": ""' in config_source
     assert '"hybrid_worker_port": 8766' in config_source
     assert '"hybrid_routing_mode": "prefer_worker"' in config_source
-    assert '"auto_update_interval_seconds": 60' in config_source
+    assert '"auto_update_interval_seconds": 15' in config_source
     assert "def _auto_update_loop(server)" in mobile_server
     assert "XemAiAutoUpdater" in mobile_server
     assert "active_chat_requests" in mobile_server
@@ -385,10 +385,10 @@ def run() -> None:
     assert '"compute_name"' in mobile_server
     assert '"worker_available"' in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.9.15"' in mobile_js
+    assert 'FRONTEND_VERSION = "0.9.16"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.9.15" in mobile_html
-    assert "/styles.css?v=0.9.15" in mobile_html
+    assert "/app.js?v=0.9.16" in mobile_html
+    assert "/styles.css?v=0.9.16" in mobile_html
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
     assert "backdrop-filter: blur(16px)" in mobile_css
     assert "@media (min-width: 1000px)" in mobile_css
@@ -777,7 +777,7 @@ def run() -> None:
             runtime_info,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.9.15" in safe_fallback
+        assert "v0.9.16" in safe_fallback
         assert "qwen3:1.7b" in safe_fallback
 
         hybrid_local = OllamaClient(
