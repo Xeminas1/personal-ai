@@ -87,6 +87,14 @@ def build_capability_status(
         "Video visual evidence: up to four timestamped still frames sampled in the browser; optional PC vision model interprets those frames only",
         "Audio and continuous full-motion video analysis: not implemented",
         "Skyrim SE modding diagnostics: uploaded Vortex plugins/loadorder files and recognised crash logs are summarised with line evidence; no direct Vortex/game-folder or binary plugin inspection",
+        (
+            "Specialist assistance: optional research, Skyrim and reviewer model passes for complex questions "
+            "on the selected paired PC, at most two extra passes; no tools or independent authority, "
+            "no automatic specialist work on the laptop fallback; source-reference checks do not prove factual support"
+            if config.get("specialists_enabled", True)
+            and str(config.get("specialist_mode", "auto")).strip().lower() != "off"
+            else "Specialist assistance: disabled"
+        ),
         "Shared Android/mobile web client: enabled through the local XemAi mobile server",
         "PC and phone share the same chats, memories, feedback and database",
         "Cross-device live chat refresh: enabled while clients are open",

@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.9.16";
+const FRONTEND_VERSION = "0.9.17";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
@@ -370,7 +370,7 @@ function linkify(text) {
 
 function messageSignature(messages) {
   return (messages || [])
-    .map((msg) => `${msg.id ?? ""}:${msg.role ?? ""}`)
+    .map((msg) => `${msg.id ?? ""}:${msg.role ?? ""}:${supportedSpecialistRoles(msg).join(",")}`)
     .join("|");
 }
 
@@ -597,6 +597,25 @@ function replyInferenceLabel(message) {
   return route ? `Answered by ${route} · ${message.inference_model}` : "";
 }
 
+const SPECIALIST_LABELS = Object.freeze({ research: "Research", skyrim: "Skyrim", reviewer: "Reviewer" });
+
+function supportedSpecialistRoles(message) {
+  if (!message || !Array.isArray(message.specialist_roles)) return [];
+  const roles = [];
+  for (const role of message.specialist_roles) {
+    if (typeof role === "string" && Object.prototype.hasOwnProperty.call(SPECIALIST_LABELS, role) && !roles.includes(role)) {
+      roles.push(role);
+      if (roles.length === 2) break;
+    }
+  }
+  return roles;
+}
+
+function specialistHelpLabel(message) {
+  const roles = supportedSpecialistRoles(message);
+  return roles.length ? `Specialist help: ${roles.map((role) => SPECIALIST_LABELS[role]).join(" · ")}` : "";
+}
+
 function appendMessage(role, text, createdAt = null, delivery = null, inference = null) {
   const wrap = document.createElement("article");
   wrap.className = `message ${role}`;
@@ -620,6 +639,7 @@ function appendMessage(role, text, createdAt = null, delivery = null, inference 
     && String(text).startsWith(REPLY_ERROR_PREFIX)
   );
   const inferenceLabel = role === "assistant" && !retryable ? replyInferenceLabel(inference) : "";
+  const specialistLabel = role === "assistant" && !retryable ? specialistHelpLabel(inference) : "";
   wrap.innerHTML = `
     <div class="bubble-wrap">
       ${role === "assistant" ? '<div class="tail"></div>' : ''}
@@ -638,6 +658,7 @@ function appendMessage(role, text, createdAt = null, delivery = null, inference 
           `}
         </div>
         ${inferenceLabel ? `<div class="message-inference">${escapeHtml(inferenceLabel)}</div>` : ""}
+        ${specialistLabel ? `<div class="specialist-metadata">${escapeHtml(specialistLabel)}</div>` : ""}
       </div>
       ${role === "user" ? '<div class="tail"></div>' : ''}
     </div>

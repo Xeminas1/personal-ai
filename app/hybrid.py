@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import errno
+import math
 import re
 import socket
 import ssl
@@ -85,8 +86,28 @@ class HybridWorkerClient(OllamaClient):
         return self._request(
             "/api/teacher/review",
             payload={"question": question, "draft": draft},
-            timeout=900,
+            timeout=30.25,
         )
+
+    def specialist_pass(
+        self, role: str, question: str, context: str, *,
+        draft: str = "", timeout: float = 25.0,
+    ) -> dict[str, Any]:
+        budget = _specialist_budget(timeout)
+        return self._request(
+            "/api/agents/run",
+            payload={
+                "role": role, "question": question, "context": context,
+                "draft": draft, "timeout_seconds": budget, "model": self.model,
+            },
+            timeout=budget + 0.25,
+        )
+
+
+def _specialist_budget(value: float) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 2:
+        raise ValueError("Specialist budget is unavailable.")
+    return min(30.0, float(value))
 
 
 class HybridOllamaClient(OllamaClient):
@@ -252,6 +273,46 @@ class HybridOllamaClient(OllamaClient):
         except Exception as e:
             self._log_attempt("teacher_review", started, e)
             self.logger.info("Local teacher unavailable; keeping original draft")
+            return None
+
+    def specialist_pass(
+        self, role: str, question: str, context: str, *,
+        draft: str = "", timeout: float = 25.0,
+    ) -> dict[str, Any] | None:
+        """Run one bounded PC pass without changing the selected answer route."""
+        if (
+            self.active_client is not self.worker_client
+            or self.worker_failed_for_request
+            or self.route_info.get("compute") != "remote_worker"
+        ):
+            return None
+        started = time.monotonic()
+        try:
+            budget = _specialist_budget(timeout)
+            result = self.worker_client.specialist_pass(
+                role, question, context, draft=draft, timeout=budget,
+            )
+            if time.monotonic() - started > budget + 0.25:
+                raise TimeoutError("Specialist response exceeded its budget.")
+            if not isinstance(result, dict) or result.get("ok") is not True or result.get("role") != role:
+                raise ValueError("Invalid specialist response.")
+            output, model = result.get("output"), result.get("model")
+            if (
+                not isinstance(output, str) or not output.strip() or len(output) > 6000
+                or not isinstance(model, str) or not model.strip()
+                or len(model) > 256 or not model.isprintable()
+            ):
+                raise ValueError("Invalid specialist response.")
+            if any(
+                (ord(character) < 32 and character not in "\t\n\r") or 127 <= ord(character) <= 159
+                for character in output
+            ):
+                raise ValueError("Invalid specialist response.")
+            output.encode("utf-8")
+            self._log_attempt("specialist", started)
+            return result
+        except Exception as error:
+            self._log_attempt("specialist", started, error)
             return None
 
     def chat_raw(

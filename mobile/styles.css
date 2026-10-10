@@ -887,3 +887,11 @@ button { -webkit-tap-highlight-color: transparent; }
   line-height: 1.4;
   margin-top: 5px;
 }
+
+.specialist-metadata {
+  margin-top: 5px;
+  color: #a6c6e8;
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}

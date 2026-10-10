@@ -47,6 +47,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.14", "Adds an optional local teacher model on the paired PC for a second pass on substantive non-research drafts; this adds inference time and does not independently verify facts."),
     ("0.9.15", "Shows verified visual-readiness ticks, adds optional quiet reply sounds, improves recent-chat ordering and scrolling, and removes manual-update/live-support controls from the shared chat UI."),
     ("0.9.16", "Checks for automatic updates every 15 seconds by default, avoids cached GitHub manifests, and waits safely for active replies before installation."),
+    ("0.9.17", "Adds bounded PC research, Skyrim and reviewer specialist passes for complex questions, with visible contribution labels, preserved citations and lightweight laptop fallback. Uses the ordinary worker model by default and chooses optional larger reviewers according to GPU memory."),
 ]
 
 

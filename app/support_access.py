@@ -70,7 +70,7 @@ _TIMING_NUMBERS = {
 }
 _CHAT_PHASES = {
     "route", "prepared", "research", "answer", "retry", "visible_reply",
-    "source_review", "memory", "complete", "failed",
+    "source_review", "specialist_prepare", "specialist_review", "memory", "complete", "failed",
 }
 _REASONS = {
     "Tailscale executable unavailable", "No central-host Serve route detected",
@@ -303,7 +303,7 @@ def structured_log(text: str) -> list[dict]:
                         entry[key] = int(value)
                     elif key == "turn_id" and (value == "none" or re.fullmatch(r"[a-f0-9]{16}", value)):
                         entry[key] = value
-                    elif event == "Hybrid attempt" and key == "stage" and value in {"worker_health", "worker_chat"}:
+                    elif event == "Hybrid attempt" and key == "stage" and value in {"worker_health", "worker_chat", "specialist", "teacher_review"}:
                         entry[key] = value
                     elif event == "Hybrid attempt" and key == "error_category" and value in _NETWORK_ERRORS:
                         entry[key] = value

@@ -1,10 +1,39 @@
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable
+
+
+_SPECIALIST_ROLES = frozenset({"research", "skyrim", "reviewer"})
+
+
+def _validate_specialist_roles(roles) -> list[str] | None:
+    if roles is None:
+        return None
+    if not isinstance(roles, (list, tuple)) or len(roles) > 2:
+        raise ValueError("Invalid answer specialist roles.")
+    validated = []
+    for role in roles:
+        if not isinstance(role, str) or role not in _SPECIALIST_ROLES or role in validated:
+            raise ValueError("Invalid answer specialist roles.")
+        validated.append(role)
+    return validated
+
+
+def _decode_specialist_roles(value) -> list[str]:
+    if not isinstance(value, str) or len(value) > 256:
+        return []
+    try:
+        roles = json.loads(value)
+        if not isinstance(roles, list):
+            return []
+        return _validate_specialist_roles(roles) or []
+    except (ValueError, TypeError, RecursionError):
+        return []
 
 
 _MEMORY_STOPWORDS = {
@@ -106,6 +135,7 @@ class Database:
                 role TEXT NOT NULL CHECK(role IN ('user','assistant','system')),
                 content TEXT NOT NULL,
                 created_at TEXT NOT NULL,
+                specialist_roles TEXT,
                 FOREIGN KEY(chat_id) REFERENCES chats(id) ON DELETE CASCADE
             );
 
@@ -164,6 +194,15 @@ class Database:
                 ON feedback(user_id, id);
             """
         )
+        columns = {row["name"] for row in self.conn.execute("PRAGMA table_info(messages)")}
+        if "specialist_roles" not in columns:
+            # A second server request can open the same older database during
+            # migration. Recheck after obtaining SQLite's write reservation.
+            with self.conn:
+                self.conn.execute("BEGIN IMMEDIATE")
+                columns = {row["name"] for row in self.conn.execute("PRAGMA table_info(messages)")}
+                if "specialist_roles" not in columns:
+                    self.conn.execute("ALTER TABLE messages ADD COLUMN specialist_roles TEXT")
         self.conn.commit()
 
     def get_user(self):
@@ -275,6 +314,7 @@ class Database:
         *,
         model: str | None = None,
         compute_source: str | None = None,
+        specialist_roles: list[str] | tuple[str, ...] | None = None,
     ) -> int:
         """Save a completed answer and optional provenance atomically.
 
@@ -294,15 +334,17 @@ class Database:
                 raise ValueError("Invalid answer model label.")
             if compute_source is None or compute_source == "application":
                 raise ValueError("Answer model requires an inference compute source.")
+        roles = _validate_specialist_roles(specialist_roles)
+        encoded_roles = json.dumps(roles, separators=(",", ":")) if roles is not None else None
 
         timestamp = now_iso()
         with self.conn:
             cur = self.conn.execute(
                 """
-                INSERT INTO messages(chat_id, role, content, created_at)
-                VALUES (?, 'assistant', ?, ?)
+                INSERT INTO messages(chat_id, role, content, created_at, specialist_roles)
+                VALUES (?, 'assistant', ?, ?, ?)
                 """,
-                (chat_id, content, timestamp),
+                (chat_id, content, timestamp, encoded_roles),
             )
             message_id = int(cur.lastrowid)
             if compute_source is not None:
@@ -336,7 +378,12 @@ class Database:
             """,
             (chat_id, limit),
         ).fetchall()
-        return rows
+        messages = []
+        for row in rows:
+            message = dict(row)
+            message["specialist_roles"] = _decode_specialist_roles(message.get("specialist_roles"))
+            messages.append(message)
+        return messages
 
     @staticmethod
     def _normalise(text: str) -> str:

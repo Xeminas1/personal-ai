@@ -78,7 +78,7 @@ class TeacherHealthTests(unittest.TestCase):
             self.assertEqual(code, 200)
             self.assertTrue(health["ok"])
             self.assertEqual(health["recommended_model"], "qwen3:8b")
-            self.assertEqual(health["teacher_model"], "qwen3:30b")
+            self.assertEqual(health["teacher_model"], "")
             self.assertEqual(health["teacher_hardware"], {})  # Unknown, not guessed from a model name.
             self.assertNotIn("qwen2.5vl:7b", health["installed_qwen"])
             self.assertEqual(self.client.inventory_reads, 1)

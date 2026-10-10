@@ -1,4 +1,4 @@
-"""Optional local teacher reviews preserve durable answer provenance and drafts."""
+"""Explicit legacy teacher reviews preserve durable answer provenance and drafts."""
 from __future__ import annotations
 
 import logging
@@ -61,7 +61,7 @@ class TeacherReviewTests(unittest.TestCase):
         self.chat_id = self.db.create_chat(user["id"], "Study routine")["id"]
         self.backend = gui_backend.ChatBackend.__new__(gui_backend.ChatBackend)
         self.backend.config = {"model": "qwen3:8b", "auto_memory": False,
-                               "teacher_enabled": True, "teacher_min_answer_chars": 280}
+                               "teacher_enabled": True, "teacher_review_mode": "legacy", "teacher_min_answer_chars": 280}
         self.backend.logger = logging.getLogger("teacher-review-test")
         self.client = TeacherModel({"ok": True, "answer": REVIEWED, "model": "qwen3:30b"})
 
@@ -112,7 +112,7 @@ class TeacherReviewTests(unittest.TestCase):
         for configuration in ({"teacher_enabled": False}, {"teacher_review_mode": " off "},
                               {"teacher_min_answer_chars": 1000}):
             with self.subTest(configuration=configuration):
-                self.backend.config.update(teacher_enabled=True, teacher_review_mode="auto",
+                self.backend.config.update(teacher_enabled=True, teacher_review_mode="legacy",
                                            teacher_min_answer_chars=280)
                 self.backend.config.update(configuration)
                 self.assertEqual(self.send(), DRAFT)

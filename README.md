@@ -1,5 +1,77 @@
 # Personal AI v0.1
 
+## v0.9.17 specialist assistance
+
+Complex research and Skyrim troubleshooting questions can now receive help
+from a research or Skyrim specialist before the main answer, followed by a
+reviewer. Ordinary short questions skip these passes. They run only on the
+already-selected stronger PC; laptop fallback stays lightweight. These are
+additional interpretations by local models, not independent proof of accuracy.
+
+Specialists use the existing worker model by default, with no new model download.
+Each pass requests a queue/inference budget of at most 25 seconds, and specialist
+calls share a 45-second budget and a hard maximum of two additional passes.
+An existing source-reference correction consumes one of those pass slots.
+Primary answering, research, vision and memory have their existing separate
+limits. Socket timeouts apply per inactivity period, so network reads can overrun
+a requested wall-clock budget; late specialist results are rejected. These
+limits are not a strict wall-clock cap or a total response-time guarantee.
+Thinking output is disabled and specialist generation is capped at 512 tokens.
+Results cut short at the token limit or exceeding the output-size limit are
+rejected so an incomplete revision cannot replace a complete draft.
+Oversized question/draft pairs skip optional review instead of silently cutting
+the answer. Supporting evidence may be shortened with an explicit omission
+count, so helpers must acknowledge missing material.
+
+The helpers receive bounded snapshots of the current question, recent chat,
+retrieved source catalog and available attachment/visual reports. They have no
+tools, cannot change files or Vortex, and must treat supplied text as untrusted
+data. Review is rejected if it invents a reference or drops an existing valid
+citation. This checks source membership and retention, not whether every claim
+is actually supported. A timeout, unavailable PC, old worker endpoint or invalid
+result preserves the original answer and its model/compute attribution. A failed
+preparation closes remaining specialist calls for that turn, avoiding another
+wait for the same unavailable worker.
+
+Progress shows which specialist is working. Accepted contributions are saved
+with the answer and displayed as **Specialist help: Research · Reviewer** or
+**Skyrim · Reviewer**, including after reload and on other devices. Rejected
+passes are not labelled as contributions. Internal notes are not shown as
+separate chat messages. Use “quick answer” or “no agents” to skip specialists;
+“deep analysis” or “use specialists” requests them on the PC. Questions about
+XemAi's own runtime capabilities keep their existing authoritative validation.
+
+Configuration defaults are `specialists_enabled=true`, `specialist_mode="auto"`,
+`specialist_max_passes=2`, `specialist_budget_seconds=45`, and the three
+`specialist_research_enabled`, `specialist_skyrim_enabled` and
+`specialist_reviewer_enabled` flags enabled. `specialist_mode="off"` disables
+this workflow. Explicit `specialist_mode="deep"` opts into complex review
+without requiring trigger wording. `specialist_review_model="worker"` keeps
+8B loaded; optional `"installed_teacher"` in the stronger PC's configuration
+uses only an already-installed larger
+GPU-fitting reviewer. Its result records the actual reviewer model and it is
+unloaded afterward. RAM alone no longer selects 30B: 14B requires at least
+12GB reported NVIDIA VRAM, and 30B at least 24GB. This is a conservative fit
+policy, not a benchmark of your PC.
+
+The generic v0.9.14 teacher pass no longer runs automatically on every long
+answer. Its compatibility mode is available only with
+`teacher_review_mode="legacy"`, which disables specialist coordination for that
+turn. New defaults set `teacher_auto_install=false`; any explicitly saved
+teacher preparation setting is retained. The specialist endpoint never pulls
+models. Settings, chats, memories and attachments are preserved during updates.
+
+**After this update installs on both machines, restart the stronger PC once.**
+Its existing detached worker cannot reload new endpoints merely by refreshing
+or reopening the chat window. Until restarted, ordinary 8B answers continue,
+but unavailable specialist calls are skipped. The laptop host and shared phone
+interface reconnect through the existing automatic-update flow.
+
+Protocol, migration, chat-flow and real-browser tests cover deadlines, the
+extra-pass limit, citation protection, original-answer fallback, GPU selection,
+contribution persistence and shared rendering. Live quality/speed on your
+RTX 5080 still needs evaluation with real questions after installation.
+
 ## v0.9.16 faster automatic updates
 
 The shared server first checks about two seconds after startup, then every

@@ -91,7 +91,10 @@ const context = {
   retryLastMessage: () => {},
 };
 vm.createContext(context);
-for (const name of ['escapeHtml', 'replyInferenceLabel', 'appendMessage']) {
+const labels = code.match(/^const SPECIALIST_LABELS = .*;$/m);
+assert(labels, 'specialist labels');
+vm.runInContext(labels[0], context);
+for (const name of ['escapeHtml', 'replyInferenceLabel', 'supportedSpecialistRoles', 'specialistHelpLabel', 'appendMessage']) {
   const fn = code.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'));
   assert(fn, name);
   vm.runInContext(fn[0], context);

@@ -63,19 +63,25 @@ class ReplyMetadataTests(unittest.TestCase):
                 VALUES (1, 1, 'preference', 'Preserve memory.', 0.8, '2026-01-02');
         """)
         tables = ("users", "chats", "messages", "memories")
+        columns = {
+            table: ", ".join(row[1] for row in connection.execute(f"PRAGMA table_info({table})"))
+            for table in tables
+        }
         before = {table: connection.execute(f"SELECT * FROM {table}").fetchall() for table in tables}
         connection.close()
 
         migrated = Database(legacy_path)
         try:
             for table in tables:
-                self.assertEqual([tuple(row) for row in migrated.conn.execute(f"SELECT * FROM {table}")], before[table])
+                self.assertEqual([tuple(row) for row in migrated.conn.execute(f"SELECT {columns[table]} FROM {table}")], before[table])
+            self.assertEqual([row[0] for row in migrated.conn.execute("SELECT specialist_roles FROM messages")], [None, None])
             self.assertEqual(migrated.conn.execute("PRAGMA integrity_check").fetchone()[0], "ok")
             self.assertEqual(migrated.conn.execute("PRAGMA foreign_key_check").fetchall(), [])
             self.assertEqual(migrated.conn.execute("SELECT COUNT(*) FROM message_inference").fetchone()[0], 0)
             for message in migrated.get_recent_messages(1):
                 self.assertIsNone(message["inference_model"])
                 self.assertIsNone(message["inference_compute"])
+                self.assertEqual(message["specialist_roles"], [])
         finally:
             migrated.close()
 
