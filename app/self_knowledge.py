@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from .capabilities import build_capability_status
 from .version import VERSION
 
@@ -48,6 +50,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.15", "Shows verified visual-readiness ticks, adds optional quiet reply sounds, improves recent-chat ordering and scrolling, and removes manual-update/live-support controls from the shared chat UI."),
     ("0.9.16", "Checks for automatic updates every 15 seconds by default, avoids cached GitHub manifests, and waits safely for active replies before installation."),
     ("0.9.17", "Adds bounded PC research, Skyrim and reviewer specialist passes for complex questions, with visible contribution labels, preserved citations and lightweight laptop fallback. Uses the ordinary worker model by default and chooses optional larger reviewers according to GPU memory."),
+    ("0.9.18", "Supplies compact evidence and relevant context to the laptop's existing local model and adds one selective local reviewer pass for complex research or Skyrim diagnostics. Preserves citations and actual reply model/compute, skips extra review after citation repair, and skips optional reviews for simple or quick questions; it does not switch the laptop's qwen3:1.7b model or independently verify facts."),
 ]
 
 
@@ -85,7 +88,9 @@ def ai_comparison_subject(text: str) -> str:
 
 
 def is_self_knowledge_query(text: str) -> bool:
-    lower = " ".join(text.lower().split())
+    if not isinstance(text, str):
+        return False
+    lower = " ".join(text.lower().replace("’", "'").split())
 
     if is_ai_comparison_query(text):
         return True
@@ -108,34 +113,54 @@ def is_self_knowledge_query(text: str) -> bool:
         "do you have internet",
         "what tools do you have",
         "what tools can you use",
-        "what version are you",
         "what version is your ai",
-        "what has been added",
-        "what's been added",
-        "whats been added",
-        "recognise whats been added",
-        "recognize whats been added",
-        "recognise what's been added",
-        "recognize what's been added",
-        "iterative updates",
-        "update history",
         "your update history",
         "through your updates",
         "through your iterative updates",
     )
     if any(phrase in lower for phrase in direct_phrases):
         return True
+    # Retain unqualified update follow-ups without capturing another project's
+    # named subject, such as "What has been added to Skyrim by this patch?".
+    if (lower.rstrip("?.!") in {"update history", "iterative updates"}
+            or re.search(r"\b(?:what has been added|what's been added|whats been added|"
+                         r"what changed|what has changed)(?:\s+(?:recently|so far))?[?.!]*$", lower)):
+        return True
 
-    self_terms = ("you", "your", "xemai", "your ai", "this ai")
-    capability_terms = (
-        "capability", "capabilities", "missing", "limitation", "limitations",
-        "memory", "web access", "live data", "tools", "updates", "version",
-        "what changed", "what has changed",
+    capability = (
+        r"(?:capabilit(?:y|ies)|missing|limitations?|memory|web access|live data|"
+        r"tools?|updates?|versions?|models?|runtime|compute|identity|"
+        r"what changed|what has changed)"
     )
-    return (
-        any(term in lower for term in self_terms)
-        and any(term in lower for term in capability_terms)
-    )
+    modifier = r"(?:(?:current|actual|underlying|runtime|running|language|ai|app|application|available|supported|installed|saved|latest|recent|persistent|long-term|cross-chat)\s+){0,3}"
+    named = r"(?:xemai|this ai|this assistant)"
+    if any(re.search(pattern, lower) for pattern in (
+        r"\b" + named + r"(?:'s|\s+(?:has|supports|uses|lacks|is running|is using|is))?\s+" + modifier + capability + r"\b",
+        r"\b" + capability + r"\s+(?:(?:does|can|is|are|of|for)\s+)?" + named + r"\b",
+        r"\bmissing\s+(?:from|in)\s+" + named + r"\b",
+        r"\b(?:what changed|what has changed)\s+(?:in|with|about)\s+" + named + r"\b",
+        r"\bwhat\s+(?:can|can't|cannot)\s+" + named + r"\s+do\b",
+    )):
+        return True
+
+    # A polite request containing "you" is not necessarily about the assistant:
+    # "Could you check the SKSE version?" asks about SKSE, not XemAi's version.
+    runtime_nouns = r"(?:versions?|models?|tools?)(?:\s+and\s+" + modifier + r"(?:versions?|models?|tools?))?"
+    return any(re.search(pattern, lower) for pattern in (
+        r"\byour\s+" + modifier + capability + r"\b",
+        r"\b" + capability + r"\s+(?:of|for)\s+(?:you|xemai|this ai|this assistant)\b",
+        r"\b(?:what|which)\s+" + modifier + runtime_nouns + r"\s+"
+        r"(?:are\s+you(?:\s+(?:(?:currently|actually)\s+)?(?:running|using|on|based on)\b|(?=[?!.]|$))|"
+        r"(?:do|can)\s+you\s+(?:(?:currently|actually)\s+)?(?:use|run|have|support|access)\b)",
+        r"\b(?:versions?|models?)\s+(?:that\s+)?you\s+(?:are\s+)?(?:using|running|use|run|have)\b",
+        r"\byou\s+(?:have|lack|support|use|run|are running|are using)\s+" + modifier + capability + r"\b",
+        r"\b(?:what|which)\s+" + modifier + r"model\s+(?:is|was)\s+"
+        r"(?:replying|responding|answering)(?:\s+(?:here|to me|to us|in this chat|right now))?[?.!]*$",
+        r"\b(?:what|which)\s+" + modifier + r"model\s+(?:answers|handles|generates)\s+"
+        r"(?:my|our|these)\s+(?:messages|replies|answers|responses)(?:\s+(?:here|in this chat))?[?.!]*$",
+        r"\b(?:what|which)\s+" + modifier + r"model\s+(?:generated|wrote|produced)\s+"
+        r"(?:this|your|the last|the previous)\s+(?:answer|reply|response)(?:\s+(?:here|in this chat))?[?.!]*$",
+    ))
 
 
 def looks_like_stale_self_description(text: str) -> bool:
@@ -303,6 +328,14 @@ IMPORTANT CORRECTIONS
   research and tools stay on the always-on host while model inference can run
   on a stronger PC over private Tailscale HTTPS. If that worker is unavailable,
   model inference falls back to the host's local Ollama.
+- Complex questions can use optional bounded PC research/Skyrim/reviewer
+  passes over supplied evidence. On the laptop, compact evidence and relevant
+  context support the already-selected local model, with at most one optional
+  final review for eligible complex questions; no laptop preparation pass runs.
+  Citation correction consumes that laptop extra pass. Quick/simple questions
+  skip automatic review, and optional passes can be disabled. These passes have
+  no tools or independent verification and do not change model weights or switch
+  the laptop to a larger model. Failed or late reviews preserve the original reply.
 - The runtime compute/model lines above are authoritative for where the current
   process intends to generate.
 - XemAi DOES have calculator and current-time tools.

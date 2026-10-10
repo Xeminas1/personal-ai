@@ -1,5 +1,67 @@
 # Personal AI v0.1
 
+## v0.9.18 laptop answering and review
+
+Ordinary answers on the always-on host now use a shorter system prompt that
+keeps the evidence, uncertainty, privacy and tool rules together with bounded
+excerpts from relevant memories and preferences. Questions about XemAi's own
+model, version and capabilities retain the complete authoritative runtime
+prompt. Paired-PC answering retains its existing prompt; if the PC fails during
+a turn, the local fallback receives the compact prompt without losing the
+current question, chat history or completed tool results. Memory extraction
+keeps its separate instructions.
+
+A small deterministic focus note highlights relevant supplied source excerpts
+and Skyrim file observations, preserving source IDs, fetched-page versus
+snippet provenance, and available filenames, versions and line evidence.
+Earlier assistant claims are not retrieved as facts. Ambiguous rankings use a
+stated criterion rather than an invented universal winner. Skyrim diagnosis
+distinguishes observations from possible causes, retains supplied runtime
+values and asks for missing compatibility information only when needed. These
+notes focus the existing model; they do not verify claims independently.
+Skyrim/SKSE version questions are no longer mistaken for XemAi runtime questions.
+
+Complex research, analysis and Skyrim troubleshooting can receive **one local
+review** using the already-selected host model, including `qwen3:1.7b` while
+the PC is off. There is no laptop preparation agent, model switch, download or
+tool use in that review. Progress shows **Laptop reviewer checking answer**;
+an accepted revision is saved with **Specialist help: Reviewer** and its actual
+host model. Simple questions, “quick answer”, “no agents”, runtime self-queries
+and application-generated answers skip this extra pass. If source-reference
+repair already added a model call, the laptop reviewer skips it. PC assistance
+and a subsequent local review share the existing two-pass limit if fallback
+occurs mid-turn. Failed PC preparation does not prevent an eligible local review.
+Automatic local review also skips a turn whose answering/retries have already
+taken over fifteen seconds, including any tool waits during answering. This
+avoids another optional wait; it is not a processor-speed measurement. Explicit
+“deep analysis”, “use specialists” or deep configuration can still request it.
+
+The local review requests a nominal ten-second budget, capped at twelve seconds,
+with thinking disabled, a 384-token output limit and a 3,500-byte prompt limit.
+Oversized question/draft pairs skip review intact; supporting evidence may be
+shortened with an omission count. Failed, late, incomplete or invalid results
+preserve the original draft and its model attribution. Revisions cannot invent
+source references or drop valid existing references; this checks membership
+and retention, not whether a passage proves a claim. Socket timeouts apply to
+inactivity rather than total wall time and do not forcibly cancel Ollama
+inference. Late results are discarded; these settings are not a guaranteed
+total reply-time limit. Memory extraction or subsequent chat requests may still
+queue behind provider work after a timed-out request.
+
+Defaults are `laptop_answer_guidance=true`, `laptop_review_enabled=true`,
+`laptop_review_mode="auto"` and `laptop_review_budget_seconds=10`. Setting
+`laptop_review_mode="off"` or `laptop_review_enabled=false` disables local
+reviews; global specialist/reviewer switches also apply. `"deep"` explicitly
+enables additional local review for ordinary non-quick questions. Settings,
+shared chats, memories, attachments and logs are preserved. No larger model
+is automatically installed based on RAM: 16 GB may accommodate 4B, but its
+speed still depends on the laptop processor and needs a real benchmark.
+
+Protocol and chat-flow tests cover review selection, source protection, local
+fallback, memory isolation and saved model/role metadata. The actual updater
+is tested on a temporary old installation before publication. Live answer
+quality and speed on the user's laptop still need evaluation after installation.
+
 ## v0.9.17 specialist assistance
 
 Complex research and Skyrim troubleshooting questions can now receive help

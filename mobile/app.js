@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.9.17";
+const FRONTEND_VERSION = "0.9.18";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {

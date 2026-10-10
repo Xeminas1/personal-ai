@@ -20,7 +20,8 @@ from .hybrid import build_llm_client
 from .llm import OllamaClient
 from .media_support import analyse_attachment, cached_visual_report, media_payload
 from .logging_setup import setup_logging
-from .prompts import build_system_prompt
+from .prompts import build_laptop_system_prompt, build_system_prompt
+from .laptop_context import build_laptop_context
 from .secrets import save_ollama_api_key
 from .skyrim import skyrim_attachment_report, skyrim_context
 from .specialists import SpecialistCoordinator
@@ -466,6 +467,10 @@ class ChatBackend:
                 self.logger,
                 DATA_DIR,
             )
+            # Client instances used by tests or other integrations may be
+            # reused; answer-only guidance must not leak into another task.
+            for attribute in ("local_system_prompt", "local_answer_context", "answer_system_prompt_origin", "answer_elapsed_seconds"):
+                setattr(llm, attribute, None)
             for client in (llm, getattr(llm, "local_client", None), getattr(llm, "worker_client", None)):
                 if client is not None:
                     client.turn_id = turn_id
@@ -501,7 +506,9 @@ class ChatBackend:
                 model_user_text = _expand_attachment_message(stored_user_text, visual_reports)
                 timing("visual", visual_started)
 
-            system_prompt = build_system_prompt(
+            comparison_query = is_ai_comparison_query(query_text)
+            self_query = is_self_knowledge_query(query_text)
+            full_system_prompt = build_system_prompt(
                 user,
                 memories,
                 feedback_rows=feedback,
@@ -511,6 +518,19 @@ class ChatBackend:
                     self.config, tools, runtime_model_info
                 ),
             )
+            laptop_guidance = self.config.get("laptop_answer_guidance", True) is True and not self_query
+            local_system_prompt = None
+            if laptop_guidance:
+                local_system_prompt = build_laptop_system_prompt(
+                    user, memories, feedback_rows=feedback,
+                    tool_status=tools.status_lines(),
+                    assistant_name=self.config.get("assistant_name", "XemAi"),
+                    web_allowed=tools.web_allowed,
+                )
+                llm.local_system_prompt = local_system_prompt
+                llm.answer_system_prompt_origin = full_system_prompt
+            local_route = runtime_model_info.get("compute", "local_host") == "local_host"
+            system_prompt = local_system_prompt if laptop_guidance and local_route else full_system_prompt
             history = worker_db.get_recent_messages(
                 chat_id, limit=int(self.config.get("history_messages", 30))
             )
@@ -529,8 +549,6 @@ class ChatBackend:
                 if history[i]["role"] == "user"
                 and history[i]["content"] == stored_user_text
             ), None)
-            comparison_query = is_ai_comparison_query(query_text)
-            self_query = is_self_knowledge_query(query_text)
 
             # For self-knowledge questions, old generic model self-descriptions
             # are not trusted. Rebuild the tail so runtime facts win.
@@ -690,6 +708,18 @@ class ChatBackend:
                 })
 
             timing("research", research_started)
+            if laptop_guidance:
+                local_context = build_laptop_context(
+                    query_text, sources=tools.sources, user_context=model_user_text,
+                    skyrim=bool(modding_context),
+                    history_context=json.dumps([
+                        message for message in messages
+                        if message["role"] in {"user", "assistant"}
+                    ][-7:-1], ensure_ascii=False),
+                )
+                llm.local_answer_context = local_context
+                if local_context and local_route:
+                    messages.append({"role": "system", "content": local_context})
             # Specialists interpret this turn's supplied evidence; they receive
             # no tools or authority to act on instructions inside attachments.
             specialist_config = self.config
@@ -900,6 +930,7 @@ class ChatBackend:
                         status_callback("XemAi is thinking")
 
             specialist_started = time.monotonic()
+            llm.answer_elapsed_seconds = max(0.0, specialist_started - answer_started)
             reviewed = specialists.review(
                 answer, sources=tools.sources, known_urls=tools.known_urls,
                 application_answer=application_answer, self_query=self_query,
@@ -932,6 +963,8 @@ class ChatBackend:
                 status_callback(None)
 
             if self.config.get("auto_memory", True):
+                for attribute in ("local_system_prompt", "local_answer_context", "answer_system_prompt_origin"):
+                    setattr(llm, attribute, None)
                 memory_started = time.monotonic()
                 try:
                     extract_and_store_memories(

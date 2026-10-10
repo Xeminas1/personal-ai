@@ -56,9 +56,9 @@ _EVENTS = {
     "Hybrid worker unavailable; using local fallback", "Hybrid local model discovery failed",
     "Hybrid worker generation failed; falling back locally", "Ollama runtime model discovery",
     "Mobile server not started", "Hybrid worker not started",
-    "Chat timing", "LLM timing", "Worker timing", "Hybrid attempt",
+    "Chat timing", "LLM timing", "Worker timing", "Hybrid attempt", "Local review",
 }
-_TIMING_EVENTS = {"Chat timing", "LLM timing", "Worker timing", "Hybrid attempt"}
+_TIMING_EVENTS = {"Chat timing", "LLM timing", "Worker timing", "Hybrid attempt", "Local review"}
 _NETWORK_ERRORS = {
     "none", "http", "tls_verification", "tls", "dns", "timeout",
     "refused", "reset", "aborted", "unreachable", "connection", "model_error",
@@ -303,7 +303,7 @@ def structured_log(text: str) -> list[dict]:
                         entry[key] = int(value)
                     elif key == "turn_id" and (value == "none" or re.fullmatch(r"[a-f0-9]{16}", value)):
                         entry[key] = value
-                    elif event == "Hybrid attempt" and key == "stage" and value in {"worker_health", "worker_chat", "specialist", "teacher_review"}:
+                    elif event == "Hybrid attempt" and key == "stage" and value in {"worker_health", "worker_chat", "specialist", "teacher_review", "local_review"}:
                         entry[key] = value
                     elif event == "Hybrid attempt" and key == "error_category" and value in _NETWORK_ERRORS:
                         entry[key] = value

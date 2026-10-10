@@ -1,4 +1,5 @@
 """Exercise source follow-ups through real chat history and the research pipeline."""
+import json
 import logging
 import tempfile
 import unittest
@@ -89,8 +90,12 @@ class ChatResearchTests(unittest.TestCase):
         self.assertNotIn("assistant-invented-vessel", query)
         self.assertNotIn("attachment-private-sentinel", query)
         self.assertNotIn(question, query)
-        self.assertEqual(len(self.model.requests), 1)
+        # A source follow-up now qualifies for one local review; the primary
+        # answer must still preserve the user's original request and evidence.
+        self.assertEqual(len(self.model.requests), 2)
         messages = self.model.requests[0]["messages"]
+        review = json.loads(self.model.requests[1]["messages"][1]["content"])
+        self.assertEqual(review["question"], question)
         self.assertEqual([m["content"] for m in messages if m["role"] == "user"][-1], question)
         evidence = [m["content"] for m in messages if m["role"] == "system" and m["content"].startswith("EVIDENCE RESEARCH RESULT")]
         self.assertEqual(len(evidence), 1)

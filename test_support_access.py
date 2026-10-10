@@ -130,6 +130,10 @@ class SupportAccessTests(unittest.TestCase):
             f"discovery_ms={sentinel} queue_ms=NaN generation_ms=-500 success={sentinel}\n"
             "2026-10-09 10:30:03,123 | INFO | personal_ai | Chat timing | "
             f"phase={sentinel} elapsed_ms=inf error=RuntimeError('{sentinel} elapsed_ms=999')\n"
+            "2026-10-09 10:30:04,123 | INFO | personal_ai | Local review | "
+            f"elapsed_ms=10000 success=False context={sentinel} draft={sentinel}\n"
+            "2026-10-09 10:30:05,123 | INFO | personal_ai | Hybrid attempt | "
+            f"stage=local_review elapsed_ms=10000 success=False raw_error={sentinel}\n"
         )
         self.assertEqual(events[0]["elapsed_ms"], 180000)
         self.assertEqual(events[0]["load_ms"], -1)
@@ -139,6 +143,9 @@ class SupportAccessTests(unittest.TestCase):
             self.assertNotIn(key, events[1])
         self.assertNotIn("elapsed_ms", events[2])
         self.assertNotIn("phase", events[2])
+        self.assertEqual(events[3]["elapsed_ms"], 10000)
+        self.assertFalse(events[3]["success"])
+        self.assertEqual(events[4]["stage"], "local_review")
         self.assertNotIn(sentinel, json.dumps(events))
 
     def test_worker_attempt_export_keeps_safe_failure_codes_and_turn_id(self):

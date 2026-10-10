@@ -315,6 +315,49 @@ class HybridOllamaClient(OllamaClient):
             self._log_attempt("specialist", started, error)
             return None
 
+    def local_review(
+        self, question: str, draft: str, context: str, *, timeout: float = 10.0,
+    ) -> dict[str, Any] | None:
+        """Delegate to the selected fallback without probing or changing routes."""
+        if self.active_client is not self.local_client or self.route_info.get("compute") != "local_host":
+            return None
+        local_client = self.local_client
+        started = time.monotonic()
+        try:
+            result = local_client.local_review(question, draft, context, timeout=timeout)
+            self._log_attempt("local_review", started, None if result is not None else RuntimeError())
+            return result
+        except Exception as error:
+            self._log_attempt("local_review", started, error)
+            return None
+
+    def _local_answer_messages(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Adapt only the bound answer prompt; leave extraction/history intact."""
+        origin = getattr(self, "answer_system_prompt_origin", None)
+        compact = getattr(self, "local_system_prompt", None)
+        context = getattr(self, "local_answer_context", None)
+        compact = compact if isinstance(compact, str) and compact.strip() else None
+        context = context if isinstance(context, str) and context.strip() else None
+        if (
+            not isinstance(origin, str) or not origin.strip()
+            or not messages or not isinstance(messages[0], dict)
+            or messages[0].get("role") != "system"
+            or (
+                messages[0].get("content") != origin
+                and (compact is None or messages[0].get("content") != compact)
+            )
+        ):
+            return messages
+        adapted = messages
+        if compact is not None and messages[0].get("content") != compact:
+            adapted = [{**messages[0], "content": compact}, *messages[1:]]
+        if context is not None and not any(
+            isinstance(message, dict) and message.get("role") == "system" and message.get("content") == context
+            for message in adapted
+        ):
+            adapted = [*adapted, {"role": "system", "content": context}]
+        return adapted
+
     def chat_raw(
         self,
         messages: list[dict[str, Any]],
@@ -348,7 +391,7 @@ class HybridOllamaClient(OllamaClient):
                 self._local_info()
 
         response = self.local_client.chat_raw(
-            messages,
+            self._local_answer_messages(messages),
             json_mode=json_mode,
             tools=tools,
         )

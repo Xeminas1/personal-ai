@@ -90,10 +90,23 @@ def build_capability_status(
         (
             "Specialist assistance: optional research, Skyrim and reviewer model passes for complex questions "
             "on the selected paired PC, at most two extra passes; no tools or independent authority, "
-            "no automatic specialist work on the laptop fallback; source-reference checks do not prove factual support"
+            "source-reference checks do not prove factual support"
             if config.get("specialists_enabled", True)
             and str(config.get("specialist_mode", "auto")).strip().lower() != "off"
             else "Specialist assistance: disabled"
+        ),
+        (
+            "Laptop review: enabled selectively for complex questions, at most one extra pass "
+            "on the already-selected local model; nominal default budget 10 seconds, maximum 12; "
+            "automatic review skips an answer that has already taken over 15 seconds; "
+            "no new model download, tools or independent verification"
+            if config.get("specialists_enabled", True) is True
+            and str(config.get("specialist_mode", "auto")).strip().lower() in {"auto", "deep"}
+            and config.get("specialist_reviewer_enabled", True) is True
+            and config.get("laptop_review_enabled", True) is True
+            and str(config.get("laptop_review_mode", "auto")).strip().lower() in {"auto", "deep"}
+            and str(config.get("teacher_review_mode", "auto")).strip().lower() != "legacy"
+            else "Laptop review: disabled"
         ),
         "Shared Android/mobile web client: enabled through the local XemAi mobile server",
         "PC and phone share the same chats, memories, feedback and database",
