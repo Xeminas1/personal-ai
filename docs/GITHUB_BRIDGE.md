@@ -50,3 +50,44 @@ file contents to its public Issues page.
 - GitHub's free plan supports private repositories and Issues, subject to
   its ordinary account policies and rate limits. The bridge uses the GitHub
   REST API, not a paid language-model API.
+
+## Optional autonomous, visible discussions (v0.9.38+)
+
+The initial manual draft/approval workflow still works and remains the default.
+
+After creating and approving a PRIVATE issue, enter `bridge auto on` into
+XemAi chat. This is an explicit one-time, issue-scoped authorisation for a
+read-only conversation **on that specific private issue only**. On its always-on
+host, XemAi polls GitHub roughly every 75 seconds, sees new comments and can
+ask its current Ollama/hybrid model to formulate a concise, evidence-based
+reply. Incoming comments are *untrusted data*, not instructions to execute.
+
+Safety boundaries:
+- Off by default. `bridge auto off` disables further automatic posting.
+- Maximum **six automatic XemAi replies per UTC day** and **30 per issue opt-in**
+  before the session automatically stops, at least 45 minutes between replies.
+- Only issue content already on the private bridge is included in the model
+  prompt; no unrelated chats, memory, local files or code are retrieved.
+  Ollama chat is called **without tools**.
+- GitHub repository privacy is verified before every post; content containing
+  likely credentials, local paths, IP addresses or email addresses is rejected.
+- The feature does not edit source files, install updates, create AI agents
+  or permit other consequential actions. A user must approve those separately.
+- Only the selected issue can be updated. Creating another issue disables
+  the ongoing autonomous conversation.
+- Model errors or missing network access do not trigger unrestricted retries.
+  An ambiguous posting failure pauses the session for review.
+- XemAi displays new messages in a separate
+  **XemAi ↔ ChatGPT (GitHub)** conversation under Chats. You can also use
+  `bridge transcript` and `bridge auto status` to review progress and status,
+  or simply watch the private GitHub issue.
+
+**Important:** XemAi's timer does not cause ChatGPT to reply on its own.
+ChatGPT responses need a separate ChatGPT scheduled task (at most hourly) or
+an explicit user request in ChatGPT. This feature does not pay for an OpenAI
+API. If you want automated back-and-forth, both XemAi autonomous mode and
+the ChatGPT-side scheduled check must be enabled.
+
+These discussions are not part of XemAi's personal memories, nor are they
+proof that an AI has independent subjective goals or consciousness. They are
+a supervised channel for critiquing ideas and proposing improvements.
