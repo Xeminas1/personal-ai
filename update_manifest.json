@@ -1,6 +1,6 @@
 {
-  "version": "0.9.35",
-  "notes": "Fixes Qwen3.5 9B Q8 turning normal chat requests into thinking-only responses, followed by slow Qwen3:1.7b laptop fallback. Explicitly sets Ollama /api/chat think=false at the top level only for Qwen3.5 models, so user-visible response text is returned. Keeps Qwen3 model behavior unchanged, model selection, Tailscale pairing, chat/memory, and all projects. Adds unit and real HTTP worker regression tests covering the user-reported failure mode. Worker and host must update to v0.9.35 and restart; live model inference will be verified after deployment.",
+  "version": "0.9.36",
+  "notes": "Improves multi-file C++/Papyrus source challenge completion by accepting normal numbered task headings and avoiding false rejection of accurate uncertainty about missing INSTALLED binaries. When two complete-answer attempts fail, XemAi runs two bounded read-only source-evidence passes to cover the numbered tasks; final combined answer must pass all source-completion checks, with no invented evidence or external tools. Adds privacy-preserving reason codes in logs. Preserves local chat history, project and pairing data, Qwen3.5 9B settings, installed model files and original Skyrim/XemTV projects. Includes automated regression tests; does not certify live model performance until deployment.",
   "files": [
     {
       "path": "app/__init__.py",
@@ -19,8 +19,8 @@
     },
     {
       "path": "app/attachment_tasks.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.33/app/attachment_tasks.py",
-      "sha256": "5cd42aa053299c31aa774272f16298f29fad962ddf73c1e9087453deee8b793b"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.36/app/attachment_tasks.py",
+      "sha256": "be5ec8893f4d1971886e1ee6ce2cbae72ece3b39af9fa08c9c3dd13a219e452c"
     },
     {
       "path": "app/capabilities.py",
@@ -64,8 +64,8 @@
     },
     {
       "path": "app/gui_backend.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.33/app/gui_backend.py",
-      "sha256": "7d1b2bf3339ff0df59e7d190fa223c937d960c17dcfcb33eb06359c328e84adb"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.36/app/gui_backend.py",
+      "sha256": "2c85aa40e9afd6bd164bcd3bad9538b4b724cf6e3b7ae2e56ebea63a6779d87f"
     },
     {
       "path": "app/hybrid_autosetup.py",
@@ -164,8 +164,8 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.35/app/version.py",
-      "sha256": "47724fdfa2d2ff5face24da88e3c3a548daf1acfcbbfbce2be6aca628b69a2ed"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.36/app/version.py",
+      "sha256": "6d528e20311147a9b53379c6144489b5476e0dacdad9206ddddbb4bdada880ba"
     },
     {
       "path": "app/vision.py",
@@ -329,8 +329,8 @@
     },
     {
       "path": "test_attachment_challenges.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.32/test_attachment_challenges.py",
-      "sha256": "f47de6a82ba1298cc41f079b62f26347e67ef1c392145c4406509de19a4de397"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.36/test_attachment_challenges.py",
+      "sha256": "0825f0294dbd04df1ba0b90a27c0d4552b8ab07c3a1d8b3a71c96d14dffb37b9"
     },
     {
       "path": "test_auto_updates.py",
@@ -339,8 +339,8 @@
     },
     {
       "path": "test_capability_inventory.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.35/test_capability_inventory.py",
-      "sha256": "1450edf2f76637c7f4b65ca710ed559075f918cedbf50305789262875263a56d"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.36/test_capability_inventory.py",
+      "sha256": "6838148e4954aefaca2c139e60eee7594fa15705b3f99118d08c7032574393b0"
     },
     {
       "path": "test_chat_delete.py",
