@@ -76,8 +76,7 @@ def _safe_output(text: str) -> bool:
 def _mirror(data_dir: Path, state: dict, updates: list[dict]) -> None:
     """Write a visible, separate XemAi chat. No automatic personal memory."""
     from .database import Database
-    from .config import DATA_DIR
-    db = Database(Path(data_dir) / "personal_ai.db")
+        db = Database(Path(data_dir) / "personal_ai.db")
     try:
         user = db.get_user()
         if user is None:
@@ -264,7 +263,7 @@ def _tick(data_dir, *, client=None, llm_factory=None, logger=None, now=None):
         from .config import load_config
         from .hybrid import build_llm_client
         from .config import DATA_DIR
-        from .logging_utils import setup_logging
+        from .logging_setup import setup_logging
         from .config import LOG_DIR
         config = load_config()
         llm_factory = lambda: build_llm_client(config, logger or setup_logging(LOG_DIR), data_dir)
