@@ -15,6 +15,7 @@ on:
       - "test_watch_intelligence.py"
       - "test_capability_inventory.py"
       - "test_dialogue_mission.py"
+      - "test_bridge_conversation_context.py"
       - "test_self_knowledge.py"
       - "test_media_support.py"
       - "test_vision_worker.py"
@@ -75,7 +76,9 @@ jobs:
       - name: Test opt-in AI Technology Watch
         run: python test_ai_watch.py
       - name: Test development mission and hypothetical dialogue
-        run: python test_dialogue_mission.py
+        run: |
+          python test_dialogue_mission.py
+          python test_bridge_conversation_context.py
       - name: Test authoritative inventory and self audit regression
         run: python test_capability_inventory.py
       - name: Test explicit-approval private GitHub bridge
