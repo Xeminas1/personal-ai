@@ -1,0 +1,24 @@
+name: XemAi Developer Mode smoke tests
+on:
+  pull_request:
+    paths:
+      - "app/developer_projects.py"
+      - "app/tools.py"
+      - "app/config.py"
+      - "app/capabilities.py"
+      - "developer_setup.py"
+      - "test_developer_projects.py"
+      - ".github/workflows/developer-mode-tests.yml"
+  workflow_dispatch:
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile updated Python modules
+        run: python -m compileall -q app developer_setup.py test_developer_projects.py
+      - name: Run read-only developer tool tests
+        run: python test_developer_projects.py
