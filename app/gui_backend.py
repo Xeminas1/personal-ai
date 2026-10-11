@@ -36,6 +36,10 @@ from .self_knowledge import (
     build_ai_comparison_fallback,
     build_authoritative_self_context,
     build_self_knowledge_fallback,
+    build_governance_fallback,
+    governance_answer_needs_retry,
+    governance_retry_instruction,
+    governance_topic,
     comparison_answer_needs_retry,
     is_ai_comparison_query,
     is_self_knowledge_query,
@@ -924,7 +928,11 @@ class ChatBackend:
                 invalid_self_answer = (
                     comparison_answer_needs_retry(query_text, answer)
                     if comparison_query
-                    else looks_like_stale_self_description(answer)
+                    else (
+                        governance_answer_needs_retry(query_text, answer)
+                        if governance_topic(query_text)
+                        else looks_like_stale_self_description(answer)
+                    )
                 )
 
             if invalid_self_answer:
@@ -933,9 +941,10 @@ class ChatBackend:
                     chat_id,
                 )
                 retry_messages = list(messages)
-                retry_messages.append({
-                    "role": "system",
-                    "content": (
+                if governance_topic(query_text):
+                    retry_instruction = governance_retry_instruction(query_text)
+                else:
+                    retry_instruction = (
                         "RESPONSE VALIDATION FAILURE: The previous draft did not "
                         "meet XemAi's self-knowledge/comparison rules. Regenerate "
                         "the answer now. State the actual opinion or comparison "
@@ -950,7 +959,9 @@ class ChatBackend:
                         "application, and describe memory/local-control/tooling "
                         "advantages as design advantages rather than proof of "
                         "superior performance."
-                    ),
+                    )
+                retry_messages.append({
+                    "role": "system", "content": retry_instruction,
                 })
                 retry_started = time.monotonic()
                 answer = llm.agent_chat(
@@ -963,7 +974,11 @@ class ChatBackend:
                 second_invalid = (
                     comparison_answer_needs_retry(query_text, answer)
                     if comparison_query
-                    else looks_like_stale_self_description(answer)
+                    else (
+                        governance_answer_needs_retry(query_text, answer)
+                        if governance_topic(query_text)
+                        else looks_like_stale_self_description(answer)
+                    )
                 )
                 if second_invalid:
                     application_answer = True
@@ -975,6 +990,8 @@ class ChatBackend:
                         answer = build_ai_comparison_fallback(
                             query_text, self.config, runtime_model_info
                         )
+                    elif governance_topic(query_text):
+                        answer = build_governance_fallback(query_text, self.config)
                     else:
                         answer = build_self_knowledge_fallback(
                             query_text,

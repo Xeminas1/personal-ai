@@ -383,7 +383,7 @@ def _validated_attachment_refs(chat_id: int, items) -> list[dict]:
             raise ValueError("Attached file is too large.")
         validated.append({
             "name": Path(str(item.get("name", target.name))).name[:160],
-            "path": str(target.relative_to(DATA_DIR)).replace("\\", "/"),
+            "path": str(target.relative_to(DATA_DIR.resolve())).replace("\\", "/"),
             "mime": str(item.get("mime", "application/octet-stream"))[:120],
             "size": size,
         })
@@ -883,7 +883,7 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
 
                 attachment = {
                     "name": original_name[:160],
-                    "path": str(target.relative_to(DATA_DIR)).replace("\\", "/"),
+                    "path": str(target.relative_to(DATA_DIR.resolve())).replace("\\", "/"),
                     "mime": str(body.get("mime", "application/octet-stream"))[:120],
                     "size": len(raw),
                 }
