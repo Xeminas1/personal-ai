@@ -662,7 +662,7 @@ class ChatBackend:
                     # marker somehow appears in this conversation history.
                     own_prefix = f"attachments/chat_{int(chat_id)}/"
                     if any(
-                        not str(ref.get("path", "")).replace("\\\\", "/").startswith(own_prefix)
+                        not str(ref.get("path", "")).replace("\\", "/").startswith(own_prefix)
                         for ref in prior_refs
                     ):
                         continue
@@ -673,8 +673,8 @@ class ChatBackend:
                     ):
                         model_user_text = (
                             query_text
-                            + "\\n\\nPREVIOUSLY UPLOADED SOURCE FOR THIS CHAT "
-                            "(re-read from original attachment):\\n"
+                            + "\n\nPREVIOUSLY UPLOADED SOURCE FOR THIS CHAT "
+                            "(re-read from original attachment):\n"
                             + previous_payload
                         )
                         attached_code_task = True
