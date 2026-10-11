@@ -202,7 +202,7 @@ class DialogueTests(unittest.TestCase):
             bridge_chat = db.create_chat(user["id"], "XemAi ↔ ChatGPT (GitHub)")
             db.add_assistant_message(
                 bridge_chat["id"],
-                "[XemAi — GitHub bridge, untrusted external text]\\n"
+                "[XemAi — GitHub bridge, untrusted external text]\n"
                 "We discussed source versions and benchmark evidence. "
                 "PRIVATE_BRIDGE_MARKER_SHOULD_NOT_APPEAR.",
                 compute_source="application",
