@@ -243,6 +243,15 @@ class DeveloperProjects:
                 file_path = current_path / name
                 if file_path.is_symlink() or _blocked_name(name) or not self._is_text(file_path):
                     continue
+                # Broad CODE questions should not prefer matching markdown
+                # specifications over the source files the user asked to inspect.
+                # Explicit filenames can still select Markdown when requested.
+                if not wanted and file_path.suffix.lower() not in {
+                    ".py", ".pyw", ".kt", ".kts", ".java", ".cs",
+                    ".js", ".ts", ".tsx", ".jsx", ".c", ".cpp",
+                    ".h", ".hpp", ".go", ".rs", ".swift",
+                }:
+                    continue
                 scanned += 1
                 if scanned > MAX_SCAN_FILES:
                     break
