@@ -1,3 +1,32 @@
+## v0.9.26 — Opt-in AI Technology Watch
+
+The new AI Technology Watch checks **five official public news/release feeds**
+(OpenAI, Google DeepMind, Hugging Face, Ollama and llama.cpp), tracks which
+announcements are new, and records potential improvements to XemAi's coding,
+vision, tool reliability, reasoning and local inference as **untested leads**.
+A dedicated `AI Technology Watch` chat is created when new findings arrive.
+The on-demand Self-Improvement Agent can also use these saved source-linked
+leads during future audits. Vendor announcements are not independently
+verified proof of benchmark superiority or compatible local model support.
+
+**OFF BY DEFAULT.** No recurring network requests happen until the user types
+the exact chat command `enable AI technology watch`. The default cadence is
+once every seven days while XemAi's always-on laptop server is running.
+`disable AI technology watch` stops future checks. Other commands:
+`check AI technology watch now` and `show AI technology watch report`.
+Read-only JSON status is available at `http://127.0.0.1:8765/api/ai-watch`.
+The monitor uses bounded HTTPS reads of fixed official feeds; it requires no
+commercial API key and cannot access arbitrary URLs or the user's secrets.
+Its fetches can fail independently, and a failure does not become evidence
+that an AI vendor stopped releasing updates.
+
+The watcher produces deterministic improvement/benchmark leads. The
+existing model-based on-demand Self-Improvement Agent can evaluate them
+when asked; background polling does **not** launch indefinite Qwen
+inference, edit code, install models, retrain weights, create agents,
+or affect XemTV Builds 114 or Codex's unfinished 115. Proposals still
+require user approval before consequential actions.
+
 ## v0.9.25 — Opt-in supervised agents and self-improvement audits
 
 This update introduces a read-only, explicitly requested *agent team*. Use
