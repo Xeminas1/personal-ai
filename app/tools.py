@@ -591,7 +591,7 @@ class ToolRegistry:
             "workspace_read: enabled",
             "workspace_write: enabled",
             "feedback learning: enabled",
-        ] + (["developer_projects/list/read/search: configured, read-only local projects"]
+        ] + (["developer_projects/list/read/search/trace: configured, read-only local projects"]
              if self.developer.enabled else [])
 
     def definitions(self) -> list[dict[str, Any]]:
@@ -698,6 +698,8 @@ class ToolRegistry:
                   "max_chars": {"type": "integer"}}, ["project", "path"]),
                 ("dev_search", "Search case-insensitively inside approved project source files, read-only.",
                  {"project": {"type": "string"}, "term": {"type": "string"}}, ["project", "term"]),
+                ("dev_trace", "Find read-only exact identifier references to a class or function in approved project source code. Returns file paths and line excerpts; references do not prove runtime calls.",
+                 {"project": {"type": "string"}, "symbol": {"type": "string"}}, ["project", "symbol"]),
             ]:
                 tools.append({"type": "function", "function": {
                     "name": name, "description": description,
@@ -811,6 +813,10 @@ class ToolRegistry:
             elif name == "dev_search" and self.developer.enabled:
                 result = self.developer.search(
                     str(args.get("project", "")), str(args.get("term", ""))
+                )
+            elif name == "dev_trace" and self.developer.enabled:
+                result = self.developer.trace_symbol(
+                    str(args.get("project", "")), str(args.get("symbol", ""))
                 )
             else:
                 raise ToolError(f"Unknown tool: {name}")
