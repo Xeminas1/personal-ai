@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>XemAi</title>
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="stylesheet" href="/styles.css?v=0.9.18">
+  <link rel="stylesheet" href="/styles.css?v=0.9.31">
 </head>
 <body>
   <div id="app">
@@ -44,6 +44,14 @@
       <section id="messages" class="messages"></section>
       <div id="thinking" class="thinking hidden" role="status" aria-live="polite"><span class="thinking-label">XemAi is thinking</span><span class="thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
 
+      <div id="fileDropOverlay" class="file-drop-overlay hidden" role="status" aria-live="polite" aria-hidden="true">
+        <div class="file-drop-card">
+          <span class="file-drop-symbol" aria-hidden="true">⇩</span>
+          <strong>Drop files to attach</strong>
+          <span>Images, videos and source code · up to 3 files</span>
+          <small>Files appear in the message composer before sending</small>
+        </div>
+      </div>
       <div id="attachmentTray" class="attachment-tray hidden"></div>
       <input id="galleryInput" type="file" accept="image/*" multiple hidden>
       <input id="cameraPhotoInput" type="file" accept="image/*" capture="environment" hidden>
@@ -87,8 +95,8 @@
     <div id="modalActions" class="modal-actions"></div>
   </dialog>
 
-  <script src="/media.js?v=0.9.18" defer></script>
-  <script src="/notifications.js?v=0.9.18" defer></script>
-  <script src="/app.js?v=0.9.18" defer></script>
+  <script src="/media.js?v=0.9.31" defer></script>
+  <script src="/notifications.js?v=0.9.31" defer></script>
+  <script src="/app.js?v=0.9.31" defer></script>
 </body>
 </html>
