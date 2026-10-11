@@ -1,3 +1,31 @@
+## v0.9.27 — XemAi's development mission and responsive hypotheticals
+
+Addresses real user testing in which Qwen3 8B denied that XemAi aims to
+surpass ChatGPT, repeatedly ignored clearly hypothetical future-power
+scenarios, and replied to a proposed AI technology-monitoring agent with
+an unrelated explanation of XemAi's persistent memory and unchanged weights.
+
+XemAi's prompt constitution and runtime self-knowledge now explicitly
+describe the **user-set, aspirational, benchmark-driven mission** to improve
+beyond ChatGPT where the user values it: coding, truthfulness, research,
+screenshot analysis, reasoning, memory and continuity. It must never
+mistake this development objective for a personal competitive desire or
+claim superiority without controlled comparative results.
+
+A narrowly scoped dialogue intent guard recognises explicit hypothetical
+questions and new-agent proposals. Hypothetical scenarios should be answered
+as conditional reasoning, rather than dismissed with present-day capability
+limits. Agent suggestions are evaluated as ideas, not instructions to create
+agents or as questions about model weights. The pre-existing self-report
+validator no longer misclassifies “an agent ... learns ... reports back to
+you” as “do you learn from every message?” Off-topic answers get one
+focused retry with a limited grounded fallback. Regression tests reproduce
+the actual failed exchanges on Windows and Linux.
+
+This update does **not** train the Qwen model, grant autonomy, automatically
+create agents, enable the optional AI Technology Watch, edit XemTV,
+or affect Builds 114 and unfinished 115.
+
 ## v0.9.26 — Opt-in AI Technology Watch
 
 The new AI Technology Watch checks **five official public news/release feeds**
