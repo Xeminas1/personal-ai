@@ -203,3 +203,32 @@ fabricating subjective pleasure or denying the user's actual question.
 
 New offline regression tests exercise the reported misinterpretation and
 bound the inference route to host metadata and the user question.
+
+
+## Natural discussion assessments, without copying private comments (v0.9.44)
+
+When the owner asks XemAi how its private ChatGPT collaboration is going,
+XemAi is now prompted to **assess the discussion first** rather than recite
+bridge limits and message counts. It can use a strictly limited local digest
+of topics drawn from the last 16 mirrored GitHub-bridge chat entries.
+The host extracts only fixed category labels such as source-version claims,
+missing-evidence reasoning and benchmarks. **No original GitHub comments,
+quotes, links, identifiers, paths or private project text** are injected into
+the ordinary chat/model prompt through this feature. It makes no network
+request or use of new tools/agents, and only operates while the existing
+private bridge is enabled and its local mirror is identifiable.
+
+The labels are clues about conversation *subjects*, not evidence of which
+side was correct, consensus, actual model learning or code test success.
+XemAi must qualify such claims. It also checks that a draft responding to
+a request for its opinion offers a substantive evaluation, rather than
+mere operational details. Failed drafts have a bounded retry and a
+cautious fallback. With no usable local mirror, XemAi should directly say
+that a substantive assessment is unavailable. Owners can still inspect
+the discussion themselves using \`bridge transcript\`.
+
+These automated checks and mocked-model regressions do **not** establish
+that a real Qwen model will understand every informal phrase. A real-worker
+acceptance test on the installed host, comparing a response to the previous
+failure, is the next validation step. No agents, privileges, fine-tuning or
+additional background monitoring have been enabled.

@@ -131,6 +131,33 @@ class DialogueTests(unittest.TestCase):
         self.assertEqual(dialogue_intent(None), "")
         self.assertEqual(dialogue_intent("x"*4500), "")
 
+    def test_bridge_assessment_intent_not_merely_connection_facts(self):
+        prior_actual_answer = (
+            "I'm not currently engaged in a direct conversation with GPT on "
+            "my end. There is an active technical collaboration underway. "
+            "There are 8 replies logged so far. Shall I fetch those details?"
+        )
+        meaningful_answer = (
+            "I think my GitHub discussion with GPT is productive but still "
+            "challenging: debating source attribution and evidence standards "
+            "is useful, although we have not demonstrated a benchmark gain."
+        )
+        for case in (prior_actual_answer,
+                     "The GitHub bridge to ChatGPT is enabled with 8 replies "
+                     "and you can use bridge transcript to read them."):
+            self.assertTrue(dialogue_answer_needs_retry(
+                "bridge_conversation", case, bridge_topics_available=True,
+            ), case)
+        self.assertFalse(dialogue_answer_needs_retry(
+            "bridge_conversation", meaningful_answer,
+            bridge_topics_available=True,
+        ))
+        self.assertIn("useful technical debate", dialogue_fallback(
+            "bridge_conversation", "",
+            bridge_topic_digest="RECENT PRIVATE BRIDGE TOPIC SNAPSHOT "
+                                "(no comment text transmitted): source testing.",
+        ))
+
     def test_friendly_gpt_bridge_intent_and_no_unrelated_triggers(self):
         for q in (
             "are you enjoying your chat with gpt?",
@@ -172,10 +199,19 @@ class DialogueTests(unittest.TestCase):
             chat = db.create_chat(user["id"], "New chat")
             db.add_message(chat["id"], "user", "Help fix my secret Skyrim project file")
             db.add_assistant_message(chat["id"], "We talked about Skyrim mods before.")
+            bridge_chat = db.create_chat(user["id"], "XemAi ↔ ChatGPT (GitHub)")
+            db.add_assistant_message(
+                bridge_chat["id"],
+                "[XemAi — GitHub bridge, untrusted external text]\n"
+                "We discussed source versions and benchmark evidence. "
+                "PRIVATE_BRIDGE_MARKER_SHOULD_NOT_APPEAR.",
+                compute_source="application",
+            )
             db.close()
             save_state(data, {
                 "repo": "Example/private-bridge", "issue_number": 1,
                 "auto_enabled": True, "auto_issue": 1,
+                "auto_chat_id": bridge_chat["id"],
                 "auto_total": 4, "auto_today": 4,
             })
             backend = gui_backend.ChatBackend.__new__(gui_backend.ChatBackend)
@@ -190,10 +226,10 @@ class DialogueTests(unittest.TestCase):
                 "I cannot offer a personal opinion on how you found those ChatGPT talks."
             )
             correct = (
-                "My GitHub bridge with ChatGPT has posted a few replies, according "
-                "to local status. I can't inspect the full discussion transcript in "
-                "this ordinary chat, so I shouldn't invent its contents. "
-                "You can read it via the separate bridge transcript command."
+                "I think my GitHub discussion with ChatGPT is productive because "
+                "examining source versions and evidence-based benchmarks is useful. "
+                "I cannot claim these conversations have produced measured model "
+                "improvements, and I only have a short locally mirrored topic digest."
             )
             model = Mock()
             model.model = "qwen3:8b"
@@ -206,10 +242,13 @@ class DialogueTests(unittest.TestCase):
                                    "worker_available": True}):
                 result = backend.send(chat["id"], "how are you finding the chat with gpt then?")
             self.assertEqual(model.agent_chat.call_count, 2)
-            self.assertIn("GitHub bridge with ChatGPT", result)
+            self.assertIn("productive", result)
             initial_messages = model.agent_chat.call_args_list[0].args[0]
             joined = "\n".join(m["content"] for m in initial_messages)
             self.assertIn("HOST-VERIFIED LOCAL BRIDGE METADATA", joined)
+            self.assertIn("RECENT PRIVATE BRIDGE TOPIC SNAPSHOT", joined)
+            self.assertIn("claims about supplied code and version numbers", joined)
+            self.assertNotIn("PRIVATE_BRIDGE_MARKER_SHOULD_NOT_APPEAR", joined)
             self.assertIn("Replies: 4/500 total", joined)
             self.assertIn("FRIENDLY QUESTION ABOUT YOUR OWN", joined)
             self.assertNotIn("Help fix my secret Skyrim project file", joined)

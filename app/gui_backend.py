@@ -19,6 +19,7 @@ from .agent_team import (
 from .ai_watch import chat_command as ai_watch_chat_command
 from .github_bridge import chat_command as github_bridge_chat_command, is_command as is_bridge_command
 from .github_bridge_auto import status as private_bridge_status
+from .bridge_conversation_context import bridge_topic_digest
 from .github_bridge_review import recall_context as reviewed_bridge_lessons
 from .ai_watch import current_report as ai_watch_report
 from .attachment_tasks import (
@@ -503,6 +504,12 @@ class ChatBackend:
                 query_text, enabled=self.config.get("agent_team_enabled", True) is True
             )
             dialogue_kind = dialogue_intent(query_text)
+            bridge_digest = (
+                bridge_topic_digest(DATA_DIR)
+                if dialogue_kind == "bridge_conversation" and not parsed_attachments
+                else ""
+            )
+            bridge_topics_available = "no comment text transmitted" in bridge_digest
             inventory_kind = local_question_type(query_text)
             internal_audit = agent_mode == "self_audit" and not asks_for_external_research(query_text)
             diagnostic_state = {}
@@ -1070,6 +1077,12 @@ class ChatBackend:
                             "HOST-VERIFIED LOCAL BRIDGE METADATA (not a GitHub "
                             "transcript; no private discussion text was loaded): "
                             + private_bridge_status(DATA_DIR)
+                            + (
+                                "\n" + bridge_digest
+                                if bridge_digest else
+                                "\nNo reliable locally mirrored topic digest is "
+                                "available. Do not invent the discussion's content."
+                            )
                         ),
                     })
             if attached_code_task:
@@ -1299,7 +1312,10 @@ class ChatBackend:
                             runtime_model_info,
                         )
 
-            if dialogue_kind and dialogue_answer_needs_retry(dialogue_kind, answer):
+            if dialogue_kind and dialogue_answer_needs_retry(
+                dialogue_kind, answer,
+                bridge_topics_available=bridge_topics_available,
+            ):
                 # Correct the specific user-tested failure in which the model
                 # replaced an agent proposal with neural-weight boilerplate,
                 # denied a benchmark mission or refused an explicit hypothetical.
@@ -1316,8 +1332,13 @@ class ChatBackend:
                         retry_messages, tool_registry=task_tools,
                         max_tool_rounds=2,
                     )
-                    if dialogue_answer_needs_retry(dialogue_kind, corrected):
-                        answer = dialogue_fallback(dialogue_kind, query_text)
+                    if dialogue_answer_needs_retry(
+                        dialogue_kind, corrected,
+                        bridge_topics_available=bridge_topics_available,
+                    ):
+                        answer = dialogue_fallback(
+                            dialogue_kind, query_text, bridge_topic_digest=bridge_digest
+                        )
                         application_answer = True
                     else:
                         answer = corrected
@@ -1326,7 +1347,9 @@ class ChatBackend:
                         "Dialogue correction failed | chat_id=%s kind=%s type=%s",
                         chat_id, dialogue_kind, type(error).__name__,
                     )
-                    answer = dialogue_fallback(dialogue_kind, query_text)
+                    answer = dialogue_fallback(
+                            dialogue_kind, query_text, bridge_topic_digest=bridge_digest
+                        )
                     application_answer = True
 
             if watch_linked and watch_answer_off_topic(answer, saved_watch, query_text):
