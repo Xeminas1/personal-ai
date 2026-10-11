@@ -19,7 +19,8 @@ from .agent_team import (
 from .ai_watch import chat_command as ai_watch_chat_command
 from .ai_watch import current_report as ai_watch_report
 from .attachment_tasks import (
-    is_attached_code_assignment, source_assignment_context,
+    SourceTaskReadOnlyTools, is_attached_code_assignment,
+    source_assignment_context, source_evidence_status,
     answer_incomplete as attachment_answer_incomplete,
     retry_instruction as attachment_retry_instruction,
     incomplete_fallback as attachment_incomplete_fallback,
@@ -699,6 +700,21 @@ class ChatBackend:
                     {"role": row["role"], "content": row_content}
                 )
 
+            if attached_code_task:
+                # Treat this message as an isolated source exercise. A long
+                # history of failed Qwen drafts and unrelated web citations
+                # can otherwise crowd out actual numbered file excerpts.
+                messages = [row for row in messages if row["role"] == "system"]
+                messages.append({"role": "user", "content": model_user_text})
+                evidence = source_evidence_status(model_user_text)
+                self.logger.info(
+                    "Source attachment delivered to model | chat_id=%s turn_id=%s "
+                    "files=%d numbered_lines=%d tasks=%d truncated=%s",
+                    chat_id, turn_id, len(evidence["file_names"]),
+                    evidence["numbered_source_lines"],
+                    len(evidence["tasks_detected"]), evidence["truncated"],
+                )
+
             if self_query:
                 messages.append({
                     "role": "system",
@@ -977,7 +993,8 @@ class ChatBackend:
             answer_started = time.monotonic()
             application_answer = False
             task_tools = (
-                NoExternalOrSourceTools() if visual_only
+                SourceTaskReadOnlyTools() if attached_code_task
+                else NoExternalOrSourceTools() if visual_only
                 else ReadOnlyTeamTools(tools, allow_web=tools.web_allowed)
                 if agent_mode else tools
             )
@@ -993,7 +1010,8 @@ class ChatBackend:
                 answer = llm.agent_chat(
                     messages,
                     tool_registry=task_tools,
-                    max_tool_rounds=int(self.config.get("max_tool_rounds", 6)),
+                    max_tool_rounds=0 if attached_code_task
+                    else int(self.config.get("max_tool_rounds", 6)),
                 )
             timing("answer", answer_started)
 
@@ -1265,8 +1283,8 @@ class ChatBackend:
                 ]
                 try:
                     revised = llm.agent_chat(
-                        corrective, tool_registry=NoExternalOrSourceTools(),
-                        max_tool_rounds=1,
+                        corrective, tool_registry=SourceTaskReadOnlyTools(),
+                        max_tool_rounds=0,
                     )
                     if attachment_answer_incomplete(revised, model_user_text):
                         answer = attachment_incomplete_fallback(model_user_text)
