@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.9.18";
+const FRONTEND_VERSION = "0.9.31";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
@@ -39,6 +39,7 @@ const els = {
   cameraVideoInput: $("cameraVideoInput"),
   fileInput: $("fileInput"),
   attachmentTray: $("attachmentTray"),
+  fileDropOverlay: $("fileDropOverlay"),
   attachmentMenu: $("attachmentMenu"),
   attachmentMenuScrim: $("attachmentMenuScrim"),
   galleryBtn: $("galleryBtn"),
@@ -235,13 +236,19 @@ function fileToBase64(file) {
 }
 
 async function uploadSelectedFiles(files) {
-  if (!state.chatId || state.busy || state.chatMutation || state.loadingChat) return;
+  if (!state.chatId || state.busy || state.remoteActivity || state.chatMutation ||
+      state.loadingChat || state.uploadingAttachments) return;
   const uploadChatId = state.chatId;
 
   const selected = Array.from(files || []);
   if (!selected.length) return;
 
   const remainingSlots = Math.max(0, 3 - state.pendingAttachments.length);
+  if (selected.length > remainingSlots && remainingSlots) {
+    showModal("Attachment limit",
+      "You can attach up to 3 files to one message. Only the first " +
+      remainingSlots + " were selected.");
+  }
   if (!remainingSlots) {
     showModal("Attachment limit", "You can attach up to 3 files to one message.");
     return;
@@ -296,6 +303,57 @@ async function uploadSelectedFiles(files) {
   }
 }
 
+// XEMAI_DROP_SUPPORT_BEGIN — file drags only; not text or normal page dragging.
+function dragContainsFiles(event) {
+  const transfer = event && event.dataTransfer;
+  return !!transfer && Array.from(transfer.types || []).includes("Files");
+}
+
+function canAcceptFileDrop() {
+  return !!state.chatId && !state.busy && !state.remoteActivity &&
+    !state.chatMutation && !state.loadingChat && !state.uploadingAttachments;
+}
+
+function toggleFileDropOverlay(visible) {
+  if (!els.fileDropOverlay) return;
+  const show = !!visible && canAcceptFileDrop();
+  els.fileDropOverlay.classList.toggle("hidden", !show);
+  els.fileDropOverlay.setAttribute("aria-hidden", String(!show));
+}
+
+document.addEventListener("dragenter", (event) => {
+  if (!dragContainsFiles(event)) return;
+  event.preventDefault();
+  toggleFileDropOverlay(true);
+});
+document.addEventListener("dragover", (event) => {
+  if (!dragContainsFiles(event)) return;
+  event.preventDefault(); // Prevent desktop browser navigation on file drop.
+  if (event.dataTransfer) event.dataTransfer.dropEffect =
+    canAcceptFileDrop() ? "copy" : "none";
+  toggleFileDropOverlay(true);
+});
+document.addEventListener("dragleave", (event) => {
+  if (!dragContainsFiles(event)) return;
+  // Nested DOM elements fire dragleave, but leaving the browser should
+  // dismiss the overlay without leaving a phantom drag target.
+  if (!event.relatedTarget) toggleFileDropOverlay(false);
+});
+document.addEventListener("drop", (event) => {
+  if (!dragContainsFiles(event)) return;
+  event.preventDefault(); // Never navigate away from a chat to a dropped file.
+  toggleFileDropOverlay(false);
+  if (!canAcceptFileDrop()) {
+    showModal("Files not added",
+      "Choose an available chat and wait for the current reply or upload to finish.");
+    return;
+  }
+  const files = Array.from(event.dataTransfer?.files || []);
+  if (files.length) void uploadSelectedFiles(files);
+});
+window.addEventListener("blur", () => toggleFileDropOverlay(false));
+// XEMAI_DROP_SUPPORT_END
+
 function extractAttachmentDisplay(text) {
   const attachments = [];
   const visibleLines = [];
@@ -341,6 +399,7 @@ function setBusy(value, label = null) {
 
 function updateChatActions() {
   const blocked = state.busy || state.chatMutation || state.loadingChat;
+  if (!canAcceptFileDrop()) toggleFileDropOverlay(false);
   els.input.disabled = blocked || !state.chatId;
   els.sendBtn.disabled = blocked || !state.chatId || state.remoteActivity;
   els.newBtn.disabled = blocked || !state.chatId || state.remoteActivity || state.uploadingAttachments > 0;
