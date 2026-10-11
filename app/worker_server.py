@@ -474,7 +474,14 @@ def _specialist_model(server, role: str, requested: str, deadline: float) -> str
         if 0 < _parameter_billions(item) <= 10.5
     }
     configured = str(getattr(server.ollama_client, "model", "") or "").lower()
-    configured_key = configured.replace(":latest", "")
+    # Health routing favours the new 9B model without rewriting existing
+    # config.json. Specialist requests must follow the same selected model.
+    selected_everyday = (
+        PREFERRED_EVERYDAY_MODEL
+        if PREFERRED_EVERYDAY_MODEL in ordinary
+        else configured
+    )
+    configured_key = selected_everyday.replace(":latest", "")
     if any(name.replace(":latest", "") == configured_key for name in ordinary):
         if requested.lower().replace(":latest", "") != configured_key:
             raise ValueError("Requested model is not the selected everyday worker model.")
