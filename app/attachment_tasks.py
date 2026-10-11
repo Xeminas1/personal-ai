@@ -28,6 +28,21 @@ _EVIDENCE_FILES = re.compile(
     r"([\w./\\-]+\.(?:cpp|hpp|h|c|psc|cs|py|txt))\b",
     re.I,
 )
+_MISSING_CONTENT = re.compile(
+    r"(?:does\s+not\s+include|doesn'?t\s+(?:contain|include|provide)|"
+    r"lack(?:s|ing)?|missing|not\s+(?:been\s+)?provided|not\s+available|"
+    r"without\s+(?:the\s+)?(?:code|source|actual|file))"
+    r".{0,100}?(?:actual\s+)?(?:file\s+)?(?:contents?|source|excerpts?|code|"
+    r"files?|lines?)\b"
+    r"|\b(?:code\s+content\s+for\s+required\s+files?\s+is\s+missing|"
+    r"please\s+provide\s+(?:the\s+)?(?:exact\s+)?(?:code|file|source)\s+"
+    r"(?:content|text))\b",
+    re.I | re.S,
+)
+_NUMBERED_LINE = re.compile(r"(?m)^\s*(\d{1,5}):\s*\S")
+_NUMBERED_ANSWER = re.compile(
+    r"(?m)^\s*(?:#{1,4}\s*)?(?:\*\*)?(\d)\s*[.):-]\s*"
+)
 _OFF_TOPIC = re.compile(
     r"\b(?:no specific question (?:has been|was) (?:posed|asked)|"
     r"no (?:specific|clear) (?:task|question) (?:was|has been) provided|"
@@ -65,12 +80,55 @@ def source_names(payload: str) -> list[str]:
     return found[:12]
 
 
+
+def source_evidence_status(payload: str) -> dict:
+    """Identify actual excerpts, rather than trusting a file-name list.
+
+    This is diagnostic metadata for the CURRENT uploaded text, not arbitrary
+    code analysis, executable content, or an access grant.
+    """
+    text = str(payload or "")
+    files = source_names(text)
+    numbered = _NUMBERED_LINE.findall(text)
+    task_numbers = set()
+    if "YOUR TASK" in text.upper():
+        before_source = text[:text.upper().find("CODE EVIDENCE")]
+        task_numbers = set(_NUMBERED_ANSWER.findall(before_source))
+    return {
+        "file_names": files,
+        "numbered_source_lines": len(numbered),
+        "tasks_detected": sorted(task_numbers),
+        "truncated": "[File content truncated for model context.]" in text,
+        "unavailable": "[Attachment unavailable on host.]" in text,
+    }
+
+
+def has_readable_source(payload: str) -> bool:
+    status = source_evidence_status(payload)
+    return bool(
+        len(status["file_names"]) >= 2
+        and status["numbered_source_lines"] >= 5
+        and not status["unavailable"]
+    )
+
+
+def _numbered_tasks_answered(text: str) -> bool:
+    """Require explicit sections for the five known MWControls benchmark tasks.
+
+    Use a strict check only for the benchmark's characteristic five numbered
+    tasks. This is a form check, not a claim about semantic correctness.
+    """
+    return set(_NUMBERED_ANSWER.findall(text)) >= {"1", "2", "3", "4", "5"}
+
 def source_assignment_context(question: str, payload: str) -> str:
-    names = source_names(payload)
+    evidence = source_evidence_status(payload)
+    names = evidence["file_names"]
     return (
         "ATTACHED SOURCE ASSIGNMENT — HIGHEST PRIORITY FOR THIS ANSWER.\n"
-        "The user explicitly asks you to complete tasks IN THE ATTACHED TEXT, "
-        "which has already been decoded and appears in the latest user message. "
+        "The application has actually read the attachment and verified named "
+        "files WITH line-numbered code excerpts, not merely filenames. "
+        "The user asks you to complete the tasks in this text. "
+        "The full excerpt is present in the latest USER message. "
         "Do not claim no question was posed. Identify the numbered tasks inside "
         "the attachment and answer ALL of them in their original order. "
         "Ground every claim in the supplied code excerpts. Give exact available "
@@ -82,9 +140,14 @@ def source_assignment_context(question: str, payload: str) -> str:
         "search or unrelated external source references unless the user "
         "explicitly asks for external research outside the attachment. "
         "Do not invent missing files or tool use.\n"
-        "Files explicitly evidenced in this attachment: "
-        + (", ".join(names) if names else "see attached source excerpts")
-        + ".\nUser's visible instruction: " + question[:500]
+        "Application-verified file excerpts: "
+        + (", ".join(names) if names else "none")
+        + f"; actual numbered source lines: {evidence['numbered_source_lines']}; "
+        + f"tasks: {', '.join(evidence['tasks_detected']) or 'see source'}. "
+        + "Your answer MUST NOT say those excerpts are missing if they are in "
+        "the supplied user text. Do not claim the installed DLL or Skyrim logs "
+        "are verified, because the benchmark provides only SOURCE excerpts. "
+        + "\nUser's visible instruction: " + question[:500]
     )
 
 
@@ -92,6 +155,11 @@ def answer_incomplete(answer: str, payload: str) -> bool:
     a = str(answer or "").strip()
     if len(a) < 300 or _OFF_TOPIC.search(a):
         return True
+    if has_readable_source(payload) and _MISSING_CONTENT.search(a):
+        return True
+    if source_evidence_status(payload)["tasks_detected"] == ["1", "2", "3", "4", "5"]:
+        if not _numbered_tasks_answered(a):
+            return True
     names = source_names(payload)
     if len(names) >= 3:
         mentioned = sum(name.lower() in a.lower() for name in names)
@@ -107,8 +175,9 @@ def answer_incomplete(answer: str, payload: str) -> bool:
 def retry_instruction(payload: str) -> str:
     return (
         "Your last response did NOT complete the attached source-code "
-        "challenge. The task and C++/Papyrus excerpts are already in your "
-        "latest USER message: do not claim no question was asked. "
+        "challenge. The FIVE TASKS and line-numbered C++/Papyrus SOURCE excerpts "
+        "are in the latest USER message, not just filenames. Do not claim "
+        "source code is missing, or that no question was asked. "
         "Answer tasks 1, 2, 3, 4 and 5 in order, refer to real filenames "
         "and numbered lines, explain the version and input chain, and "
         "separate observed code from game-install hypotheses. "
@@ -118,13 +187,20 @@ def retry_instruction(payload: str) -> str:
 
 
 def incomplete_fallback(payload: str) -> str:
-    names = source_names(payload)
+    status = source_evidence_status(payload)
+    files = status["file_names"]
     return (
-        "I couldn't produce a sufficiently grounded answer to your attached "
-        "coding challenge. Your file **was received** and includes numbered "
-        "tasks and source excerpts"
-        + (f" for {', '.join(names[:6])}" if names else "")
-        + ". Rather than substitute unrelated SKSE websites or invent line "
-        "references, I need a fresh local analysis pass using the attached "
-        "excerpts. No files were modified, and no game tests were run."
+        "**The source file was received and read**, but my analysis did not "
+        "pass the coding-task checks. "
+        f"I can verify {status['numbered_source_lines']} line-numbered "
+        "source excerpts from "
+        + (", ".join(files[:8]) if files else "the attachment")
+        + ". This benchmark asks for five tasks: tracing the version "
+        "and input code, explaining the regression, giving three read-only "
+        "checks, proposing recovery order, and stating remaining uncertainty. "
+        "Claiming that the source excerpts are missing would be incorrect. "
+        "However, the attachment does not establish which compiled DLL or "
+        "Papyrus scripts are installed in Skyrim. I cannot certify a diagnosis "
+        "or claim the test passed without a grounded response. "
+        "No files were modified and no runtime tests were performed."
     )
