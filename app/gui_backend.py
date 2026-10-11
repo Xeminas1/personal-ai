@@ -18,6 +18,7 @@ from .agent_team import (
 )
 from .ai_watch import chat_command as ai_watch_chat_command
 from .github_bridge import chat_command as github_bridge_chat_command, is_command as is_bridge_command
+from .github_bridge_review import recall_context as reviewed_bridge_lessons
 from .ai_watch import current_report as ai_watch_report
 from .attachment_tasks import (
     SourceTaskReadOnlyTools, is_attached_code_assignment,
@@ -725,6 +726,18 @@ class ChatBackend:
             if watch_linked and not explicit_independent_research(query_text):
                 tools.web_allowed = False
             messages = [{"role": "system", "content": system_prompt}]
+            # Reuse ONLY lessons explicitly reviewed/approved by the owner,
+            # and ONLY when relevant. Keep untrusted bridge material out of
+            # isolated source/vision/benchmark, self-audit and agent tasks.
+            if (
+                not parsed_attachments and not attached_code_task
+                and not inline_source_task and not visual_only
+                and not self_query and not inventory_kind
+                and not agent_mode and not dialogue_kind
+            ):
+                reviewed_note = reviewed_bridge_lessons(DATA_DIR, query_text)
+                if reviewed_note:
+                    messages.append({"role": "system", "content": reviewed_note})
             modding_context = "" if visual_only else skyrim_context(
                 query_text, [str(item.get("name", "")) for item in parsed_attachments],
                 recognised_diagnostic=bool(diagnostic_state.get("skyrim")),
