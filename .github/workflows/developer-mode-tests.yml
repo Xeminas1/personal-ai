@@ -6,7 +6,8 @@ on:
       - "developer_setup.py"
       - "test_developer_projects.py"
       - "test_developer_guidance.py"
-      - "test_developer_multifile.py"
+      - "test_developer_multifile.py test_developer_trace.py"
+      - "test_developer_trace.py"
       - "app/version.py"
       - "self_test.py"
       - "test_updater.py"
@@ -25,13 +26,15 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile all Python modules
-        run: python -m compileall -q app developer_setup.py test_developer_projects.py test_developer_guidance.py test_developer_multifile.py
+        run: python -m compileall -q app developer_setup.py test_developer_projects.py test_developer_guidance.py test_developer_multifile.py test_developer_trace.py
       - name: Run developer-mode security tests
         run: python test_developer_projects.py
       - name: Test developer source retrieval
         run: python test_developer_guidance.py
       - name: Test multi-file read-only investigations
-        run: python test_developer_multifile.py
+        run: python test_developer_multifile.py test_developer_trace.py
+      - name: Test read-only source tracing
+        run: python test_developer_trace.py
       - name: Run XemAi built-in test suite
         run: python self_test.py
       - name: Run update validation tests
