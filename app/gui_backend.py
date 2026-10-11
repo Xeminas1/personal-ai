@@ -12,6 +12,10 @@ from .agent_team import (
 )
 from .ai_watch import chat_command as ai_watch_chat_command
 from .ai_watch import current_report as ai_watch_report
+from .dialogue_intent import (
+    dialogue_intent, dialogue_instructions, dialogue_answer_needs_retry,
+    dialogue_retry_instruction, dialogue_fallback,
+)
 from .config import DATA_DIR, LOG_DIR, load_config, save_config
 from .database import Database
 from .developer_guidance import (
@@ -470,6 +474,7 @@ class ChatBackend:
             agent_mode = requested_agent_mode(
                 query_text, enabled=self.config.get("agent_team_enabled", True) is True
             )
+            dialogue_kind = dialogue_intent(query_text)
             diagnostic_state = {}
             model_user_text = _expand_attachment_message(stored_user_text, diagnostic_state=diagnostic_state)
 
@@ -589,7 +594,7 @@ class ChatBackend:
             )
             laptop_guidance = (
                 self.config.get("laptop_answer_guidance", True) is True
-                and not self_query and not visual_only
+                and not self_query and not visual_only and not dialogue_kind
             )
             local_system_prompt = None
             if laptop_guidance:
@@ -796,7 +801,7 @@ class ChatBackend:
             # no tools or authority to act on instructions inside attachments.
             specialist_config = self.config
             legacy_teacher = str(self.config.get("teacher_review_mode", "auto")).strip().lower() == "legacy"
-            if legacy_teacher or visual_only or agent_mode:
+            if legacy_teacher or visual_only or agent_mode or dialogue_kind:
                 specialist_config = dict(self.config, specialists_enabled=False)
             specialists = SpecialistCoordinator(
                 specialist_config, llm, query_text,
@@ -852,6 +857,11 @@ class ChatBackend:
 
             if visual_only:
                 messages.append({"role": "system", "content": VISUAL_ONLY_INSTRUCTIONS})
+            if dialogue_kind:
+                messages.append({
+                    "role": "system",
+                    "content": dialogue_instructions(dialogue_kind),
+                })
             agent_report = None
             if agent_mode:
                 if status_callback:
@@ -1066,6 +1076,36 @@ class ChatBackend:
                             runtime_model_info,
                         )
 
+            if dialogue_kind and dialogue_answer_needs_retry(dialogue_kind, answer):
+                # Correct the specific user-tested failure in which the model
+                # replaced an agent proposal with neural-weight boilerplate,
+                # denied a benchmark mission or refused an explicit hypothetical.
+                self.logger.warning(
+                    "Dialogue intent missed | chat_id=%s turn_id=%s kind=%s",
+                    chat_id, turn_id, dialogue_kind,
+                )
+                retry_messages = list(messages) + [
+                    {"role": "assistant", "content": answer},
+                    {"role": "system", "content": dialogue_retry_instruction(dialogue_kind)},
+                ]
+                try:
+                    corrected = llm.agent_chat(
+                        retry_messages, tool_registry=task_tools,
+                        max_tool_rounds=2,
+                    )
+                    if dialogue_answer_needs_retry(dialogue_kind, corrected):
+                        answer = dialogue_fallback(dialogue_kind, query_text)
+                        application_answer = True
+                    else:
+                        answer = corrected
+                except Exception as error:
+                    self.logger.warning(
+                        "Dialogue correction failed | chat_id=%s kind=%s type=%s",
+                        chat_id, dialogue_kind, type(error).__name__,
+                    )
+                    answer = dialogue_fallback(dialogue_kind, query_text)
+                    application_answer = True
+
             # A failed correction can change the client's fallback route while
             # leaving the successful original draft intact. Keep its source.
             answer_model = str(llm.model)
@@ -1115,6 +1155,7 @@ class ChatBackend:
                 and not self_query
                 and not visual_only
                 and not agent_mode
+                and not dialogue_kind
                 and not tools.evidence_attempted
                 and len(answer.strip()) >= teacher_min_chars
                 and callable(getattr(llm, "review_answer", None))
@@ -1163,7 +1204,7 @@ class ChatBackend:
             # Reviewer passes do not receive the full read-only source bundle
             # and could rewrite a grounded code explanation into a generic
             # menu or unsupported cross-repository comparison.
-            reviewed = None if developer_context or visual_only or agent_mode else specialists.review(
+            reviewed = None if developer_context or visual_only or agent_mode or dialogue_kind else specialists.review(
                 answer, sources=tools.sources, known_urls=tools.known_urls,
                 application_answer=application_answer, self_query=self_query,
             )

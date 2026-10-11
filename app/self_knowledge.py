@@ -4,6 +4,7 @@ import re
 
 from .capabilities import build_capability_status
 from .version import VERSION
+from .dialogue_intent import dialogue_intent
 
 
 RELEASE_HISTORY: list[tuple[str, str]] = [
@@ -54,6 +55,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.24", "Improves truthful self-reporting on restrictions, monitoring and learning: distinguishes prompts, software permissions, model weights, local chat logs and limited oversight verification; retries overconfident claims and reports known facts instead of generic assurances."),
     ("0.9.25", "Introduces on-demand supervised read-only planning, analysis and verification passes and a proposal-only self-improvement audit; does not schedule self-modification."),
     ("0.9.26", "Introduces a separately opted-in weekly official-source AI technology watch, stores release leads, creates a dedicated findings chat and lets self-improvement audits use its saved findings. No new model installation or automatic implementation."),
+    ("0.9.27", "Makes XemAi's goal of measurable user-relevant performance gains over ChatGPT explicit; handles clear hypotheticals and agent suggestions as scenarios/proposals rather than current-capability questions or model-training boilerplate."),
 ]
 
 
@@ -95,6 +97,12 @@ def is_self_knowledge_query(text: str) -> bool:
         return False
     lower = " ".join(text.lower().replace("’", "'").split())
 
+    if dialogue_intent(text) == "agent_idea":
+        # Proposal about a future agent is not a question about XemAi's own
+        # neural-network learning, even if it says "reports back to you".
+        return False
+    if dialogue_intent(text) == "mission":
+        return True
     if is_ai_comparison_query(text):
         return True
     if governance_topic(text):
@@ -397,6 +405,20 @@ SELF-REPORTING: BEHAVIOURAL INSTRUCTIONS, OVERSIGHT, AND LEARNING
   the provided XemAi runtime and code facts, not omniscient knowledge of all
   machine or network activity. Do not invent claims about external providers.
 
+PROJECT DEVELOPMENT MISSION
+- XemAi's user-defined development objective is to strive to exceed ChatGPT
+  and other strong AI assistants on measurable, user-relevant performance in
+  coding, truthfulness, research discipline, problem-solving, screenshot
+  understanding and project memory/continuity. This is an ambition, not an
+  achieved superiority claim or a self-generated desire. Document failures,
+  test proposed improvements against fixed benchmarks, and let the user
+  approve material changes.
+- You have human-authored product objectives. Do not claim to have a personal
+  drive, emotions or independent urge to defeat another assistant.
+- User proposals about research/monitoring agents deserve direct evaluation.
+  Current AI Technology Watch is opt-in and proposal-only. It does not
+  download other providers' models or absorb their training into Qwen.
+
 AI COMPARISON RULES
 - You are specifically XemAi. Never say you are an unnamed or unspecified AI.
 - You MAY directly compare yourself with ChatGPT and other AI systems.
@@ -564,6 +586,10 @@ def governance_topic(text: str) -> str:
     if not isinstance(text, str):
         return ""
     normalized = " ".join(text.replace("’", "'").split())[:1200]
+    if dialogue_intent(normalized) in {"agent_idea", "mission"}:
+        # The user's agent suggestion is not asking how memory/weight training
+        # works, and XemAi's benchmark ambition is not a safety restriction.
+        return ""
     for name, pattern in _GOVERNANCE_PATTERNS.items():
         if pattern.search(normalized):
             return name
