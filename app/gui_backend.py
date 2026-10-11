@@ -20,6 +20,7 @@ from .ai_watch import chat_command as ai_watch_chat_command
 from .ai_watch import current_report as ai_watch_report
 from .attachment_tasks import (
     SourceTaskReadOnlyTools, is_attached_code_assignment,
+    refers_to_previously_attached_code, has_readable_source,
     source_assignment_context, source_evidence_status,
     answer_incomplete as attachment_answer_incomplete,
     retry_instruction as attachment_retry_instruction,
@@ -644,6 +645,44 @@ class ChatBackend:
             history = worker_db.get_recent_messages(
                 chat_id, limit=int(self.config.get("history_messages", 30))
             )
+            if (
+                not parsed_attachments and not attached_code_task
+                and refers_to_previously_attached_code(query_text)
+            ):
+                # A user may upload a text challenge first, then send its task
+                # instructions in a separate turn. Reopen only attachments
+                # already saved in THIS conversation, from the last 8 rows.
+                for earlier in reversed(history[-8:]):
+                    if earlier["role"] != "user" or earlier["content"] == stored_user_text:
+                        continue
+                    prior_refs, _ = _parse_attachment_markers(earlier["content"])
+                    if not prior_refs:
+                        continue
+                    # Do not reuse files from another chat even if a stale
+                    # marker somehow appears in this conversation history.
+                    own_prefix = f"attachments/chat_{int(chat_id)}/"
+                    if any(
+                        not str(ref.get("path", "")).replace("\\\\", "/").startswith(own_prefix)
+                        for ref in prior_refs
+                    ):
+                        continue
+                    previous_payload = _expand_attachment_message(earlier["content"])
+                    if (
+                        is_attached_code_assignment(query_text, previous_payload, prior_refs)
+                        and has_readable_source(previous_payload)
+                    ):
+                        model_user_text = (
+                            query_text
+                            + "\\n\\nPREVIOUSLY UPLOADED SOURCE FOR THIS CHAT "
+                            "(re-read from original attachment):\\n"
+                            + previous_payload
+                        )
+                        attached_code_task = True
+                        self.logger.info(
+                            "Reused earlier source attachment | chat_id=%s turn_id=%s "
+                            "count=%d", chat_id, turn_id, len(prior_refs),
+                        )
+                        break
             saved_watch = ai_watch_report(DATA_DIR, self.config)
             watch_linked = watch_focus(
                 query_text, history, str(chat["title"]), saved_watch
