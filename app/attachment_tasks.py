@@ -54,6 +54,24 @@ _OFF_TOPIC = re.compile(
 )
 
 
+class SourceTaskReadOnlyTools:
+    """No external or unrelated tool activity during source-excerpt benchmarks.
+
+    The text of the user's current attachment is already in the model prompt,
+    so tools could only introduce unrelated evidence or extra latency.
+    """
+    web_allowed = False
+    web_search_enabled = False
+
+    @staticmethod
+    def definitions() -> list:
+        return []
+
+    @staticmethod
+    def execute(name: str, arguments) -> str:
+        return '{"ok":false,"error":"Source attachment task permits no tools."}'
+
+
 def is_attached_code_assignment(question: str, user_payload: str, attachments: list[dict]) -> bool:
     if not attachments or not isinstance(question, str):
         return False
