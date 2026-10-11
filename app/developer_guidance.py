@@ -11,7 +11,7 @@ from typing import Any
 # The model is often capable of listing a source tree but may stop before reading
 # the file the user actually requested. Gather bounded evidence outside its tool
 # planning loop instead of relying on repeated persuasive prompts.
-_SOURCE_EXTENSIONS = r"(?:kt|kts|java|py|cs|js|jsx|ts|tsx|xml|gradle|go|rs|cpp|hpp|c|h|md)"
+_SOURCE_EXTENSIONS = r"(?:kt|kts|java|py|cs|js|jsx|ts|tsx|xml|gradle|go|rs|cpp|hpp|c|h|md|psc)"
 _FILENAMES = re.compile(
     r"(?<![\w.])([A-Za-z0-9_./\-]{1,190}\." + _SOURCE_EXTENSIONS + r")\b",
     re.IGNORECASE,
@@ -59,7 +59,20 @@ def source_context_for_request(user_text: str, tool_registry: Any) -> str:
         r"(?<![A-Za-z0-9_-])" + re.escape(project) + r"(?![A-Za-z0-9_-])",
         question, flags=re.IGNORECASE,
     )]
-    if len(named) != 1 and not (len(projects) == 1 and _SCOPE.search(question)):
+    # A generic request to "read source code" must never silently choose
+    # the sole configured checkout. That previously injected XemTV files into
+    # unrelated Skyrim/Papyrus questions and could trigger a misleading retry.
+    # Preserve the single-project convenience only for an explicit reference
+    # to the user's local/registered checkout or Developer Mode.
+    explicit_local_checkout = re.search(
+        r"\b(?:my|our)\s+(?:local\s+)?(?:project|repo(?:sitory)?|"
+        r"codebase|source\s+files?)\b"
+        r"|\b(?:configured|registered|local)\s+(?:development\s+)?"
+        r"(?:project|repo(?:sitory)?|checkout)\b"
+        r"|\bdeveloper\s+mode\b",
+        question, flags=re.IGNORECASE,
+    )
+    if len(named) != 1 and not (len(projects) == 1 and explicit_local_checkout):
         return ""
     project = named[0] if len(named) == 1 else projects[0]
 

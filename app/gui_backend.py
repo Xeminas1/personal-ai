@@ -25,6 +25,8 @@ from .attachment_tasks import (
     answer_incomplete as attachment_answer_incomplete,
     retry_instruction as attachment_retry_instruction,
     incomplete_fallback as attachment_incomplete_fallback,
+    is_inline_source_assignment, inline_source_context,
+    inline_source_answer_needs_retry, inline_source_failure_report,
 )
 from .watch_intelligence import (
     watch_focus, watch_context, answer_off_topic as watch_answer_off_topic,
@@ -501,6 +503,9 @@ class ChatBackend:
             attached_code_task = is_attached_code_assignment(
                 query_text, model_user_text, parsed_attachments,
             )
+            inline_source_task = (
+                not attached_code_task and is_inline_source_assignment(query_text)
+            )
 
             chat = worker_db.get_chat(chat_id)
             if record_user and was_empty and chat["title"] in {"New chat", "Untitled"}:
@@ -530,15 +535,21 @@ class ChatBackend:
                     return watch_answer
 
             user = worker_db.get_user()
-            memories = worker_db.relevant_memories(
-                user["id"], query_text, limit=int(self.config.get("memory_limit", 25))
-            )
-            feedback = worker_db.recent_chat_feedback(user["id"], limit=8)
+            # The user retains all chat history and cross-chat memory. For a
+            # strictly source-only assignment, however, unrelated memories and
+            # feedback are not evidence and must not enter the model prompt.
+            if attached_code_task or inline_source_task:
+                memories, feedback = [], []
+            else:
+                memories = worker_db.relevant_memories(
+                    user["id"], query_text, limit=int(self.config.get("memory_limit", 25))
+                )
+                feedback = worker_db.recent_chat_feedback(user["id"], limit=8)
 
             tools = TurnEvidenceTools(
                 ToolRegistry(BASE_DIR, DATA_DIR, self.logger), query_text
             )
-            if ((inventory_kind or internal_audit) and not asks_for_external_research(query_text)) or attached_code_task:
+            if ((inventory_kind or internal_audit) and not asks_for_external_research(query_text)) or attached_code_task or inline_source_task:
                 # Source-only tasks and internal app facts do not require
                 # outside internet research or model-initiated web calls.
                 tools.web_allowed = False
@@ -546,7 +557,7 @@ class ChatBackend:
             # or model tool planning. Keep source-only requests within the
             # approved checkout, including the full agent tool list.
             developer_context = (
-                "" if visual_only or attached_code_task
+                "" if visual_only or attached_code_task or inline_source_task
                 else source_context_for_request(query_text, tools)
             )
             if visual_only or prefer_local_project_sources(query_text, developer_context):
@@ -628,7 +639,7 @@ class ChatBackend:
             laptop_guidance = (
                 self.config.get("laptop_answer_guidance", True) is True
                 and not self_query and not visual_only and not dialogue_kind and not agent_mode
-                and not attached_code_task
+                and not attached_code_task and not inline_source_task
             )
             local_system_prompt = None
             if laptop_guidance:
@@ -746,6 +757,16 @@ class ChatBackend:
                     {"role": row["role"], "content": row_content}
                 )
 
+            if inline_source_task:
+                # The current user supplied the only authorised code evidence.
+                # Isolate it from earlier chat drafts as well as other projects.
+                messages = [row for row in messages if row["role"] == "system"]
+                messages.append({"role": "user", "content": model_user_text})
+                self.logger.info(
+                    "Inline source isolated | chat_id=%s turn_id=%s chars=%d",
+                    chat_id, turn_id, len(model_user_text),
+                )
+
             if attached_code_task:
                 # Treat this message as an isolated source exercise. A long
                 # history of failed Qwen drafts and unrelated web citations
@@ -785,6 +806,10 @@ class ChatBackend:
                     "role": "system",
                     "content": source_assignment_context(query_text, model_user_text),
                 })
+            if inline_source_task:
+                messages.append({
+                    "role": "system", "content": inline_source_context(query_text),
+                })
             research_query = (
                 query_text if watch_linked
                 else research_query_for_turn(query_text, previous_user_messages)
@@ -818,7 +843,7 @@ class ChatBackend:
                 and (not dialogue_kind or explicit_independent_research(query_text))
                 and not internal_audit
                 and (not inventory_kind or asks_for_external_research(query_text))
-                and not attached_code_task
+                and not attached_code_task and not inline_source_task
             ):
                 if status_callback:
                     status_callback("Researching reputable sources")
@@ -891,7 +916,7 @@ class ChatBackend:
                 and (not watch_linked or explicit_independent_research(query_text))
                 and not internal_audit
                 and (not inventory_kind or asks_for_external_research(query_text))
-                and not attached_code_task
+                and not attached_code_task and not inline_source_task
                 and not research_sources
             ):
                 if status_callback:
@@ -927,7 +952,7 @@ class ChatBackend:
             # no tools or authority to act on instructions inside attachments.
             specialist_config = self.config
             legacy_teacher = str(self.config.get("teacher_review_mode", "auto")).strip().lower() == "legacy"
-            if legacy_teacher or visual_only or agent_mode or dialogue_kind or watch_linked or inventory_kind or attached_code_task:
+            if legacy_teacher or visual_only or agent_mode or dialogue_kind or watch_linked or inventory_kind or attached_code_task or inline_source_task:
                 specialist_config = dict(self.config, specialists_enabled=False)
             specialists = SpecialistCoordinator(
                 specialist_config, llm, query_text,
@@ -1039,7 +1064,7 @@ class ChatBackend:
             answer_started = time.monotonic()
             application_answer = False
             task_tools = (
-                SourceTaskReadOnlyTools() if attached_code_task
+                SourceTaskReadOnlyTools() if attached_code_task or inline_source_task
                 else NoExternalOrSourceTools() if visual_only
                 else ReadOnlyTeamTools(tools, allow_web=tools.web_allowed)
                 if agent_mode else tools
@@ -1056,7 +1081,7 @@ class ChatBackend:
                 answer = llm.agent_chat(
                     messages,
                     tool_registry=task_tools,
-                    max_tool_rounds=0 if attached_code_task
+                    max_tool_rounds=0 if attached_code_task or inline_source_task
                     else int(self.config.get("max_tool_rounds", 6)),
                 )
             timing("answer", answer_started)
@@ -1345,6 +1370,39 @@ class ChatBackend:
                     answer = attachment_incomplete_fallback(model_user_text)
                     application_answer = True
 
+            if inline_source_task and inline_source_answer_needs_retry(query_text, answer):
+                self.logger.warning(
+                    "Inline source answer failed grounding | chat_id=%s turn_id=%s",
+                    chat_id, turn_id,
+                )
+                corrective = list(messages) + [
+                    {"role": "assistant", "content": str(answer)[:1500]},
+                    {"role": "system", "content": (
+                        "Your draft cited a file not present in the user's pasted "
+                        "code, or quoted code that was not supplied. Discard the "
+                        "draft and answer the current inline evidence questions "
+                        "only. Never refer to local XemTV files or invented "
+                        "functions. If the excerpt is insufficient, say so."
+                    )},
+                ]
+                try:
+                    revised = llm.agent_chat(
+                        corrective, tool_registry=SourceTaskReadOnlyTools(),
+                        max_tool_rounds=0,
+                    )
+                    if inline_source_answer_needs_retry(query_text, revised):
+                        answer = inline_source_failure_report()
+                        application_answer = True
+                    else:
+                        answer = revised
+                except Exception as error:
+                    self.logger.warning(
+                        "Inline source correction unavailable | type=%s",
+                        type(error).__name__,
+                    )
+                    answer = inline_source_failure_report()
+                    application_answer = True
+
             # A failed correction can change the client's fallback route while
             # leaving the successful original draft intact. Keep its source.
             answer_model = str(llm.model)
@@ -1398,6 +1456,7 @@ class ChatBackend:
                 and not watch_linked
                 and not inventory_kind
                 and not attached_code_task
+                and not inline_source_task
                 and not tools.evidence_attempted
                 and len(answer.strip()) >= teacher_min_chars
                 and callable(getattr(llm, "review_answer", None))
@@ -1446,7 +1505,7 @@ class ChatBackend:
             # Reviewer passes do not receive the full read-only source bundle
             # and could rewrite a grounded code explanation into a generic
             # menu or unsupported cross-repository comparison.
-            reviewed = None if developer_context or visual_only or agent_mode or dialogue_kind or watch_linked or inventory_kind or attached_code_task else specialists.review(
+            reviewed = None if developer_context or visual_only or agent_mode or dialogue_kind or watch_linked or inventory_kind or attached_code_task or inline_source_task else specialists.review(
                 answer, sources=tools.sources, known_urls=tools.known_urls,
                 application_answer=application_answer, self_query=self_query,
             )
@@ -1477,7 +1536,9 @@ class ChatBackend:
             if status_callback:
                 status_callback(None)
 
-            if self.config.get("auto_memory", True):
+            if self.config.get("auto_memory", True) and not (attached_code_task or inline_source_task):
+                # Source quotations are saved in their chat thread but are not
+                # durable personal facts to learn into global memory.
                 for attribute in ("local_system_prompt", "local_answer_context", "answer_system_prompt_origin"):
                     setattr(llm, attribute, None)
                 memory_started = time.monotonic()

@@ -72,6 +72,90 @@ class SourceTaskReadOnlyTools:
         return '{"ok":false,"error":"Source attachment task permits no tools."}'
 
 
+
+# A source excerpt pasted directly into chat is not an instruction to open any
+# configured development checkout. Keep the supplied evidence isolated from
+# cross-chat project memories and unrelated read-only source tools.
+_INLINE_FILE = re.compile(
+    r"(?im)^\s*(?:File:\s*|\[File:\s*)([\w./\\-]+\."
+    r"(?:psc|cpp|hpp|h|c|cs|py|kt|java|js|ts))\b"
+)
+_INLINE_LINE = re.compile(r"(?im)^\s*Lines?\s+\d+(?:\s*[-–]\s*\d+)?\s*:")
+_INLINE_CODE = re.compile(
+    r"(?im)^\s*(?:If\b|Else\b|EndIf\b|Return\b|"
+    r"[A-Za-z_]\w*\s*=|(?:public|private|bool|int|void|def|fun)\s+\w+)"
+)
+_CODE_FILENAME = re.compile(
+    r"(?i)(?<![\w.])([\w./\\-]+\.(?:psc|cpp|hpp|h|c|cs|py|kt|java|js|ts))\b"
+)
+_FENCED_BLOCK = re.compile(r"(?ms)^\s*\x60{3}[^\n]*\n(.*?)^\s*\x60{3}\s*$")
+
+
+def is_inline_source_assignment(question: str) -> bool:
+    """Only activate when the current message itself carries labelled code."""
+    text = str(question or "")[:20_000]
+    return bool(
+        _INLINE_FILE.search(text) and _INLINE_LINE.search(text)
+        and _INLINE_CODE.search(text)
+    )
+
+
+def inline_source_context(question: str) -> str:
+    """Bounded evidence instructions, not a claim of independent file access."""
+    files = list(dict.fromkeys(_INLINE_FILE.findall(str(question or "")[:20_000])))
+    return (
+        "INLINE SOURCE-ONLY QUESTION. The latest user message itself contains "
+        "labelled source excerpts for: " + (", ".join(files[:8]) or "unspecified files")
+        + ". These are pasted excerpts, NOT files read from disk and NOT proof "
+        "of installed code. Answer only the current user's questions from "
+        "the literal lines supplied. Never substitute an unrelated configured "
+        "checkout, cross-chat project, remembered source, or earlier model "
+        "answer. Explicitly distinguish what the code proves from hypotheses. "
+        "Do not invent source lines, calls, functions, line numbers or tests. "
+        "If the excerpt cannot answer a question, state what is missing. "
+        "Do not claim to have executed any code."
+    )
+
+
+def inline_source_answer_needs_retry(question: str, answer: str) -> bool:
+    """Catch clear off-topic file references or fabricated quoted code.
+
+    This is intentionally narrow: it does not claim semantic verification of
+    the answer or attempt to parse general programming-language syntax.
+    """
+    if not is_inline_source_assignment(question):
+        return False
+    evidence_files = {
+        item.rsplit("/", 1)[-1].rsplit("\\", 1)[-1].lower()
+        for item in _INLINE_FILE.findall(question[:20_000])
+    }
+    answer_files = {
+        item.rsplit("/", 1)[-1].rsplit("\\", 1)[-1].lower()
+        for item in _CODE_FILENAME.findall(str(answer or ""))
+    }
+    if answer_files - evidence_files:
+        return True
+
+    # Only enforce literal quotation when the user specifically requests it.
+    if re.search(r"\bquote\s+only\s+(?:the\s+)?supplied\s+code\b", question, re.I):
+        source_lines = {
+            " ".join(line.split()) for line in question.splitlines() if line.strip()
+        }
+        for block in _FENCED_BLOCK.findall(str(answer or "")):
+            for line in block.splitlines():
+                if line.strip() and " ".join(line.split()) not in source_lines:
+                    return True
+    return False
+
+
+def inline_source_failure_report() -> str:
+    return (
+        "I received the code pasted into this chat, but my attempted answer "
+        "did not pass the source-isolation check. I cannot verify the proposed "
+        "analysis from the supplied excerpt, so I will not invent a source "
+        "quotation or substitute code from another project."
+    )
+
 def refers_to_previously_attached_code(question: str) -> bool:
     """Allow an explicit follow-up to reuse a recent attachment in this chat."""
     q = str(question or "")[:1600]

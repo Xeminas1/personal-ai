@@ -12,6 +12,7 @@ from app.attachment_tasks import (
     is_attached_code_assignment, answer_incomplete,
     source_assignment_context, source_names, incomplete_fallback,
     source_evidence_status, has_readable_source, refers_to_previously_attached_code,
+    is_inline_source_assignment, inline_source_answer_needs_retry,
 )
 from app.database import Database
 
@@ -266,6 +267,87 @@ class AttachmentTasksTests(unittest.TestCase):
         ))
         self.assertFalse(first.kwargs["tool_registry"].web_allowed)
 
+
+    def test_inline_papyrus_source_stays_in_current_chat_and_recovers_off_topic(self):
+        # Mirrors the user's real Qwen3:8b failure in a new conversation.
+        question = (
+            "I'm testing your ability to accurately read source code.\n"
+            "File: MWInterventionScopeAlias.psc\n"
+            "Line 74:\n"
+            "nativeControls = MWControls.IsReady() && MWControls.GetVersion() == 615\n"
+            "Lines 142–145:\n"
+            "If nativeControls\n"
+            "    Return Input.IsKeyPressed(aimKeyA)\n"
+            "EndIf\n"
+            "Return Input.IsKeyPressed(aimKeyA) && Input.IsKeyPressed(aimKeyB)\n"
+            "Answer what nativeControls means. Quote only supplied code."
+        )
+        wrong = (
+            "HomeLayout.kt and ProfileEditorLayout.kt manage media tiles and "
+            "layout calculations. This is the source-code answer."
+        )
+        correct = (
+            "In MWInterventionScopeAlias.psc, nativeControls is true only "
+            "when MWControls.IsReady() is true AND MWControls.GetVersion() == 615. "
+            "Native mode returns the key A pressed state, while fallback "
+            "requires both key A and key B. The excerpt does not show "
+            "modifierKey, singleAim(), or legacyAim() implementations."
+        )
+        self.assertTrue(is_inline_source_assignment(question))
+        self.assertTrue(inline_source_answer_needs_retry(question, wrong))
+        self.assertFalse(inline_source_answer_needs_retry(question, correct))
+
+        db = Database(self.data / "personal_ai.db")
+        db.add_memory(
+            self.user["id"], self.chat["id"], "project",
+            "The XemTV project includes HomeLayout.kt and ProfileEditorLayout.kt.",
+            0.99,
+        )
+        db.close()
+        model = Mock()
+        model.model = "qwen3:8b"
+        model.route_info = {"compute": "remote_worker"}
+        model.agent_chat.side_effect = [wrong, correct]
+        runtime = {"model": "qwen3:8b", "compute": "remote_worker",
+                   "worker_available": True}
+        with patch.object(gui_backend, "DATA_DIR", self.data), \
+             patch.object(gui_backend, "build_llm_client", return_value=model), \
+             patch.object(self.backend, "refresh_runtime_model", return_value=runtime), \
+             patch.object(gui_backend, "source_context_for_request",
+                          side_effect=AssertionError("inline source cannot select repo")), \
+             patch.object(gui_backend, "should_research_query",
+                          side_effect=AssertionError("inline source cannot browse")):
+            answer = self.backend.send(self.chat["id"], question)
+        self.assertIn("MWInterventionScopeAlias.psc", answer)
+        self.assertNotIn("HomeLayout.kt", answer)
+        self.assertEqual(model.agent_chat.call_count, 2)
+        first = model.agent_chat.call_args_list[0]
+        self.assertEqual(first.kwargs["max_tool_rounds"], 0)
+        self.assertFalse(first.kwargs["tool_registry"].web_allowed)
+        self.assertEqual(sum(m["role"] == "user" for m in first.args[0]), 1)
+        system_text = "\n".join(m["content"] for m in first.args[0]
+                                if m["role"] == "system")
+        self.assertIn("INLINE SOURCE-ONLY QUESTION", system_text)
+        self.assertNotIn("HomeLayout.kt", system_text)
+
+    def test_rejects_fabricated_fenced_quote_even_with_correct_filename(self):
+        question = (
+            "File: MWInterventionScopeAlias.psc\n"
+            "Line 74:\n"
+            "nativeControls = MWControls.IsReady() && MWControls.GetVersion() == 615\n"
+            "Quote only supplied code."
+        )
+        invented = (
+            "MWInterventionScopeAlias.psc allegedly contains:\n"
+            "```papyrus\n"
+            "if (modifierKey) { singleAim(); }\n"
+            "```"
+        )
+        self.assertTrue(is_inline_source_assignment(question))
+        self.assertTrue(inline_source_answer_needs_retry(question, invented))
+        self.assertFalse(inline_source_answer_needs_retry(question, (
+            "The supplied line sets nativeControls using IsReady and GetVersion."
+        )))
 
 
 if __name__ == "__main__":
