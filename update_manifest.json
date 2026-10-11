@@ -1,6 +1,6 @@
 {
-  "version": "0.9.32",
-  "notes": "Grounds Skyrim MWControls source assignment in actual CMake/C++/Papyrus line-numbered excerpts. Isolates latest source question from irrelevant chat history and web, blocks all model-chosen tools for provided source tasks, rejects false missing-code assertions, enforces five numbered benchmark sections, and retries once with an honest evidence-aware failure response if needed. Explicit follow-up questions can reuse recently uploaded text in the same chat only. Windows/Linux regression suite passed. No new Skyrim agents yet, no code/model self modification, no changes to Skyrim installation or XemTV Build 114/unfinished Build 115. Retains settings, chat, AI Technology Watch, worker pairing.",
+  "version": "0.9.33",
+  "notes": "Fixes a source-context leak where a new Skyrim/Papyrus question could cause XemAi to inspect an unrelated configured XemTV checkout. Requires explicit local project selection, isolates pasted source evidence from unrelated memory/context/tools without deleting stored chats or cross-chat memories, and rejects unsupported source filenames or fabricated literal code quotes with a bounded retry. Automated Windows/Linux regression tests passed; live Qwen/Skyrim behaviour was not tested. Existing configuration, worker pairing, and XemTV files remain unchanged.",
   "files": [
     {
       "path": "app/__init__.py",
@@ -19,8 +19,8 @@
     },
     {
       "path": "app/attachment_tasks.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.32/app/attachment_tasks.py",
-      "sha256": "e9ea37070bfefd137dd5f6394b2a0ebf426a69ca48f3f3ff8fe547ce4a2d6869"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.33/app/attachment_tasks.py",
+      "sha256": "5cd42aa053299c31aa774272f16298f29fad962ddf73c1e9087453deee8b793b"
     },
     {
       "path": "app/capabilities.py",
@@ -44,8 +44,8 @@
     },
     {
       "path": "app/developer_guidance.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.22/app/developer_guidance.py",
-      "sha256": "edbc5c5db582b5ac4474bdd67fb5bc07eb7d5fd4e4da7dbc8ed38f0dc0ac768f"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.33/app/developer_guidance.py",
+      "sha256": "542f8aa4d29f1496503db62f1732bb261aa78ad8c59121b12e038cd5c5ea76eb"
     },
     {
       "path": "app/developer_projects.py",
@@ -64,8 +64,8 @@
     },
     {
       "path": "app/gui_backend.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.32/app/gui_backend.py",
-      "sha256": "c9a9e89bfa2a067472a0e48a39219204118126abcb8992e7b8e0f825d161443e"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.33/app/gui_backend.py",
+      "sha256": "7d1b2bf3339ff0df59e7d190fa223c937d960c17dcfcb33eb06359c328e84adb"
     },
     {
       "path": "app/hybrid_autosetup.py",
@@ -164,8 +164,8 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.32/app/version.py",
-      "sha256": "1efaa53238895467389fb06dccaf9c1b4ed71af0b223181b22e1ff0e7bf0a766"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.33/app/version.py",
+      "sha256": "7c75cf19e943e1bb2a3738963f832ecd66f09bf382b299b6b515b19f56c4b5ed"
     },
     {
       "path": "app/vision.py",
@@ -339,8 +339,8 @@
     },
     {
       "path": "test_capability_inventory.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.32/test_capability_inventory.py",
-      "sha256": "53c6a829dc33261f18a1ded0ea5f3f6e12aa4e0b25bccc2e01010eef6d23e2cb"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.33/test_capability_inventory.py",
+      "sha256": "49ae77b9f275544c833f7bfd54806190a88827d3c56d15c27760825e5d7a7456"
     },
     {
       "path": "test_chat_delete.py",
