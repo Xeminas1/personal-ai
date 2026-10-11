@@ -237,7 +237,7 @@ class AttachmentTasksTests(unittest.TestCase):
         self.assertIn("line-numbered", answer)
         self.assertIn("source excerpts", answer)
         self.assertNotIn("Please provide the exact text", answer)
-        self.assertEqual(model.agent_chat.call_count, 2)
+        self.assertEqual(model.agent_chat.call_count, 3)  # One bounded recovery attempt also failed
 
     def test_accepts_valid_task_headings_and_installed_artifact_uncertainty(self):
         payload = "ATTACHED FILE: Stage1_Trace.txt\n--- UNTRUSTED FILE CONTENT ---\n" + ASSIGNMENT
