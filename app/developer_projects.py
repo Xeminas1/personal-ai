@@ -197,3 +197,66 @@ class DeveloperProjects:
                         if len(matches) >= 25:
                             return {"project": project, "matches": matches, "scanned": scanned, "scan_limited": True}
         return {"project": project, "matches": matches, "scanned": scanned, "scan_limited": False}
+
+    def find_source_files(
+        self, project: str, *, filenames: list[str] | None = None,
+        terms: list[str] | None = None, limit: int = 3,
+    ) -> list[str]:
+        """Select bounded, approved source paths for read-only code inspection.
+
+        A filename match is exact (case-insensitive); broad terms match only
+        source basenames. Source text is never executed or treated as policy.
+        """
+        root, _ = self._location(project, ".", directory=True)
+        if not (1 <= int(limit) <= 4):
+            raise ProjectError("Invalid source selection limit.")
+        wanted = [
+            str(item).replace("\\", "/").strip("/").casefold()
+            for item in (filenames or [])[:4]
+            if isinstance(item, str) and 1 <= len(item) <= 200
+            and ".." not in item.split("/")
+        ]
+        words = [
+            str(item).casefold() for item in (terms or [])[:20]
+            if isinstance(item, str) and 3 <= len(item) <= 35 and item.isalpha()
+        ]
+        if not wanted and not words:
+            return []
+
+        ranked = []
+        scanned = 0
+        for current, folders, files in os.walk(root, followlinks=False):
+            current_path = Path(current)
+            folders[:] = sorted(
+                folder for folder in folders
+                if not _blocked_name(folder, is_dir=True)
+                and not (current_path / folder).is_symlink()
+            )
+            for name in sorted(files):
+                file_path = current_path / name
+                if file_path.is_symlink() or _blocked_name(name) or not self._is_text(file_path):
+                    continue
+                scanned += 1
+                if scanned > MAX_SCAN_FILES:
+                    break
+                relative = file_path.relative_to(root).as_posix()
+                stem = file_path.stem.casefold()
+                if wanted:
+                    full = relative.casefold()
+                    exact = any(full == item or full.endswith("/" + item) for item in wanted)
+                    match = any(name.casefold() == item.split("/")[-1] for item in wanted)
+                    score = 100 if exact else 50 if match else 0
+                else:
+                    score = sum(1 for word in set(words) if word in stem)
+                if score <= 0:
+                    continue
+                try:
+                    if file_path.stat().st_size > MAX_FILE_BYTES:
+                        continue
+                except OSError:
+                    continue
+                ranked.append((-score, relative.casefold(), relative))
+            if scanned > MAX_SCAN_FILES:
+                break
+        ranked.sort()
+        return [relative for _, _, relative in ranked[:limit]]
