@@ -124,7 +124,7 @@ class LocalInventoryTests(unittest.TestCase):
         args = str(model.chat.call_args_list)
         self.assertIn("0.9.28", args)
         self.assertIn("Self-Improvement Agent", args)
-        self.assertIn("no complete repo scan", args.lower().replace("repository", "repo"))
+        self.assertIn("no complete repo audit", args.lower().replace("repository", "repo"))
         bad = (
             "The provided sources compare Gemma 4 26B with Qwen3 30B on "
             "RTX 3090 and RTX 4090. One GPU used 18 GB VRAM and a model "
