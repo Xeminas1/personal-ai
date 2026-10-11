@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import time
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 import json
 import py_compile
 import shutil
@@ -159,48 +162,210 @@ def _backup_program_files(base_dir: Path, backup_dir: Path) -> None:
             shutil.copy2(item, target)
 
 
-def _install_file_manifest(
-    *, base_dir: Path, manifest: dict[str, Any], logger=None
-) -> str:
-    target_version = str(manifest["version"])
-    with tempfile.TemporaryDirectory(prefix="personal_ai_update_") as tmp:
-        stage = Path(tmp) / "stage"
-        stage.mkdir(parents=True, exist_ok=True)
+@dataclass
+class PreparedFileUpdate:
+    """A verified delta staged away from the live application.
 
-        for item in manifest["files"]:
-            relative = _safe_relative_path(str(item["path"]))
-            data = _https_bytes(str(item["url"]))
-            actual = _sha256_bytes(data)
-            expected = str(item["sha256"]).lower()
-            if actual != expected:
+    Downloading and syntax checks never acquire a server chat/update lock.
+    The caller MUST close this handle even on failed or cancelled updates.
+    """
+    version: str
+    base_dir: Path
+    temporary: tempfile.TemporaryDirectory
+    stage: Path
+    changed: tuple[Path, ...]
+    skipped: int
+    download_count: int
+    prepared_at: float
+
+    def close(self) -> None:
+        self.temporary.cleanup()
+
+
+def _existing_sha256(path: Path) -> str | None:
+    if not path.is_file() or path.is_symlink():
+        return None
+    digest = hashlib.sha256()
+    try:
+        with path.open("rb") as source:
+            for chunk in iter(lambda: source.read(1024 * 256), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+    except OSError:
+        return None
+
+
+def _safe_update_target(base_dir: Path, relative: Path) -> Path:
+    base = base_dir.resolve()
+    target = base_dir / relative
+    # No manifest item may escape the install root through symlinks/junctions.
+    if not target.resolve(strict=False).is_relative_to(base):
+        raise UpdateError(f"Update file escapes application directory: {relative}")
+    if target.is_symlink():
+        raise UpdateError(f"Update would overwrite a symbolic link: {relative}")
+    return target
+
+
+def prepare_file_update(
+    *, base_dir: Path, manifest: dict[str, Any], logger=None
+) -> PreparedFileUpdate:
+    """Check unchanged assets locally and download changed ones in parallel.
+
+    Verify EVERY pinned asset either against existing on-disk content or a
+    freshly downloaded SHA-256. The live program is never modified here.
+    """
+    if "files" not in manifest or not isinstance(manifest["files"], list):
+        raise UpdateError("File manifest required for staged delta updating.")
+    base_dir = Path(base_dir)
+    version = str(manifest["version"])
+    items: list[tuple[Path, str, str]] = []
+    paths_seen = set()
+    for entry in manifest["files"]:
+        if not isinstance(entry, dict):
+            raise UpdateError("Malformed update file entry.")
+        relative = _safe_relative_path(str(entry.get("path", "")))
+        key = relative.as_posix().lower()
+        if key in paths_seen:
+            raise UpdateError(f"Duplicate update path: {relative}")
+        paths_seen.add(key)
+        _safe_update_target(base_dir, relative)
+        digest = str(entry.get("sha256", "")).lower()
+        url = str(entry.get("url", ""))
+        if not _valid_sha256(digest) or not url.lower().startswith("https://"):
+            raise UpdateError(f"Invalid HTTPS or SHA-256 for {relative}")
+        items.append((relative, url, digest))
+
+    to_download = [
+        entry for entry in items
+        if _existing_sha256(base_dir / entry[0]) != entry[2]
+    ]
+    temp = tempfile.TemporaryDirectory(prefix="personal_ai_delta_")
+    stage = Path(temp.name) / "stage"
+    stage.mkdir()
+    try:
+        def fetch(entry):
+            relative, url, digest = entry
+            data = _https_bytes(url)
+            if _sha256_bytes(data) != digest:
                 raise UpdateError(
                     f"Verification failed for {relative}: SHA-256 mismatch."
                 )
             destination = stage / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_bytes(data)
+            return relative
 
+        if to_download:
+            # Bounded to avoid overwhelming the laptop or public source host.
+            with ThreadPoolExecutor(max_workers=min(6, len(to_download))) as pool:
+                changes = list(pool.map(fetch, to_download))
+        else:
+            changes = []
         _validate_python_files(stage)
-
-        backup_dir = base_dir / ".update_backups" / f"before_{target_version.replace('.', '_')}"
-        if backup_dir.exists():
-            shutil.rmtree(backup_dir)
-        _backup_program_files(base_dir, backup_dir)
-
-        for staged in stage.rglob("*"):
-            if not staged.is_file():
-                continue
-            relative = staged.relative_to(stage)
-            destination = base_dir / relative
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(staged, destination)
-
+        prepared = PreparedFileUpdate(
+            version=version, base_dir=base_dir.resolve(),
+            temporary=temp, stage=stage, changed=tuple(changes),
+            skipped=len(items) - len(to_download),
+            download_count=len(to_download), prepared_at=time.monotonic(),
+        )
         if logger:
             logger.info(
-                "File update installed | from=%s to=%s files=%d backup=%s",
-                VERSION, target_version, len(manifest["files"]), backup_dir
+                "Update prepared off-line | target=%s downloads=%d unchanged=%d",
+                version, len(to_download), prepared.skipped,
             )
-    return target_version
+        return prepared
+    except BaseException:
+        temp.cleanup()
+        raise
+
+
+def install_prepared_update(
+    *, base_dir: Path, prepared: PreparedFileUpdate, logger=None
+) -> str:
+    """Short critical section: back up and replace only changed files."""
+    base_dir = Path(base_dir).resolve()
+    if prepared.base_dir != base_dir:
+        raise UpdateError("Prepared update belongs to a different installation.")
+    if not prepared.stage.is_dir():
+        raise UpdateError("Prepared update is no longer available.")
+    backup_dir = (
+        base_dir / ".update_backups"
+        / f"before_{prepared.version.replace('.', '_')}"
+    )
+    changed = []
+    # Verify again in case staging changed while the chat remained active.
+    for relative in prepared.changed:
+        staged = prepared.stage / relative
+        if not staged.is_file() or staged.is_symlink():
+            raise UpdateError(f"Staged update file is missing: {relative}")
+        _safe_update_target(base_dir, relative)
+        changed.append(relative)
+    if backup_dir.exists():
+        shutil.rmtree(backup_dir)
+    backup_dir.mkdir(parents=True)
+    existed: list[Path] = []
+    created: list[Path] = []
+    try:
+        # Back up BEFORE making any program changes; no large full-tree copy.
+        for relative in changed:
+            target = _safe_update_target(base_dir, relative)
+            if target.exists():
+                if not target.is_file():
+                    raise UpdateError(f"Update target is not a regular file: {relative}")
+                dest = backup_dir / relative
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(target, dest)
+                existed.append(relative)
+            else:
+                created.append(relative)
+        (backup_dir / "rollback_manifest.json").write_text(
+            json.dumps({
+                "version": prepared.version,
+                "restorable_files": [p.as_posix() for p in existed],
+                "new_files": [p.as_posix() for p in created],
+            }, indent=2),
+            encoding="utf-8",
+        )
+        for relative in changed:
+            target = _safe_update_target(base_dir, relative)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(prepared.stage / relative, target)
+    except Exception:
+        # If final replacement fails, restore only the files this update touched.
+        for relative in existed:
+            source = backup_dir / relative
+            if source.is_file():
+                target = base_dir / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
+        for relative in created:
+            target = base_dir / relative
+            if target.is_file():
+                target.unlink()
+        raise
+    if logger:
+        logger.info(
+            "Delta update installed | from=%s to=%s downloaded=%d reused=%d "
+            "replaced=%d backup=%s preflight_seconds=%d",
+            VERSION, prepared.version, prepared.download_count,
+            prepared.skipped, len(changed), backup_dir,
+            int(time.monotonic() - prepared.prepared_at),
+        )
+    return prepared.version
+
+
+def _install_file_manifest(
+    *, base_dir: Path, manifest: dict[str, Any], logger=None
+) -> str:
+    prepared = prepare_file_update(
+        base_dir=base_dir, manifest=manifest, logger=logger
+    )
+    try:
+        return install_prepared_update(
+            base_dir=base_dir, prepared=prepared, logger=logger
+        )
+    finally:
+        prepared.close()
 
 
 def _safe_extract(zip_path: Path, destination: Path) -> None:
