@@ -21,6 +21,7 @@ on:
       - "app/version.py"
       - "self_test.py"
       - "test_updater.py"
+      - "test_update_performance.py"
       - ".github/workflows/developer-mode-tests.yml"
   workflow_dispatch:
 jobs:
@@ -68,4 +69,6 @@ jobs:
       - name: Test AI Watch follow-ups and restart health
         run: python test_watch_intelligence.py
       - name: Run update validation tests
-        run: python test_updater.py
+        run: |
+          python test_updater.py
+          python test_update_performance.py
