@@ -62,7 +62,7 @@ def watch_focus(
     recent = [
         str(row.get("content", ""))
         for row in (history or [])[-14:]
-        if isinstance(row, dict) and row.get("role") in {"assistant", "user"}
+        if hasattr(row, "keys") and row["role"] in {"assistant", "user"}
     ]
     watch_in_history = any(
         any(marker in msg for marker in _TOPIC_MARKERS)
