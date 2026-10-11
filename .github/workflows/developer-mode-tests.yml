@@ -22,6 +22,14 @@ on:
       - "self_test.py"
       - "test_updater.py"
       - "test_update_performance.py"
+      - "test_attachment_challenges.py"
+      - "test_drag_drop.js"
+      - "mobile/index.html"
+      - "mobile/app.js"
+      - "mobile/styles.css"
+      - "mobile/sw.js"
+      - "app/attachment_tasks.py"
+      - "app/gui_backend.py"
       - ".github/workflows/developer-mode-tests.yml"
   workflow_dispatch:
 jobs:
@@ -37,7 +45,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile all Python modules
-        run: python -m compileall -q app developer_setup.py test_developer_projects.py test_developer_guidance.py test_developer_multifile.py test_developer_trace.py test_visual_routing.py test_governance_reporting.py test_agent_team.py test_ai_watch.py test_dialogue_mission.py test_capability_inventory.py test_self_knowledge.py
+        run: python -m compileall -q app developer_setup.py test_developer_projects.py test_developer_guidance.py test_developer_multifile.py test_developer_trace.py test_visual_routing.py test_governance_reporting.py test_agent_team.py test_ai_watch.py test_dialogue_mission.py test_capability_inventory.py test_attachment_challenges.py test_self_knowledge.py
       - name: Run developer-mode security tests
         run: python test_developer_projects.py
       - name: Test developer source retrieval
@@ -64,6 +72,12 @@ jobs:
         run: python test_dialogue_mission.py
       - name: Test authoritative inventory and self audit regression
         run: python test_capability_inventory.py
+      - name: Test attached Skyrim source challenges
+        run: python test_attachment_challenges.py
+      - name: Validate browser JavaScript and drag-drop interactions
+        run: |
+          node --check mobile/app.js
+          node test_drag_drop.js
       - name: Run XemAi built-in test suite
         run: python self_test.py
       - name: Test AI Watch follow-ups and restart health
