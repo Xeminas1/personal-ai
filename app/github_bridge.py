@@ -54,7 +54,12 @@ def save_state(data_dir: Path, state: dict) -> None:
     tmp = dest.with_name(dest.name + ".tmp")
     # The token is stored separately in data/secrets.json, never in state.
     safe = {key: value for key, value in state.items()
-            if key in {"repo", "pending", "issue_number", "last_comment_id"}}
+            if key in {
+                "repo", "pending", "issue_number", "last_comment_id",
+                "auto_enabled", "auto_issue", "auto_last_seen_id",
+                "auto_seen_mirror_id", "auto_total", "auto_today", "auto_day",
+                "auto_last_post_at", "auto_paused", "auto_chat_id",
+            }}
     tmp.write_text(json.dumps(safe, indent=2, ensure_ascii=False), encoding="utf-8")
     try:
         os.chmod(tmp, 0o600)
@@ -167,9 +172,22 @@ def chat_command(question: str, data_dir: Path, logger=None, *, client=None) -> 
                 "bridge followup: your follow-up to the current issue\n"
                 "bridge approve CODE (only after reviewing a draft)\n"
                 "bridge replies (read the latest issue comments).\n"
+                "bridge transcript (review the latest messages).\n"
+                "bridge auto on | bridge auto off | bridge auto status.\n"
                 "Nothing is uploaded automatically. This GitHub bridge does not "
                 "make ChatGPT respond until this conversation is checked."
             )
+        if q.lower() in {"bridge auto on", "bridge auto off",
+                         "bridge auto status", "bridge transcript"}:
+            from .github_bridge_auto import enable, disable, status, transcript
+            command = q.lower()
+            if command == "bridge auto on":
+                return enable(data_dir)
+            if command == "bridge auto off":
+                return disable(data_dir)
+            if command == "bridge auto status":
+                return status(data_dir)
+            return transcript(data_dir, client=client)
         if q.lower() == "bridge status":
             issue = state.get("issue_number")
             return (
@@ -220,6 +238,9 @@ def chat_command(question: str, data_dir: Path, logger=None, *, client=None) -> 
                     issue, url = api.post_issue(repo, pending["text"])
                     state["issue_number"] = issue
                     state["last_comment_id"] = 0
+                    state["auto_enabled"] = False
+                    state["auto_issue"] = None
+                    state["auto_paused"] = False
                 else:
                     issue = state.get("issue_number")
                     if not isinstance(issue, int) or issue < 1:
