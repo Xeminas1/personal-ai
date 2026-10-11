@@ -20,7 +20,7 @@ _MIRROR_LABELS = (
 # Fixed text only: never interpolate words found in untrusted comments.
 _TOPICS = (
     ("claims about supplied code and version numbers",
-     re.compile(r"(?i)\b(?:cmake|papyrus|version|versioning|source file|attribution)\b")),
+     re.compile(r"(?i)\b(?:cmake|papyrus|versions?|versioning|source file|attribution)\b")),
     ("handling of missing evidence and uncertain conclusions",
      re.compile(r"(?i)\b(?:unknown|missing|absent|insufficient|uncertain|negation|evidence gap)\b")),
     ("coding attachment and Skyrim regression challenges",
