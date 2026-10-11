@@ -185,7 +185,16 @@ def run_agent_team(
                 research = {
                     "status": "verified_pages" if any(x.get("page_fetched") for x in sources) else "snippets_only",
                     "sources": [
-                        {key: item.get(key) for key in ("id", "title", "url", "page_fetched", "snippet")}
+                        {
+                            "id": item.get("id"), "title": _bounded(item.get("title"), 160),
+                            "url": _bounded(item.get("url"), 360),
+                            "page_fetched": item.get("page_fetched") is True,
+                            "excerpt": _bounded(item.get("excerpt"), 1100),
+                            "quote": _bounded(
+                                item.get("quote"), 180
+                            ) if item.get("quote_verified_from_fetched_page") is True else "",
+                            "content_origin": item.get("content_origin"),
+                        }
                         for item in sources[:2]
                     ],
                 }
