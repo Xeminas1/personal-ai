@@ -60,6 +60,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.28", "Grounds AI Technology Watch follow-ups in saved announcements, ranks practical relevance, tracks evaluation proposals and verifies graceful automatic server restarts; no verified model improvement benchmarks."),
     ("0.9.29", "Adds a source-of-truth inventory of supervised agent roles, explicit self-analysis and release-history answers, and an internal audit that avoids irrelevant web results and reports benchmark uncertainty."),
     ("0.9.30", "Stages verified changed release files while chat remains available, uses bounded parallel downloads and selective rollback to shorten blocking installation; corrects unsupported self-audit benchmark gains and unobserved missing-file claims."),
+    ("0.9.31", "Adds desktop drag-and-drop file attachment queue and grounds user-requested source-code assignments in their attached numbered task with no unrelated web research."),
 ]
 
 
