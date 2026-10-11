@@ -29,19 +29,28 @@ _EVIDENCE_FILES = re.compile(
     re.I,
 )
 _MISSING_CONTENT = re.compile(
-    r"(?:does\s+not\s+include|doesn'?t\s+(?:contain|include|provide)|"
-    r"lack(?:s|ing)?|missing|not\s+(?:been\s+)?provided|not\s+available|"
-    r"without\s+(?:the\s+)?(?:code|source|actual|file))"
-    r".{0,100}?(?:actual\s+)?(?:file\s+)?(?:contents?|source|excerpts?|code|"
-    r"files?|lines?)\b"
+    # Only reject a claim that the SUPPLIED source text is unavailable.
+    # "missing installed DLL/log" is correct uncertainty, not a reason to
+    # discard an otherwise grounded diagnosis.
+    r"\b(?:provided|supplied|attached)\s+(?:text|file|document|source|"
+    r"attachment|excerpts?)\s+(?:does\s+not|doesn't|did\s+not|lacks?)\s+"
+    r"(?:include|contain|provide|have)\s+(?:the\s+)?(?:actual\s+)?"
+    r"(?:contents?|code|source|excerpts?|lines?|files?)\b"
+    r"|\b(?:actual\s+)?(?:source|code)\s+(?:excerpts?|content|lines?)\s+"
+    r"(?:is|are)\s+(?:missing|not\s+provided|not\s+available)\b"
     r"|\b(?:code\s+content\s+for\s+required\s+files?\s+is\s+missing|"
     r"please\s+provide\s+(?:the\s+)?(?:exact\s+)?(?:code|file|source)\s+"
-    r"(?:content|text))\b",
+    r"(?:content|text))\b"
+    r"|\b(?:without\s+(?:the\s+)?(?:supplied|provided|actual)\s+"
+    r"(?:code|source|excerpts?))\b",
     re.I | re.S,
 )
 _NUMBERED_LINE = re.compile(r"(?m)^\s*(\d{1,5}):\s*\S")
 _NUMBERED_ANSWER = re.compile(
-    r"(?m)^\s*(?:#{1,4}\s*)?(?:\*\*)?(\d)\s*[.):-]\s*"
+    # Accept 1. ..., ## Task 1: ..., **1) ...** and 1 — ... headings.
+    # These are common valid task sections, not evidence of correctness.
+    r"(?im)^\s*(?:#{1,4}\s*)?(?:\*\*)?\s*(?:task\s+|question\s+|step\s+)?"
+    r"(\d)\*{0,2}\s*[.):-–—]\s*"
 )
 _OFF_TOPIC = re.compile(
     r"\b(?:no specific question (?:has been|was) (?:posed|asked)|"
@@ -264,25 +273,72 @@ def source_assignment_context(question: str, payload: str) -> str:
     )
 
 
-def answer_incomplete(answer: str, payload: str) -> bool:
+def incomplete_reasons(answer: str, payload: str) -> list[str]:
+    """Bounded, non-sensitive reason codes; never log full model drafts."""
     a = str(answer or "").strip()
-    if len(a) < 300 or _OFF_TOPIC.search(a):
-        return True
+    reasons = []
+    if len(a) < 300:
+        reasons.append("too_short")
+    if _OFF_TOPIC.search(a):
+        reasons.append("off_topic")
     if has_readable_source(payload) and _MISSING_CONTENT.search(a):
-        return True
+        reasons.append("falsely_missing_source")
     if source_evidence_status(payload)["tasks_detected"] == ["1", "2", "3", "4", "5"]:
         if not _numbered_tasks_answered(a):
-            return True
+            reasons.append("missing_numbered_sections")
     names = source_names(payload)
     if len(names) >= 3:
         mentioned = sum(name.lower() in a.lower() for name in names)
         if mentioned < 2:
-            return True
-    # The user asked five numbered diagnostics; reject an unrelated one-line
-    # explanation even if it happens to mention two files.
+            reasons.append("too_few_source_references")
     if "YOUR TASK" in payload.upper() and len(a) < 650:
-        return True
-    return False
+        reasons.append("too_short_for_assignment")
+    return reasons
+
+
+def answer_incomplete(answer: str, payload: str) -> bool:
+    return bool(incomplete_reasons(answer, payload))
+
+
+def recovery_task_groups(payload: str) -> list[list[str]]:
+    """Split a bounded multi-task source challenge into two read-only passes.
+
+    Every pass receives the SAME original evidence; this is decomposition,
+    not permission to read other projects or to invent missing files.
+    """
+    tasks = source_evidence_status(payload)["tasks_detected"]
+    if not 4 <= len(tasks) <= 8 or tasks != [str(i) for i in range(1, len(tasks) + 1)]:
+        return []
+    midpoint = (len(tasks) + 1) // 2
+    return [tasks[:midpoint], tasks[midpoint:]]
+
+
+def recovery_task_instruction(tasks: list[str]) -> str:
+    """Narrow one retry to an explicit subset without altering evidence."""
+    ids = ", ".join(tasks)
+    return (
+        "READ-ONLY SOURCE TASK RECOVERY PASS. The full attachment and every "
+        "numbered source excerpt are already supplied in the USER message. "
+        "This is a PARTIAL pass to be combined by the application with the "
+        "other numbered tasks, so answer ONLY task numbers " + ids + ". "
+        "Start each section on its own line with the exact heading "
+        "'1. ...' (substitute each requested number). Cite actual file names "
+        "and source line numbers from the attachment. Explain what source "
+        "proves separately from hypotheses about installed files. If a "
+        "detail cannot be proven, say so; do NOT claim that the supplied "
+        "source text is absent. Do not use unrelated projects, external "
+        "tools or web search. Do not edit, compile, run or install anything. "
+        "Return the TASK ANSWERS only, no preamble or benchmark commentary."
+    )
+
+
+def recovery_part_incomplete(answer: str, tasks: list[str]) -> bool:
+    """A partial answer must actually contain each requested numbered section."""
+    a = str(answer or "").strip()
+    sections = set(_NUMBERED_ANSWER.findall(a))
+    return (len(a) < 180 or _OFF_TOPIC.search(a) is not None
+            or _MISSING_CONTENT.search(a) is not None
+            or not set(tasks).issubset(sections))
 
 
 def retry_instruction(payload: str) -> str:
