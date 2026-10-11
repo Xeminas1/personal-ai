@@ -209,7 +209,6 @@ def watch_fallback(report: dict, question: str) -> str:
             "latency/accuracy metrics, run a small isolated benchmark only "
             "after separate authorisation, and report before changing XemAi."
         )
-    )
     return (
         "The AI Technology Watch reported the following unverified leads:\n"
         + "\n".join(overview) + "\n\n" + action
