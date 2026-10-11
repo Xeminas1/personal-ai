@@ -271,15 +271,15 @@ class AttachmentTasksTests(unittest.TestCase):
     def test_inline_papyrus_source_stays_in_current_chat_and_recovers_off_topic(self):
         # Mirrors the user's real Qwen3:8b failure in a new conversation.
         question = (
-            "I'm testing your ability to accurately read source code.\\n"
-            "File: MWInterventionScopeAlias.psc\\n"
-            "Line 74:\\n"
-            "nativeControls = MWControls.IsReady() && MWControls.GetVersion() == 615\\n"
-            "Lines 142–145:\\n"
-            "If nativeControls\\n"
-            "    Return Input.IsKeyPressed(aimKeyA)\\n"
-            "EndIf\\n"
-            "Return Input.IsKeyPressed(aimKeyA) && Input.IsKeyPressed(aimKeyB)\\n"
+            "I'm testing your ability to accurately read source code.\n"
+            "File: MWInterventionScopeAlias.psc\n"
+            "Line 74:\n"
+            "nativeControls = MWControls.IsReady() && MWControls.GetVersion() == 615\n"
+            "Lines 142–145:\n"
+            "If nativeControls\n"
+            "    Return Input.IsKeyPressed(aimKeyA)\n"
+            "EndIf\n"
+            "Return Input.IsKeyPressed(aimKeyA) && Input.IsKeyPressed(aimKeyB)\n"
             "Answer what nativeControls means. Quote only supplied code."
         )
         wrong = (
@@ -310,11 +310,11 @@ class AttachmentTasksTests(unittest.TestCase):
         model.agent_chat.side_effect = [wrong, correct]
         runtime = {"model": "qwen3:8b", "compute": "remote_worker",
                    "worker_available": True}
-        with patch.object(gui_backend, "DATA_DIR", self.data), \\
-             patch.object(gui_backend, "build_llm_client", return_value=model), \\
-             patch.object(self.backend, "refresh_runtime_model", return_value=runtime), \\
+        with patch.object(gui_backend, "DATA_DIR", self.data), \
+             patch.object(gui_backend, "build_llm_client", return_value=model), \
+             patch.object(self.backend, "refresh_runtime_model", return_value=runtime), \
              patch.object(gui_backend, "source_context_for_request",
-                          side_effect=AssertionError("inline source cannot select repo")), \\
+                          side_effect=AssertionError("inline source cannot select repo")), \
              patch.object(gui_backend, "should_research_query",
                           side_effect=AssertionError("inline source cannot browse")):
             answer = self.backend.send(self.chat["id"], question)
@@ -325,22 +325,22 @@ class AttachmentTasksTests(unittest.TestCase):
         self.assertEqual(first.kwargs["max_tool_rounds"], 0)
         self.assertFalse(first.kwargs["tool_registry"].web_allowed)
         self.assertEqual(sum(m["role"] == "user" for m in first.args[0]), 1)
-        system_text = "\\n".join(m["content"] for m in first.args[0]
+        system_text = "\n".join(m["content"] for m in first.args[0]
                                 if m["role"] == "system")
         self.assertIn("INLINE SOURCE-ONLY QUESTION", system_text)
         self.assertNotIn("HomeLayout.kt", system_text)
 
     def test_rejects_fabricated_fenced_quote_even_with_correct_filename(self):
         question = (
-            "File: MWInterventionScopeAlias.psc\\n"
-            "Line 74:\\n"
-            "nativeControls = MWControls.IsReady() && MWControls.GetVersion() == 615\\n"
+            "File: MWInterventionScopeAlias.psc\n"
+            "Line 74:\n"
+            "nativeControls = MWControls.IsReady() && MWControls.GetVersion() == 615\n"
             "Quote only supplied code."
         )
         invented = (
-            "MWInterventionScopeAlias.psc allegedly contains:\\n"
-            "```papyrus\\n"
-            "if (modifierKey) { singleAim(); }\\n"
+            "MWInterventionScopeAlias.psc allegedly contains:\n"
+            "```papyrus\n"
+            "if (modifierKey) { singleAim(); }\n"
             "```"
         )
         self.assertTrue(is_inline_source_assignment(question))
@@ -348,7 +348,6 @@ class AttachmentTasksTests(unittest.TestCase):
         self.assertFalse(inline_source_answer_needs_retry(question, (
             "The supplied line sets nativeControls using IsReady and GetVersion."
         )))
-
 
 
 if __name__ == "__main__":
