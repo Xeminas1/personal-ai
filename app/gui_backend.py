@@ -11,6 +11,7 @@ from .agent_team import (
     ReadOnlyTeamTools, requested_agent_mode, run_agent_team, agent_team_context,
 )
 from .ai_watch import chat_command as ai_watch_chat_command
+from .ai_watch import current_report as ai_watch_report
 from .config import DATA_DIR, LOG_DIR, load_config, save_config
 from .database import Database
 from .developer_guidance import (
@@ -869,6 +870,13 @@ class ChatBackend:
                     runtime=runtime_model_info, tools=tools,
                     source_context=developer_context,
                     visual_context=visual_evidence,
+                    watch_context=(
+                        json.dumps({
+                            "records": ai_watch_report(DATA_DIR, self.config)["reports"][:5],
+                            "source_note": "Official feed claims; improvements not benchmarked",
+                        }, ensure_ascii=False)
+                        if agent_mode == "self_audit" else ""
+                    ),
                     status_callback=status_callback,
                     logger=self.logger,
                 )
