@@ -23,6 +23,9 @@ on:
       - "test_updater.py"
       - "test_update_performance.py"
       - "test_attachment_challenges.py"
+      - "test_github_bridge.py"
+      - "github_bridge_setup.py"
+      - "bridge_setup.bat"
       - "test_drag_drop.js"
       - "mobile/index.html"
       - "mobile/app.js"
@@ -72,6 +75,8 @@ jobs:
         run: python test_dialogue_mission.py
       - name: Test authoritative inventory and self audit regression
         run: python test_capability_inventory.py
+      - name: Test explicit-approval private GitHub bridge
+        run: python test_github_bridge.py
       - name: Test attached Skyrim source challenges
         run: python test_attachment_challenges.py
       - name: Test Qwen3.5 9B Q8 worker selection and fallback
