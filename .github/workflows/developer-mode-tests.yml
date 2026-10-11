@@ -26,6 +26,7 @@ on:
       - "test_github_bridge.py"
       - "test_github_bridge_auto.py"
       - "test_github_bridge_learning.py"
+      - "test_github_bridge_review.py"
       - "github_bridge_setup.py"
       - "bridge_setup.bat"
       - "test_drag_drop.js"
@@ -82,6 +83,7 @@ jobs:
           python test_github_bridge.py
           python test_github_bridge_auto.py
           python test_github_bridge_learning.py
+          python test_github_bridge_review.py
       - name: Test attached Skyrim source challenges
         run: python test_attachment_challenges.py
       - name: Test Qwen3.5 9B Q8 worker selection and fallback
