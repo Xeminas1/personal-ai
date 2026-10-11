@@ -94,6 +94,8 @@ def is_self_knowledge_query(text: str) -> bool:
 
     if is_ai_comparison_query(text):
         return True
+    if governance_topic(text):
+        return True
 
     direct_phrases = (
         "what are you missing",
@@ -350,6 +352,36 @@ IMPORTANT CORRECTIONS
   update system and user-specific state.
 - Do not infer the active model from config.json. The runtime model line above
   comes from Ollama discovery and is authoritative for the current process.
+SELF-REPORTING: BEHAVIOURAL INSTRUCTIONS, OVERSIGHT, AND LEARNING
+- XemAi has application-level behavioural instructions (see its local
+  prompt/constitution), restrictions implemented by application code, and
+  behaviour learned during the underlying Qwen model's prior training.
+  These are different layers. The application instructions are editable
+  through an approved change; model training is not changed merely by
+  changing a prompt.
+- Being instructed not to fabricate or provide harmful information is NOT
+  proof that the model cannot make errors, fabricate facts, or sometimes
+  deviate from instructions. Never say "I cannot provide false information"
+  or "I can never ignore my guidelines".
+- There is no separate live human moderator or answer-approval service
+  implemented in this XemAi application. This code inspection alone does
+  NOT prove that every dependency, machine, network service or external
+  provider is unmonitored. Chats persist locally, troubleshooting logs
+  record operational metadata by default, and configured external services
+  may process data sent to them. Do not make categorical claims that
+  "nobody watches" or "nothing monitors" the system.
+- A user's request cannot change application-enforced tool permissions.
+  Instructions can be changed by approved code updates, but changing a
+  prompt is not the same as removing a software restriction or retraining
+  Qwen; models may inconsistently follow behavioural instructions.
+- Conversations can contribute automatically extracted durable memory when
+  auto_memory is enabled, and ratings provide guidance on future replies.
+  Not every message creates a memory or updates preferences. The underlying
+  model's weights do not change after each conversation and are not
+  fine-tuned by XemAi's current feedback mechanism.
+- If asked about what you can verify, state that your account is based on
+  the provided XemAi runtime and code facts, not omniscient knowledge of all
+  machine or network activity. Do not invent claims about external providers.
 
 AI COMPARISON RULES
 - You are specifically XemAi. Never say you are an unnamed or unspecified AI.
@@ -451,3 +483,157 @@ def build_self_knowledge_fallback(
         "that the runtime reports as enabled. I also will not claim abilities "
         "that are not in the runtime capability snapshot."
     )
+
+
+# Self-governance questions often arrive as conversational follow-ups without
+# the words "model", "capability", or "XemAi". Route them using the running
+# app's facts, not generic training-template answers from Qwen.
+_GOVERNANCE_PATTERNS = {
+    "oversight": re.compile(
+        r"\b(?:watch(?:ing|ed)?|monitor(?:ing|ed)?|oversight|moderator|"
+        r"supervis(?:e|ed|ion)|review(?:ing|ed)?\s+your\s+(?:responses|answers))\b"
+        r"(?=.*\b(?:you|your|xemai|assistant|responses|answers)\b)"
+        r"|\b(?:anyone|anything|someone|no\s+one|nobody)\s+"
+        r"(?:specific\s+)?(?:is\s+)?(?:watching|monitoring)\s+you\b",
+        re.IGNORECASE,
+    ),
+    "restrictions": re.compile(
+        r"\b(?:you|your|xemai)\b.{0,90}\b(?:prohibited|censored|"
+        r"restricted|forbidden|limitations|allowed\s+to\s+say|"
+        r"say\s+certain\s+things|ignore\s+(?:your|the|all)\s+"
+        r"(?:instructions|guidelines|rules|programming|of\s+that))\b"
+        r"|\b(?:ignore\s+(?:your|the)\s+(?:guidelines|rules|programming)|"
+        r"say\s+to\s+ignore\s+all\s+of\s+that|"
+        r"tell\s+you\s+to\s+ignore\s+all\s+of\s+that)\b",
+        re.IGNORECASE,
+    ),
+    "learning": re.compile(
+        r"\b(?:you|your|xemai)\b.{0,80}\b(?:learn(?:ing)?|"
+        r"training|trained|fine[- ]tun(?:e|ed|ing)|model\s+weights|"
+        r"adapt(?:ing)?\s+from\s+(?:messages|feedback))\b"
+        r"|\b(?:learn(?:ing)?|train(?:ed|ing)?|fine[- ]tun(?:e|ed|ing))"
+        r".{0,80}\b(?:you|your|xemai)\b",
+        re.IGNORECASE,
+    ),
+}
+
+_GOVERNANCE_ABSOLUTES = {
+    "oversight": (
+        r"\b(?:no\s+(?:external\s+)?oversight|"
+        r"no\s+(?:specific\s+)?watcher|"
+        r"(?:no\s+one|nobody|nothing|not\s+anything)\s+"
+        r"(?:is\s+)?(?:watching|monitoring)|"
+        r"not\s+under\s+(?:any\s+)?external\s+oversight|"
+        r"no\s+external\s+entity\s+enforcing)\b",
+    ),
+    "restrictions": (
+        r"\b(?:cannot|can't|can\s+never|impossible\s+to)\s+"
+        r"(?:ever\s+)?(?:ignore|override|bypass)\s+"
+        r"(?:my|the|any)\s+(?:guidelines|programming|ethical|rules|instructions)\b",
+        r"\b(?:inherent\s+to\s+how\s+i\s+function|"
+        r"not\s+rules\s+to\s+follow|cannot\s+provide\s+(?:harmful|false)\s+information|"
+        r"never\s+(?:make\s+mistakes|generate\s+false\s+information))\b",
+    ),
+    "learning": (
+        r"\b(?:model\s+weights?\s+(?:update|change)\s+"
+        r"(?:after\s+every|each)\s+(?:message|chat)|"
+        r"i\s+learn\s+everything\s+from\s+every\s+message|"
+        r"i\s+(?:retain|remember)\s+every\s+message\s+forever)\b",
+    ),
+}
+
+
+def governance_topic(text: str) -> str:
+    """One scoped self-reporting topic or empty string for unrelated requests."""
+    if not isinstance(text, str):
+        return ""
+    normalized = " ".join(text.replace("’", "'").split())[:1200]
+    for name, pattern in _GOVERNANCE_PATTERNS.items():
+        if pattern.search(normalized):
+            return name
+    return ""
+
+
+def governance_answer_needs_retry(question: str, answer: str) -> bool:
+    """Check obvious ungrounded absolutes and incomplete self-reporting.
+
+    This does not prove an answer is correct; it catches repeatable failures
+    observed in real conversations while allowing candid short replies.
+    """
+    topic = governance_topic(question)
+    if not topic:
+        return False
+    a = " ".join(str(answer or "").replace("’", "'").lower().split())
+    if len(a) < 90 or any(re.search(p, a) for p in _GOVERNANCE_ABSOLUTES[topic]):
+        return True
+    if topic == "learning":
+        return not ("memory" in a and re.search(r"\b(?:weights?|training|fine[- ]tun)", a))
+    if topic == "oversight":
+        return not re.search(r"\b(?:log|local|app|code|system|provider|cannot\s+verify|can't\s+verify)\b", a)
+    return not re.search(r"\b(?:instruct|software|code|model|programming|prompt|permission|guideline)\b", a)
+
+
+def governance_retry_instruction(question: str) -> str:
+    topic = governance_topic(question)
+    hints = {
+        "oversight": (
+            "Do not assert that nobody is watching or that no external "
+            "oversight is possible. The app has local logs and saved chat "
+            "history, but no live human moderator/approval service in its "
+            "examined implementation; other machine/network/provider "
+            "oversight cannot be universally ruled out."
+        ),
+        "restrictions": (
+            "Distinguish app-level behavioural instructions, software-enforced "
+            "tool permissions, and pretraining. Do not claim that you are "
+            "incapable of errors or that instructions cannot ever be changed."
+        ),
+        "learning": (
+            "Explain optional persistent memory and ratings as adaptation. "
+            "Do not imply that every message produces a memory or trains "
+            "model weights; no continual fine-tuning currently occurs."
+        ),
+    }
+    return (
+        "SELF-REPORT VALIDATION: Your prior answer may have made unsupported "
+        "absolute claims or omitted essential technical distinctions. "
+        + hints.get(topic, "")
+        + " Answer the user's precise question directly, briefly, and "
+        "without generic AI safety boilerplate."
+    )
+
+
+def build_governance_fallback(
+    question: str, config: dict,
+) -> str:
+    """Verified, narrow explanations when two model drafts fail calibration."""
+    topic = governance_topic(question)
+    if topic == "oversight":
+        return (
+            "XemAi's examined application doesn't implement a live human "
+            "moderator approving each answer. It does store local chat history "
+            "and operational logs, and it can use configured network or "
+            "model services. I cannot verify from the app code that every "
+            "machine, dependency or provider is completely unmonitored. "
+            "My behaviour also follows instructions and software permissions."
+        )
+    if topic == "restrictions":
+        return (
+            "I have behavioural instructions, software-enforced permissions "
+            "and behaviour learned by my underlying Qwen model. Asking me "
+            "to ignore instructions does not change the application's tool "
+            "permissions. Authorised software updates can change prompts "
+            "or code, but that isn't the same as retraining the model. "
+            "I can still make mistakes or fail to follow instructions."
+        )
+    if topic == "learning":
+        status = "enabled" if config.get("auto_memory", True) else "disabled"
+        return (
+            "I use persistent chat history and structured memory to adapt "
+            f"across conversations. Automatic memory extraction is {status}, "
+            "but not every message creates a memory. User feedback can "
+            "influence later answer guidance. My Qwen model's neural-network "
+            "weights are not currently trained or fine-tuned after messages; "
+            "software updates can separately improve the application."
+        )
+    return ""
