@@ -17,6 +17,7 @@ from .agent_team import (
     ReadOnlyTeamTools, requested_agent_mode, run_agent_team, agent_team_context,
 )
 from .ai_watch import chat_command as ai_watch_chat_command
+from .github_bridge import chat_command as github_bridge_chat_command, is_command as is_bridge_command
 from .ai_watch import current_report as ai_watch_report
 from .attachment_tasks import (
     SourceTaskReadOnlyTools, is_attached_code_assignment,
@@ -519,6 +520,18 @@ class ChatBackend:
                         parsed_attachments[0].get("name", "file")
                     )
                 worker_db.rename_chat(chat_id, title_from_message(title_seed))
+
+            if record_user and not parsed_attachments and is_bridge_command(query_text):
+                bridge_answer = github_bridge_chat_command(
+                    query_text, DATA_DIR, logger=self.logger
+                )
+                worker_db.add_assistant_message(
+                    chat_id, bridge_answer, compute_source="application",
+                )
+                assistant_recorded = True
+                if status_callback:
+                    status_callback(None)
+                return bridge_answer
 
             # Exact explicit user commands are application actions, not model
             # tool calls. A model cannot silently enable background monitoring.

@@ -133,3 +133,15 @@ def complete_hybrid_worker_client_pairing(data_dir: Path) -> None:
     payload = _load_secret_data(data_dir)
     payload.pop("hybrid_worker_pending_token", None)
     _save_secret_data(data_dir, payload)
+
+
+def load_github_bridge_token(data_dir: Path) -> str:
+    """Read local bridge credential; never include it in logs or git files."""
+    return str(_load_secret_data(data_dir).get("github_bridge_token", "")).strip()
+
+
+def save_github_bridge_token(data_dir: Path, token: str) -> None:
+    """Persist explicitly configured fine-grained GitHub Issues credential."""
+    payload = _load_secret_data(data_dir)
+    payload["github_bridge_token"] = token.strip()
+    _save_secret_data(data_dir, payload)
