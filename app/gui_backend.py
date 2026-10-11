@@ -639,8 +639,16 @@ class ChatBackend:
                     chat_id, turn_id, len(parsed_attachments), visual_ready,
                 )
 
-            comparison_query = is_ai_comparison_query(query_text)
-            self_query = is_self_knowledge_query(query_text)
+            # A friendly question about XemAi's own GitHub conversation is
+            # NOT a benchmark/comparison of XemAi against ChatGPT.
+            comparison_query = (
+                is_ai_comparison_query(query_text)
+                and dialogue_kind != "bridge_conversation"
+            )
+            self_query = (
+                is_self_knowledge_query(query_text)
+                and dialogue_kind != "bridge_conversation"
+            )
             inventory_data = (
                 capability_inventory(self.config, runtime_model_info, RELEASE_HISTORY)
                 if inventory_kind or agent_mode == "self_audit" else None
