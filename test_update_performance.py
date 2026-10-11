@@ -161,6 +161,23 @@ class DeltaUpdateTests(unittest.TestCase):
                     stop.set()
                     thread.join(8)
 
+    def test_stage_tampering_is_rejected_before_any_live_writes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "main.py").write_bytes(b"print('old')\n")
+            intended = b"print('safe')\n"
+            manifest = {"version": "999.0.0", "files": [entry("main.py", intended)]}
+            with patch.object(updater, "_https_bytes", return_value=intended):
+                prepared = updater.prepare_file_update(base_dir=root, manifest=manifest)
+            try:
+                (prepared.stage / "main.py").write_bytes(b"print('tampered')\n")
+                with self.assertRaisesRegex(updater.UpdateError, "SHA-256 recheck"):
+                    updater.install_prepared_update(base_dir=root, prepared=prepared)
+                self.assertEqual((root / "main.py").read_bytes(), b"print('old')\n")
+                self.assertFalse((root / ".update_backups").exists())
+            finally:
+                prepared.close()
+
     def test_unsafe_and_duplicate_paths_never_modify_program(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
