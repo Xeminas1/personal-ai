@@ -1,3 +1,26 @@
+## v0.9.23 — Screenshot-first task routing and visual evidence reliability
+
+Fixes a real user-reported screenshot-only XemTV analysis: XemAi incorrectly
+inspected unrelated Kotlin/Python artwork files, searched websites and claimed
+the attached screenshot was unavailable, despite PC vision being configured.
+
+For actual attached image-only requests, including instructions that explicitly
+say NOT to inspect source code, XemAi now disables source-code preflight,
+all model tools, internet research and optional unrelated model reviewers.
+The normal opt-in PC vision model still reads screenshot attachments first.
+A vision service that reports ready is NOT proof that attachments were analysed:
+if any image lacks actual PC vision observations for this turn, the application
+returns an honest unavailable-vision explanation rather than inventing details.
+When real observations are present, the model receives a clear screenshot-only
+task, distinguishing selected sidebar navigation from highlighted film posters.
+Obvious off-topic code/website answers get one tool-free retry; repeated
+failures are disclosed rather than silently replaced with guesses.
+
+Explicit mixed image+source-code requests continue to use the authorised
+read-only Developer Mode workflow. No new model downloads, write permissions,
+remote shell, APK building, Git push or Fire Stick deployment. XemTV Build 114
+and Codex's unfinished Build 115 are not modified.
+
 ## v0.9.22 — Read-only cross-file code tracing and UI screenshot guidance
 
 Developer Mode adds an explicit `dev_trace` tool to locate exact source-code
