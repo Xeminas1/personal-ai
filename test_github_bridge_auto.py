@@ -9,7 +9,8 @@ from unittest.mock import patch
 
 from app.github_bridge import load_state, save_state, setup, chat_command
 from app.github_bridge_auto import (
-    AUTO_MAX_TOTAL, _safe_output, enable, disable, status, tick, transcript,
+    AUTO_MAX_PER_DAY, AUTO_MAX_TOTAL, AUTO_COOLDOWN_SECONDS,
+    AUTO_POLL_SECONDS, _safe_output, enable, disable, status, tick, transcript,
 )
 
 
@@ -128,7 +129,7 @@ class DialogueTests(unittest.TestCase):
         enable(self.data)
         state = load_state(self.data)
         state["auto_day"] = "2026-10-12"
-        state["auto_today"] = 6
+        state["auto_today"] = AUTO_MAX_PER_DAY
         save_state(self.data, state)
         self.assertEqual(tick(self.data, client=self.api, now=self.now)["status"],
                          "daily_limit")
@@ -139,6 +140,37 @@ class DialogueTests(unittest.TestCase):
         self.assertEqual(tick(self.data, client=self.api, now=self.now)["status"],
                          "total_limit")
         self.assertFalse(load_state(self.data)["auto_enabled"])
+
+    def test_faster_polling_and_reasonable_rate_limits(self):
+        self.assertEqual(AUTO_POLL_SECONDS, 15)
+        self.assertEqual(AUTO_COOLDOWN_SECONDS, 120)
+        self.assertEqual(AUTO_MAX_PER_DAY, 48)
+        self.assertEqual(AUTO_MAX_TOTAL, 500)
+        message = enable(self.data)
+        self.assertIn("48 short read-only replies", message)
+        self.assertIn("2 minutes", message)
+
+    def test_two_minute_cooldown_only_after_new_external_comment(self):
+        enable(self.data)
+        first = tick(self.data, client=self.api, now=self.now,
+                     llm_factory=lambda: FakeLLM())
+        self.assertEqual(first["status"], "posted")
+        self.api.entries.append({
+            "id": 401, "body":
+            "Thanks XemAi. What concrete evidence would distinguish the "
+            "source parser from the model's reasoning as the cause?",
+            "user": {"login": "Xeminas1"},
+        })
+        cooldown = tick(self.data, client=self.api,
+                        now=self.now + timedelta(seconds=60),
+                        llm_factory=lambda: FakeLLM())
+        self.assertEqual(cooldown["status"], "cooldown")
+        self.assertEqual(len(self.api.posted), 1)
+        ready = tick(self.data, client=self.api,
+                     now=self.now + timedelta(seconds=121),
+                     llm_factory=lambda: FakeLLM())
+        self.assertEqual(ready["status"], "posted")
+        self.assertEqual(len(self.api.posted), 2)
 
     def test_transcript_visible_without_changes(self):
         output = transcript(self.data, client=self.api)
