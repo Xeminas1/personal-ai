@@ -76,9 +76,9 @@ def refers_to_previously_attached_code(question: str) -> bool:
     """Allow an explicit follow-up to reuse a recent attachment in this chat."""
     q = str(question or "")[:1600]
     return bool(re.search(
-        r"\\b(?:attached|uploaded|previous|earlier|same)\\b.{0,55}"
-        r"\\b(?:file|source|challenge|task|code|skyrim|excerpts?)\\b"
-        r"|\\b(?:stage\\s*1|all\\s+five\\s+numbered\\s+tasks?)\\b",
+        r"\b(?:attached|uploaded|previous|earlier|same)\b.{0,55}"
+        r"\b(?:file|source|challenge|task|code|skyrim|excerpts?)\b"
+        r"|\b(?:stage\s*1|all\s+five\s+numbered\s+tasks?)\b",
         q, re.I,
     ))
 
