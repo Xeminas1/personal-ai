@@ -23,9 +23,9 @@ _AGENT_QUERY = re.compile(
 )
 _SELF_ANALYSIS = re.compile(
     r"\b(?:can|could|are)\s+you\s+(?:able\s+to\s+)?"
-    r"(?:analys[ez]e|assess|audit|evaluate|inspect|review|examine)\s+"
+    r"(?:analyse|analyze|assess|audit|evaluate|inspect|review|examine)\s+"
     r"(?:yourself|your\s+(?:own\s+)?(?:capabilities|architecture|performance|code|state))\b"
-    r"|\b(?:can|could)\s+xemai\s+(?:analys[ez]e|audit|assess)\s+(?:itself|its\s+own)\b",
+    r"|\b(?:can|could)\s+xemai\s+(?:analyse|analyze|audit|assess)\s+(?:itself|its\s+own)\b",
     re.I,
 )
 _UPDATE_REFLECTION = re.compile(
