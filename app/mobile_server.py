@@ -322,6 +322,8 @@ def _auto_update_loop(server) -> None:
                     base_dir=BASE_DIR, manifest=pending, logger=logger,
                 )
                 if stop_event.is_set():
+                    prepared.close()
+                    prepared = None
                     return
                 latest = load_config()
                 if not (
@@ -338,6 +340,9 @@ def _auto_update_loop(server) -> None:
                     update_lock = getattr(server, "update_lock", None)
                     try:
                         if stop_event.is_set():
+                            if prepared is not None:
+                                prepared.close()
+                                prepared = None
                             return
                         installed = (
                             updater.install_prepared_update(
@@ -354,6 +359,9 @@ def _auto_update_loop(server) -> None:
                                 VERSION,
                                 installed,
                             )
+                        if prepared is not None:
+                            prepared.close()
+                            prepared = None
                         server.update_restarting = True
                         try:
                             _schedule_mobile_server_restart(server, installed)
@@ -369,10 +377,15 @@ def _auto_update_loop(server) -> None:
                 return
         except Exception as e:
             pending = None
+            if prepared is not None:
+                prepared.close()
+                prepared = None
             if logger:
                 logger.warning("Automatic update check failed | error=%r", e)
             if stop_event.wait(interval):
                 return
+    if prepared is not None:
+        prepared.close()
 
 
 def _attachment_root(chat_id: int) -> Path:
