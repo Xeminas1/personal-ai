@@ -33,6 +33,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "teacher_review_mode": "auto",
     "teacher_auto_install": False,
     "teacher_min_answer_chars": 280,
+    "agent_team_enabled": True,  # Opt-in per explicit user request, no autonomous runs.
     "specialists_enabled": True,
     "specialist_mode": "auto",
     "specialist_max_passes": 2,

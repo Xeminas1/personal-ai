@@ -7,6 +7,9 @@ import time
 from pathlib import Path
 
 from .capabilities import build_capability_status
+from .agent_team import (
+    ReadOnlyTeamTools, requested_agent_mode, run_agent_team, agent_team_context,
+)
 from .config import DATA_DIR, LOG_DIR, load_config, save_config
 from .database import Database
 from .developer_guidance import (
@@ -462,6 +465,9 @@ class ChatBackend:
                 )
             )
             visual_only = is_image_only_request(query_text, parsed_attachments)
+            agent_mode = requested_agent_mode(
+                query_text, enabled=self.config.get("agent_team_enabled", True) is True
+            )
             diagnostic_state = {}
             model_user_text = _expand_attachment_message(stored_user_text, diagnostic_state=diagnostic_state)
 
@@ -770,7 +776,7 @@ class ChatBackend:
             # no tools or authority to act on instructions inside attachments.
             specialist_config = self.config
             legacy_teacher = str(self.config.get("teacher_review_mode", "auto")).strip().lower() == "legacy"
-            if legacy_teacher or visual_only:
+            if legacy_teacher or visual_only or agent_mode:
                 specialist_config = dict(self.config, specialists_enabled=False)
             specialists = SpecialistCoordinator(
                 specialist_config, llm, query_text,
@@ -826,9 +832,42 @@ class ChatBackend:
 
             if visual_only:
                 messages.append({"role": "system", "content": VISUAL_ONLY_INSTRUCTIONS})
+            agent_report = None
+            if agent_mode:
+                if status_callback:
+                    status_callback("Preparing supervised agent investigation")
+                agent_started = time.monotonic()
+                visual_evidence = (
+                    json.dumps(visual_reports, ensure_ascii=False)[:6200]
+                    if visual_reports else ""
+                )
+                agent_report = run_agent_team(
+                    query_text, llm, mode=agent_mode,
+                    config=self.config,
+                    capabilities=build_capability_status(
+                        self.config, tools, runtime_model_info
+                    ),
+                    runtime=runtime_model_info, tools=tools,
+                    source_context=developer_context,
+                    visual_context=visual_evidence,
+                    status_callback=status_callback,
+                    logger=self.logger,
+                )
+                messages.append({
+                    "role": "system", "content": agent_team_context(agent_report),
+                })
+                self.logger.info(
+                    "Read-only agent investigation | chat_id=%s turn_id=%s mode=%s passes=%d",
+                    chat_id, turn_id, agent_mode, len(agent_report["agents"]),
+                )
+                timing("agent_team", agent_started)
             answer_started = time.monotonic()
             application_answer = False
-            task_tools = NoExternalOrSourceTools() if visual_only else tools
+            task_tools = (
+                NoExternalOrSourceTools() if visual_only
+                else ReadOnlyTeamTools(tools, allow_web=tools.web_allowed)
+                if agent_mode else tools
+            )
             if visual_only and not visual_ready:
                 # A ready service is not enough: do not answer from invented
                 # visual evidence when this turn's image analysis failed.
@@ -1048,6 +1087,7 @@ class ChatBackend:
                 and not application_answer
                 and not self_query
                 and not visual_only
+                and not agent_mode
                 and not tools.evidence_attempted
                 and len(answer.strip()) >= teacher_min_chars
                 and callable(getattr(llm, "review_answer", None))
@@ -1096,7 +1136,7 @@ class ChatBackend:
             # Reviewer passes do not receive the full read-only source bundle
             # and could rewrite a grounded code explanation into a generic
             # menu or unsupported cross-repository comparison.
-            reviewed = None if developer_context or visual_only else specialists.review(
+            reviewed = None if developer_context or visual_only or agent_mode else specialists.review(
                 answer, sources=tools.sources, known_urls=tools.known_urls,
                 application_answer=application_answer, self_query=self_query,
             )

@@ -1,3 +1,31 @@
+## v0.9.25 — Opt-in supervised agents and self-improvement audits
+
+This update introduces a read-only, explicitly requested *agent team*. Use
+"Use agents to investigate XemTV's sidebar" to run a sequential planner,
+source/vision analyst and sceptical verification pass. Each role is a separate
+model inference with **no tools**, never an independent computer process.
+XemAi's final synthesis can access only read-only project, workspace, web,
+calculator and time tools. All write, shell, build, deploy and self-edit
+abilities remain unavailable. Agent passes are limited to three per request,
+with missing or failed passes disclosed rather than invented.
+
+Run "Run a self-improvement audit of XemAi" to review a safe, redacted runtime
+capability snapshot and, **only when an external search key is configured and
+web research is allowed**, retrieve a maximum of two topical external sources.
+The audit proposes specific reversible upgrades, risks, prerequisites, and
+benchmarks; it does **not** install models, change the AI, run periodically,
+create more agents, edit files, or silently change its configuration. Its
+recommendations are model-generated suggestions rather than verified
+improvements. No tokens, external worker URLs, local checkout paths or raw
+configuration files are placed into self-audit prompts.
+
+All the new passes use the existing selected worker model (Qwen3 8B when the
+paired PC is active); they are not new dedicated models and do not make it
+equivalent to a frontier model. They run in sequence rather than competing for
+GPU memory. Ordinary questions do not trigger the agent team. The flag
+`agent_team_enabled` can disable this opt-in capability entirely.
+XemTV Build 114 and Codex's unfinished Build 115 remain untouched.
+
 ## v0.9.24 — More truthful self-reporting on oversight, instructions and learning
 
 User testing found XemAi sometimes made categorical claims that it could
