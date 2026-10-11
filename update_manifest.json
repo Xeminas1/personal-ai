@@ -64,13 +64,13 @@
     },
     {
       "path": "app/github_bridge_auto.py",
-      "sha256": "9fc1c9f2e38ffa5043198e3401579a620ef090961928cbe2724f4b1abeca494b",
+      "sha256": "9c921bdee377ccb31abd27087885c36dec80e978e9137759d092a5d82448390e",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.38/app/github_bridge_auto.py"
     },
     {
       "path": "app/github_bridge.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.38/app/github_bridge.py",
-      "sha256": "fa17588b130daefe436fc41b217a34cf366c1b6bba3c6b50dc4635b0201ff0bb"
+      "sha256": "d4e063cc5bfc7883b2a8259819012419e2eebd46dad68e7b5bf9e4b88ad08523"
     },
     {
       "path": "app/gui_backend.py",
@@ -434,7 +434,7 @@
     },
     {
       "path": "test_github_bridge_auto.py",
-      "sha256": "72883541b83bf8d75b4bdf013ca7082707c88afbfc8a4a1c9236027cdb9006aa",
+      "sha256": "8d236c66d65eba54c2b38e8de74390c2b669cc59e03e1d21063495c20ea0adc7",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.38/test_github_bridge_auto.py"
     },
     {
