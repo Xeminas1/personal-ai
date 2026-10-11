@@ -683,6 +683,13 @@ class ChatBackend:
                             "count=%d", chat_id, turn_id, len(prior_refs),
                         )
                         break
+            if attached_code_task:
+                # Recovery happens after generic prompt/tool preparation; do
+                # not carry that unrelated source context into this analysis.
+                tools.web_allowed = False
+                developer_context = ""
+                system_prompt = full_system_prompt
+                llm.local_system_prompt = None
             saved_watch = ai_watch_report(DATA_DIR, self.config)
             watch_linked = watch_focus(
                 query_text, history, str(chat["title"]), saved_watch
