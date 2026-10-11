@@ -1,3 +1,38 @@
+## v0.9.30 — Faster non-blocking staged delta updates and audit truthfulness
+
+Most update releases modify only a few files, but earlier versions downloaded
+and installed every SHA-256-pinned file sequentially and backed up the full
+application program tree while blocking chat. The automatic laptop updater now:
+
+1. Checks all pinned assets against existing file SHA-256 hashes and skips
+   unchanged content.
+2. Downloads only changed assets concurrently (bounded to six connections);
+   verifies their hashes and compiles changed Python files in a temporary
+   staging directory *before* reserving the update lock, allowing normal
+   chat during this step.
+3. Waits for active replies to finish, then briefly locks the installation,
+   re-verifies each staged file's SHA-256, selectively backs up affected files,
+   and replaces only the changed files.
+4. Saves a rollback manifest listing previous files and newly created paths,
+   keeps user chat databases, configuration, logs, Technology Watch preferences
+   and hybrid pairing untouched, and uses the existing verified auto-restart.
+   Failed download/hash/syntax checks do not modify the live application.
+
+The update-critical section should be much shorter for small releases,
+especially on slow connections. This DOES NOT make individual Qwen model
+responses faster, does not accelerate a slow Windows process restart, and
+the upgrade *to* v0.9.30 will use the already installed older updater; the
+new optimisation applies to subsequent releases. Legacy ZIP updates retain
+their prior verified handling.
+
+Also strengthens the self-audit verifier: hypothetical gains must never be
+labelled as measured "benchmarked gains"; an absent benchmark is not a failed
+self-audit, and nonexistent file errors cannot be asserted without actual
+inspection. No models or programs are installed autonomously by agents.
+
+No self-modification privileges, source-editing agents, XemTV changes,
+Fire Stick APK operations, or interference with unfinished Build 115.
+
 ## v0.9.29 — Local capability truth, release reflection and self-audit quality
 
 Adds an **authoritative local inventory** for XemAi's real supervised agents,
