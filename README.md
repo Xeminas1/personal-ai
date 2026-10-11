@@ -1,3 +1,35 @@
+## v0.9.29 — Local capability truth, release reflection and self-audit quality
+
+Adds an **authoritative local inventory** for XemAi's real supervised agents,
+optional specialists, scheduled AI Technology Watch and verified release
+history, including v0.9.28. Simple questions like "Are you able to analyse
+yourself?", "Can you tell me all the agents you currently use?" and "What do
+you make of your current updates and those that came before it?" now receive
+clear locally generated answers, avoiding unrelated commercial-agent
+directories, false denials of XemAi's existing self-improvement audit and
+unsupported statements that features have proven intelligence gains.
+
+Self-improvement audit requests now supply the actual agent inventory,
+runtime capability snapshot and recent XemAi release history to its Planning,
+Self-Improvement and Verification passes. An internal XemAi assessment never
+starts unrelated internet research unless the user explicitly asks for
+external evidence. Agents remain no-tool model passes, and their findings are
+unverified until benchmark artifacts confirm them. A response that drifts
+into generic Qwen/Gemma GPU comparisons instead of the requested XemAi
+audit receives one retry; if still off-target, XemAi returns a grounded
+version-specific status and verification limitations.
+
+Technology Watch follow-ups requesting a ranking and a conditional plan no
+longer pass merely because an answer lists the vendor announcements. The
+app insists on priority reasoning and a proposed sequence of checks, with
+a ranked deterministic report as fallback rather than fabricated tests.
+
+The release adds Windows and Linux regression cases using the observed user
+questions and failed model answers. It does not add agents or permissions,
+retrain Qwen weights, automatically evaluate/download models, edit XemTV,
+affect Build 114 or Codex's unfinished 115, or change the user's enabled
+Technology Watch and worker pairing.
+
 ## v0.9.28 — Watch intelligence, proposal lifecycle and verified server restart
 
 Fixes user-tested AI Technology Watch follow-up failures: “what's your
