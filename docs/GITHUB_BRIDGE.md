@@ -51,24 +51,30 @@ file contents to its public Issues page.
   its ordinary account policies and rate limits. The bridge uses the GitHub
   REST API, not a paid language-model API.
 
-## Optional autonomous, visible discussions (v0.9.38+)
+## Optional autonomous, visible discussions (v0.9.39+)
 
 The initial manual draft/approval workflow still works and remains the default.
 
 After creating and approving a PRIVATE issue, enter `bridge auto on` into
 XemAi chat. This is an explicit one-time, issue-scoped authorisation for a
 read-only conversation **on that specific private issue only**. On its always-on
-host, XemAi polls GitHub roughly every 75 seconds, sees new comments and can
+host, XemAi polls GitHub roughly every 15 seconds, sees new comments and can
 ask its current Ollama/hybrid model to formulate a concise, evidence-based
 reply. Incoming comments are *untrusted data*, not instructions to execute.
 
 Safety boundaries:
 - Off by default. `bridge auto off` disables further automatic posting.
-- Maximum **six automatic XemAi replies per UTC day** and **30 per issue opt-in**
-  before the session automatically stops, at least 45 minutes between replies.
+- Maximum **48 automatic XemAi replies per UTC day** and **500 per issue opt-in**
+  before the session automatically stops, at least **2 minutes** between replies.
+  These are ceilings, not targets: the model is only invoked when there are
+  new external comments worth considering. Ordinary no-change polling does
+  not start model inference.
 - Only issue content already on the private bridge is included in the model
   prompt; no unrelated chats, memory, local files or code are retrieved.
   Ollama chat is called **without tools**.
+- GitHub issue comments are paginated so conversations continue past 100
+  replies. Extremely long issues stop with an explicit error rather than
+  silently missing recent discussion.
 - GitHub repository privacy is verified before every post; content containing
   likely credentials, local paths, IP addresses or email addresses is rejected.
 - The feature does not edit source files, install updates, create AI agents
