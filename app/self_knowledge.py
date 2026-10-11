@@ -59,6 +59,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.27", "Makes XemAi's goal of measurable user-relevant performance gains over ChatGPT explicit; handles clear hypotheticals and agent suggestions as scenarios/proposals rather than current-capability questions or model-training boilerplate."),
     ("0.9.28", "Grounds AI Technology Watch follow-ups in saved announcements, ranks practical relevance, tracks evaluation proposals and verifies graceful automatic server restarts; no verified model improvement benchmarks."),
     ("0.9.29", "Adds a source-of-truth inventory of supervised agent roles, explicit self-analysis and release-history answers, and an internal audit that avoids irrelevant web results and reports benchmark uncertainty."),
+    ("0.9.30", "Stages verified changed release files while chat remains available, uses bounded parallel downloads and selective rollback to shorten blocking installation; corrects unsupported self-audit benchmark gains and unobserved missing-file claims."),
 ]
 
 
