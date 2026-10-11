@@ -1,6 +1,6 @@
 {
-  "version": "0.9.19",
-  "notes": "Opt-in XemTV Developer Mode Phase 1: list, read, and search explicitly approved local source trees with path, symlink, sensitive-file, size, and binary guards. No shell execution, code editing, Git writes, APK builds, Fire Stick deployments, or automatic model downloads. Configure a separate XemTV checkout with developer_setup.bat on the XemAi chat host, then restart XemAi. Preserve local config, chat database, memories, attachments, logs, and existing hybrid inference. No XemTV Build 114/115 changes.",
+  "version": "0.9.20",
+  "notes": "Developer Mode source-followthrough fix: for explicit XemTV source inspection questions, read relevant approved source files before asking the local model for analysis, rather than stopping after a directory listing. Source is read-only, bounded, and untrusted. Adds CamelCase secret-file blocking. No editing, shell access, Git push, APK building, Fire Stick deployment or new coding model. Preserves existing local data, settings, memories and hybrid worker pairing. XemTV Builds 114 and unfinished 115 are not modified.",
   "files": [
     {
       "path": "app/__init__.py",
@@ -23,9 +23,14 @@
       "sha256": "bda8d5722db50e0d27d4578e03883ce28e8b086461fb4e1b7988070f2a0ba136"
     },
     {
+      "path": "app/developer_guidance.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.20/app/developer_guidance.py",
+      "sha256": "6bf3b354013db19692191c3c6b2d7b38f10d1f3218bcd234442b6e6ff21ff01b"
+    },
+    {
       "path": "app/developer_projects.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.19/app/developer_projects.py",
-      "sha256": "07a148ff51810b39bccbba9dd920fabef8eeb7975cc543905f76a5470785474f"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.20/app/developer_projects.py",
+      "sha256": "a2d89262a0e5a7232fccbb95145041ba84e5a3540cb013ef5102395565b22248"
     },
     {
       "path": "app/evidence.py",
@@ -34,8 +39,8 @@
     },
     {
       "path": "app/gui_backend.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/app/gui_backend.py",
-      "sha256": "df4ec55d03441744aafdb84f30d4c0248da61db4c316532924f7b0d0ad0ee7f9"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.20/app/gui_backend.py",
+      "sha256": "51819867b72695501b679876dff3f2f8dc6b1629fc9bf9797a8f4240c207c114"
     },
     {
       "path": "app/hybrid_autosetup.py",
@@ -129,8 +134,8 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.19/app/version.py",
-      "sha256": "a334adc38cb5de0296d74e935bf11976349edf4cc58ecb432de3ed83cd072e70"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.20/app/version.py",
+      "sha256": "41b0d4fac26f9257a8f2e70db88fa5106bedadf323ae8c0eedb9e3db3caca6a7"
     },
     {
       "path": "app/vision.py",
@@ -249,8 +254,8 @@
     },
     {
       "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.19/README.md",
-      "sha256": "e2aa4bd2f1a17d3c6db600c3607e927b72223ce82530fc9e7725f346a74d863c"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.20/README.md",
+      "sha256": "6e59311e3b6343da351ab9a752fcfccbaf7a294b64d5829d63a875e63b8b2b6c"
     },
     {
       "path": "restart_mobile_server.bat",
@@ -296,6 +301,11 @@
       "path": "test_chat_timing.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/test_chat_timing.py",
       "sha256": "5f486e8d385a3b6d414119e8ce05229769e8ec978ee8fb0c3ef3cf366a70ec29"
+    },
+    {
+      "path": "test_developer_guidance.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.20/test_developer_guidance.py",
+      "sha256": "88e0295ad459aedef6062ac8e0a01cda7d517db7f0c8029e8f95f742629b9c39"
     },
     {
       "path": "test_developer_projects.py",
