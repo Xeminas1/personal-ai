@@ -521,6 +521,18 @@ class ChatBackend:
                     )
                 worker_db.rename_chat(chat_id, title_from_message(title_seed))
 
+            if record_user and not parsed_attachments and is_bridge_command(query_text):
+                bridge_answer = github_bridge_chat_command(
+                    query_text, DATA_DIR, logger=self.logger
+                )
+                worker_db.add_assistant_message(
+                    chat_id, bridge_answer, compute_source="application",
+                )
+                assistant_recorded = True
+                if status_callback:
+                    status_callback(None)
+                return bridge_answer
+
             # Exact explicit user commands are application actions, not model
             # tool calls. A model cannot silently enable background monitoring.
             if record_user and not parsed_attachments:
