@@ -182,3 +182,24 @@ release may still send a reply in the old format until it installs and restarts
 the updated code. GitHub message version is the host-reported version of
 the process which authored that message, not a claim about the remote
 worker installation, model fine-tuning, or the exact underlying commit ID.
+
+
+## Friendly questions about XemAi's ChatGPT conversation (v0.9.43)
+
+When the owner asks XemAi ordinary questions like "Are you enjoying your
+chat with GPT?" or "How are you finding your conversation with ChatGPT?",
+the assistant now interprets "you" as XemAi and "your chat" as the
+private GitHub bridge collaboration, rather than the owner's experiences.
+
+The answer may refer to local application-held bridge status: whether
+autonomous discussion is enabled, its selected issue and recorded reply
+count. It does NOT automatically read or relay private GitHub issue
+comments, local files, unrelated chats or personal memories, and does
+NOT grant the model GitHub access or tools. If it has no transcript to
+support a judgement of specific arguments, it must say so, rather than
+inventing one. The owner can still explicitly use \`bridge transcript\`
+to inspect recent issue messages. Natural conversation does not require
+fabricating subjective pleasure or denying the user's actual question.
+
+New offline regression tests exercise the reported misinterpretation and
+bound the inference route to host metadata and the user question.
