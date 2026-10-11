@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 from .secrets import load_ollama_api_key
 from .config import load_config
 from .developer_projects import DeveloperProjects
+from .ai_watch import current_report as ai_watch_report
 
 
 class ToolError(RuntimeError):
@@ -589,6 +590,7 @@ class ToolRegistry:
             ),
             "workspace_list: enabled",
             "workspace_read: enabled",
+            "ai_watch_report: read-only official-source technology update findings",
             "workspace_write: enabled",
             "feedback learning: enabled",
         ] + (["developer_projects/list/read/search/trace: configured, read-only local projects"]
@@ -641,6 +643,14 @@ class ToolRegistry:
                         },
                         "required": ["url"],
                     },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "ai_watch_report",
+                    "description": "Read saved AI technology watch findings; cannot enable scanning, install models or change settings.",
+                    "parameters": {"type": "object", "properties": {}},
                 },
             },
             {
@@ -787,6 +797,8 @@ class ToolRegistry:
                     str(args.get("query", "")),
                     int(args.get("max_sources", 3) or 3),
                 )
+            elif name == "ai_watch_report":
+                result = ai_watch_report(self.data_dir, load_config())
             elif name == "workspace_list":
                 result = self.workspace_list(str(args.get("path", ".")))
             elif name == "workspace_read":
