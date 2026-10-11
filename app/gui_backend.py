@@ -23,7 +23,11 @@ from .attachment_tasks import (
     refers_to_previously_attached_code, has_readable_source,
     source_assignment_context, source_evidence_status,
     answer_incomplete as attachment_answer_incomplete,
+    incomplete_reasons as attachment_incomplete_reasons,
     retry_instruction as attachment_retry_instruction,
+    recovery_task_groups as attachment_recovery_groups,
+    recovery_task_instruction as attachment_recovery_instruction,
+    recovery_part_incomplete as attachment_recovery_part_incomplete,
     incomplete_fallback as attachment_incomplete_fallback,
     is_inline_source_assignment, inline_source_context,
     inline_source_answer_needs_retry, inline_source_failure_report,
@@ -1345,30 +1349,75 @@ class ChatBackend:
 
             if attached_code_task and attachment_answer_incomplete(answer, model_user_text):
                 self.logger.warning(
-                    "Attached source task incomplete | chat_id=%s turn_id=%s",
+                    "Attached source task incomplete | chat_id=%s turn_id=%s reasons=%s",
                     chat_id, turn_id,
+                    ",".join(attachment_incomplete_reasons(answer, model_user_text)),
                 )
                 corrective = list(messages) + [
                     {"role": "assistant", "content": str(answer)[:1900]},
                     {"role": "system", "content": attachment_retry_instruction(model_user_text)},
                 ]
+                revised = None
                 try:
                     revised = llm.agent_chat(
                         corrective, tool_registry=SourceTaskReadOnlyTools(),
                         max_tool_rounds=0,
                     )
-                    if attachment_answer_incomplete(revised, model_user_text):
-                        answer = attachment_incomplete_fallback(model_user_text)
-                        application_answer = True
-                    else:
-                        answer = revised
                 except Exception as error:
                     self.logger.warning(
                         "Attached source task retry unavailable | kind=%s",
                         type(error).__name__,
                     )
-                    answer = attachment_incomplete_fallback(model_user_text)
-                    application_answer = True
+
+                if revised is not None and not attachment_answer_incomplete(revised, model_user_text):
+                    answer = revised
+                else:
+                    if revised is not None:
+                        self.logger.warning(
+                            "Attached source retry still incomplete | chat_id=%s turn_id=%s reasons=%s",
+                            chat_id, turn_id,
+                            ",".join(attachment_incomplete_reasons(revised, model_user_text)),
+                        )
+                    # A single full-answer correction may overwhelm a local
+                    # 9B model. Ask for two bounded subsets, with the SAME
+                    # current attachment and no external tools. Combine only
+                    # if both parts and the resulting answer pass checks.
+                    recovered_parts = []
+                    for task_ids in attachment_recovery_groups(model_user_text):
+                        part_messages = list(messages) + [{
+                            "role": "system",
+                            "content": attachment_recovery_instruction(task_ids),
+                        }]
+                        try:
+                            part = llm.agent_chat(
+                                part_messages, tool_registry=SourceTaskReadOnlyTools(),
+                                max_tool_rounds=0,
+                            )
+                        except Exception as error:
+                            self.logger.warning(
+                                "Attached source segmented pass unavailable | chat_id=%s kind=%s",
+                                chat_id, type(error).__name__,
+                            )
+                            break
+                        if attachment_recovery_part_incomplete(part, task_ids):
+                            self.logger.warning(
+                                "Attached source segmented pass incomplete | chat_id=%s tasks=%s",
+                                chat_id, ",".join(task_ids),
+                            )
+                            break
+                        recovered_parts.append(str(part).strip())
+                    groups = attachment_recovery_groups(model_user_text)
+                    assembled = "\n\n".join(recovered_parts)
+                    if (groups and len(recovered_parts) == len(groups)
+                            and not attachment_answer_incomplete(assembled, model_user_text)):
+                        answer = assembled
+                        self.logger.info(
+                            "Attached source segmented recovery succeeded | chat_id=%s turn_id=%s parts=%d",
+                            chat_id, turn_id, len(recovered_parts),
+                        )
+                    else:
+                        answer = attachment_incomplete_fallback(model_user_text)
+                        application_answer = True
 
             if inline_source_task and inline_source_answer_needs_retry(query_text, answer):
                 self.logger.warning(
