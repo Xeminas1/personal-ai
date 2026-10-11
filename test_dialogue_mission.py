@@ -152,7 +152,7 @@ class DialogueTests(unittest.TestCase):
             "bridge_conversation", meaningful_answer,
             bridge_topics_available=True,
         ))
-        self.assertIn("productive", dialogue_fallback(
+        self.assertIn("useful technical debate", dialogue_fallback(
             "bridge_conversation", "",
             bridge_topic_digest="RECENT PRIVATE BRIDGE TOPIC SNAPSHOT "
                                 "(no comment text transmitted): source testing.",
