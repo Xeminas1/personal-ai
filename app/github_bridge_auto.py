@@ -76,7 +76,7 @@ def _safe_output(text: str) -> bool:
 def _mirror(data_dir: Path, state: dict, updates: list[dict]) -> None:
     """Write a visible, separate XemAi chat. No automatic personal memory."""
     from .database import Database
-        db = Database(Path(data_dir) / "personal_ai.db")
+    db = Database(Path(data_dir) / "personal_ai.db")
     try:
         user = db.get_user()
         if user is None:
