@@ -14,8 +14,8 @@ from pathlib import Path
 from urllib.parse import urlsplit, unquote
 
 MANIFEST = Path(__file__).with_name("update_manifest.json")
-EXPECTED_VERSION = "0.9.20"
-ALLOWED_REFS = {"release-v0.9.18", "release-v0.9.19", "release-v0.9.20"}
+EXPECTED_VERSION = "0.9.21"
+ALLOWED_REFS = {"release-v0.9.18", "release-v0.9.19", "release-v0.9.20", "release-v0.9.21"}
 
 
 def inspect(entry):
@@ -47,7 +47,7 @@ def inspect(entry):
     if actual != expected:
         raise ValueError(f"SHA-256 mismatch for {path}: {actual} != {expected}")
     if path == "app/version.py":
-        if content != b'VERSION = "0.9.20"\n':
+        if content != b'VERSION = "0.9.21"\n':
             raise ValueError("Pinned version.py does not identify v0.9.19")
     return path
 
