@@ -312,8 +312,7 @@ def _tick(data_dir, *, client=None, llm_factory=None, logger=None, now=None):
         st["auto_day"] = day
         save_state(data_dir, st)
         try:
-            url = api.post_comment(repo, issue,
-                _SELF_MARKER + "\n\n" + result.strip())
+            url = api.post_auto_comment(repo, issue, result.strip())
         except BridgeError:
             st["auto_paused"] = True
             st["auto_enabled"] = False
