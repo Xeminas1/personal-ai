@@ -153,6 +153,16 @@ def answer_off_topic(answer: str, report: dict, question: str) -> bool:
     if "hypothet" in question.lower() or "if i said yes" in question.lower():
         if not re.search(r"\b(?:i\s+would|i'd|would\s+first|i\s+wouldn'?t)\b", a, re.I):
             return True
+    q = question.lower()
+    if (re.search(r"\b(?:rank|prioriti[sz]e|ranking)\b", q)
+            and not re.search(r"\b(?:high|medium|low|first|second|third|1\.|2\.|3\.)\b", a, re.I)):
+        return True
+    if ("if i approved" in q or "if i approve" in q or
+            "approved evaluating" in q or "approved testing" in q):
+        # Listing proposed evaluations is not an answer to the requested
+        # conditional plan. Require an actual first-person next-step proposal.
+        if not re.search(r"\b(?:i\s+would|i'd|would\s+first)\b", a, re.I):
+            return True
     return False
 
 
@@ -162,12 +172,22 @@ def watch_fallback(report: dict, question: str) -> str:
     ][:5]
     if not rows:
         return "The Technology Watch has no saved reports to analyse yet."
+    ordered = sorted(
+        rows, key=lambda row: {"high": 0, "medium": 1, "low": 2}.get(
+            str(row.get("priority", "medium")), 1
+        )
+    )
     overview = []
-    for row in rows:
+    for index, row in enumerate(ordered, 1):
         name = str(row.get("title", "Untitled update"))[:95]
         area = str(row.get("area", "not yet classified"))[:65]
         status = str(row.get("evaluation_status", "proposed"))[:50]
-        overview.append(f"- {name}: {area}; {status}.")
+        priority = str(row.get("priority", "unrated"))[:20]
+        benchmark = str(row.get("proposal", "Compare on controlled XemAi tasks."))[:240]
+        overview.append(
+            f"{index}. **{name}** — {priority} expected relevance; "
+            f"{area}; {status}. Proposed measurement: {benchmark}"
+        )
     action = (
         "If you hypothetically approved evaluation, I'd first check relevance, "
         "licensing, compatibility and hardware requirements. Then I'd propose "
@@ -175,10 +195,20 @@ def watch_fallback(report: dict, question: str) -> str:
         "I'd report measured results and seek separate permission before "
         "installing anything or changing code."
         if "hypothet" in question.lower() or "if i said yes" in question.lower()
-        else "I'd prioritise local model/inference and retrieval improvements "
-             "that can be tested on your PC, and deprioritise unrelated specialised "
-             "models. None of these vendor announcements alone proves an improvement."
+        else "I'd prioritise retrieval and local inference improvements with "
+             "measurable tests on your RTX 5080 before investigating proprietary "
+             "long-video approaches. Specialist weather models are not suitable "
+             "general chat upgrades. This ranking reflects expected relevance, "
+             "not established model superiority. None of the vendor claims "
+             "alone proves better XemAi performance."
     )
+    if any(token in question.lower() for token in ("if i approved", "approved evaluating", "if i approve")):
+        action += (
+            " If you approved the top test, I would first confirm licence and "
+            "hardware compatibility, define baseline precision/recall or "
+            "latency/accuracy metrics, run a small isolated benchmark only "
+            "after separate authorisation, and report before changing XemAi."
+        )
     return (
         "The AI Technology Watch reported the following unverified leads:\n"
         + "\n".join(overview) + "\n\n" + action

@@ -110,7 +110,7 @@ class AgentTests(unittest.TestCase):
             "hybrid_worker_token": "do-not-leak-this",
         }
         report = run_agent_team(
-            "Run a self-improvement audit of XemAi", model,
+            "Run a self-improvement audit of XemAi and research independent online sources", model,
             mode="self_audit", config=config,
             capabilities=["Persistent memory enabled", "Developer read-only"],
             runtime={"model": "qwen3:8b", "compute": "remote_worker",
@@ -148,7 +148,7 @@ class AgentTests(unittest.TestCase):
             mode="self_audit", config={}, capabilities=[],
             runtime={"model": "qwen3:1.7b"}, tools=tools,
         )
-        self.assertEqual(report["research_status"], "web_not_configured_or_disallowed")
+        self.assertEqual(report["research_status"], "not_requested_for_internal_audit")
         self.assertEqual([x["status"] for x in report["agents"]],
                          ["unavailable", "completed", "unavailable"])
         self.assertEqual(tools.research_calls, [])

@@ -4,6 +4,7 @@ import re
 
 from .capabilities import build_capability_status
 from .version import VERSION
+from .capability_inventory import local_question_type
 from .dialogue_intent import dialogue_intent
 
 
@@ -56,6 +57,8 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.25", "Introduces on-demand supervised read-only planning, analysis and verification passes and a proposal-only self-improvement audit; does not schedule self-modification."),
     ("0.9.26", "Introduces a separately opted-in weekly official-source AI technology watch, stores release leads, creates a dedicated findings chat and lets self-improvement audits use its saved findings. No new model installation or automatic implementation."),
     ("0.9.27", "Makes XemAi's goal of measurable user-relevant performance gains over ChatGPT explicit; handles clear hypotheticals and agent suggestions as scenarios/proposals rather than current-capability questions or model-training boilerplate."),
+    ("0.9.28", "Grounds AI Technology Watch follow-ups in saved announcements, ranks practical relevance, tracks evaluation proposals and verifies graceful automatic server restarts; no verified model improvement benchmarks."),
+    ("0.9.29", "Adds a source-of-truth inventory of supervised agent roles, explicit self-analysis and release-history answers, and an internal audit that avoids irrelevant web results and reports benchmark uncertainty."),
 ]
 
 
@@ -97,6 +100,8 @@ def is_self_knowledge_query(text: str) -> bool:
         return False
     lower = " ".join(text.lower().replace("’", "'").split())
 
+    if local_question_type(text):
+        return True
     if dialogue_intent(text) == "agent_idea":
         # Proposal about a future agent is not a question about XemAi's own
         # neural-network learning, even if it says "reports back to you".

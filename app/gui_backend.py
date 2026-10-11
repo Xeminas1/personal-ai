@@ -7,6 +7,12 @@ import time
 from pathlib import Path
 
 from .capabilities import build_capability_status
+from .capability_inventory import (
+    local_question_type, asks_for_external_research,
+    inventory as capability_inventory, inventory_context,
+    direct_answer as local_inventory_answer,
+    audit_response_needs_retry, audit_fallback,
+)
 from .agent_team import (
     ReadOnlyTeamTools, requested_agent_mode, run_agent_team, agent_team_context,
 )
@@ -56,6 +62,7 @@ from .self_knowledge import (
     comparison_answer_needs_retry,
     is_ai_comparison_query,
     is_self_knowledge_query,
+    RELEASE_HISTORY,
     looks_like_stale_self_description,
 )
 from .tools import (
@@ -479,6 +486,8 @@ class ChatBackend:
                 query_text, enabled=self.config.get("agent_team_enabled", True) is True
             )
             dialogue_kind = dialogue_intent(query_text)
+            inventory_kind = local_question_type(query_text)
+            internal_audit = agent_mode == "self_audit" and not asks_for_external_research(query_text)
             diagnostic_state = {}
             model_user_text = _expand_attachment_message(stored_user_text, diagnostic_state=diagnostic_state)
 
@@ -518,6 +527,10 @@ class ChatBackend:
             tools = TurnEvidenceTools(
                 ToolRegistry(BASE_DIR, DATA_DIR, self.logger), query_text
             )
+            if (inventory_kind or internal_audit) and not asks_for_external_research(query_text):
+                # The user's own app state is local evidence, not a reason to
+                # search public model directories or unrelated comparisons.
+                tools.web_allowed = False
             # Local project inspection is performed *before* external research
             # or model tool planning. Keep source-only requests within the
             # approved checkout, including the full agent tool list.
@@ -586,6 +599,10 @@ class ChatBackend:
 
             comparison_query = is_ai_comparison_query(query_text)
             self_query = is_self_knowledge_query(query_text)
+            inventory_data = (
+                capability_inventory(self.config, runtime_model_info, RELEASE_HISTORY)
+                if inventory_kind or agent_mode == "self_audit" else None
+            )
             full_system_prompt = build_system_prompt(
                 user,
                 memories,
@@ -598,7 +615,7 @@ class ChatBackend:
             )
             laptop_guidance = (
                 self.config.get("laptop_answer_guidance", True) is True
-                and not self_query and not visual_only and not dialogue_kind
+                and not self_query and not visual_only and not dialogue_kind and not agent_mode
             )
             local_system_prompt = None
             if laptop_guidance:
@@ -679,6 +696,11 @@ class ChatBackend:
                     ),
                 })
                 messages.append({"role": "user", "content": model_user_text})
+            if inventory_data is not None:
+                messages.append({
+                    "role": "system",
+                    "content": inventory_context(inventory_data, inventory_kind or "self_audit"),
+                })
 
             if watch_linked:
                 messages.append({
@@ -716,6 +738,8 @@ class ChatBackend:
                 and research_mode != "off"
                 and should_research_query(query_text)
                 and (not dialogue_kind or explicit_independent_research(query_text))
+                and not internal_audit
+                and (not inventory_kind or asks_for_external_research(query_text))
             ):
                 if status_callback:
                     status_callback("Researching reputable sources")
@@ -786,6 +810,8 @@ class ChatBackend:
                 tools.web_search_enabled
                 and should_force_web_search(query_text)
                 and (not watch_linked or explicit_independent_research(query_text))
+                and not internal_audit
+                and (not inventory_kind or asks_for_external_research(query_text))
                 and not research_sources
             ):
                 if status_callback:
@@ -821,7 +847,7 @@ class ChatBackend:
             # no tools or authority to act on instructions inside attachments.
             specialist_config = self.config
             legacy_teacher = str(self.config.get("teacher_review_mode", "auto")).strip().lower() == "legacy"
-            if legacy_teacher or visual_only or agent_mode or dialogue_kind or watch_linked:
+            if legacy_teacher or visual_only or agent_mode or dialogue_kind or watch_linked or inventory_kind:
                 specialist_config = dict(self.config, specialists_enabled=False)
             specialists = SpecialistCoordinator(
                 specialist_config, llm, query_text,
@@ -904,6 +930,9 @@ class ChatBackend:
                     runtime=runtime_model_info, tools=tools,
                     source_context=developer_context,
                     visual_context=visual_evidence,
+                    local_inventory=(
+                        json.dumps(inventory_data, ensure_ascii=False) if inventory_data else ""
+                    ),
                     watch_context=(
                         json.dumps({
                             "records": ai_watch_report(DATA_DIR, self.config)["reports"][:5],
@@ -929,7 +958,10 @@ class ChatBackend:
                 else ReadOnlyTeamTools(tools, allow_web=tools.web_allowed)
                 if agent_mode else tools
             )
-            if visual_only and not visual_ready:
+            if inventory_kind and inventory_data is not None and not agent_mode:
+                answer = local_inventory_answer(inventory_data, inventory_kind)
+                application_answer = True
+            elif visual_only and not visual_ready:
                 # A ready service is not enough: do not answer from invented
                 # visual evidence when this turn's image analysis failed.
                 answer = visual_unavailable_response()
@@ -1163,6 +1195,42 @@ class ChatBackend:
                     answer = watch_fallback(saved_watch, query_text)
                     application_answer = True
 
+            if agent_mode == "self_audit" and agent_report is not None and (
+                audit_response_needs_retry(answer, agent_report)
+            ):
+                self.logger.warning(
+                    "XemAi local self-audit off-topic | chat_id=%s turn_id=%s",
+                    chat_id, turn_id,
+                )
+                corrective = list(messages) + [
+                    {"role": "assistant", "content": str(answer)[:2200]},
+                    {"role": "system", "content": (
+                        "Your answer failed the LOCAL XemAi self-audit request. "
+                        "Identify actual XemAi release history and existing "
+                        "agents from the supplied inventory. List three "
+                        "specific weaknesses, tests and explicit uncertainty. "
+                        "Distinguish verified features from benchmarked gains. "
+                        "State what the Verification Agent challenged. "
+                        "Do NOT substitute unrelated web model comparisons."
+                    )},
+                ]
+                try:
+                    revised = llm.agent_chat(
+                        corrective, tool_registry=task_tools, max_tool_rounds=2
+                    )
+                    if audit_response_needs_retry(revised, agent_report):
+                        answer = audit_fallback(inventory_data, agent_report)
+                        application_answer = True
+                    else:
+                        answer = revised
+                except Exception as error:
+                    self.logger.warning(
+                        "Local self-audit correction unavailable | kind=%s",
+                        type(error).__name__,
+                    )
+                    answer = audit_fallback(inventory_data, agent_report)
+                    application_answer = True
+
             # A failed correction can change the client's fallback route while
             # leaving the successful original draft intact. Keep its source.
             answer_model = str(llm.model)
@@ -1214,6 +1282,7 @@ class ChatBackend:
                 and not agent_mode
                 and not dialogue_kind
                 and not watch_linked
+                and not inventory_kind
                 and not tools.evidence_attempted
                 and len(answer.strip()) >= teacher_min_chars
                 and callable(getattr(llm, "review_answer", None))
@@ -1262,7 +1331,7 @@ class ChatBackend:
             # Reviewer passes do not receive the full read-only source bundle
             # and could rewrite a grounded code explanation into a generic
             # menu or unsupported cross-repository comparison.
-            reviewed = None if developer_context or visual_only or agent_mode or dialogue_kind or watch_linked else specialists.review(
+            reviewed = None if developer_context or visual_only or agent_mode or dialogue_kind or watch_linked or inventory_kind else specialists.review(
                 answer, sources=tools.sources, known_urls=tools.known_urls,
                 application_answer=application_answer, self_query=self_query,
             )
