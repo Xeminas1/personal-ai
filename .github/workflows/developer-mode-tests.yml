@@ -12,6 +12,7 @@ on:
       - "test_governance_reporting.py"
       - "test_agent_team.py"
       - "test_ai_watch.py"
+      - "test_watch_intelligence.py"
       - "test_dialogue_mission.py"
       - "test_self_knowledge.py"
       - "test_media_support.py"
@@ -61,5 +62,7 @@ jobs:
         run: python test_dialogue_mission.py
       - name: Run XemAi built-in test suite
         run: python self_test.py
+      - name: Test AI Watch follow-ups and restart health
+        run: python test_watch_intelligence.py
       - name: Run update validation tests
         run: python test_updater.py

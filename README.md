@@ -1,3 +1,47 @@
+## v0.9.28 — Watch intelligence, proposal lifecycle and verified server restart
+
+Fixes user-tested AI Technology Watch follow-up failures: “what's your
+analysis?” previously searched for unrelated data-analysis sites and even a
+UAP report; “would these improvements benefit you?” listed existing tools,
+and hypothetical approval did not produce a staged evaluation plan.
+
+XemAi now loads the saved AI Technology Watch report into the relevant chat
+turn as bounded, untrusted structured evidence. In the Watch conversation,
+short follow-ups stay focused on the saved announcements, even when the user
+doesn't repeat every vendor/model name. External web research is suppressed
+unless the user explicitly requests additional independent research. Obvious
+topic-diversion answers receive one evidence-grounded retry; repeated
+diversions yield a narrow report instead of invented website findings.
+The mission and hypothetical dialogue prompts are also kept local rather
+than gathering unnecessary third-party generalities.
+
+Watch proposals now have stable IDs, differentiated practical relevance and
+a safe lifecycle: `proposed`, `approved_for_testing`, `rejected` and
+`benchmarked_user_reported`. The user can type `approve AI watch test <ID>`
+or `reject AI watch proposal <ID>` and, after approval, record numbers via
+`record AI watch benchmark <ID> | <metric> | <baseline> | <candidate> | <higher/lower>`.
+These are **metadata only**: none of these commands downloads models, runs a
+benchmark or changes code. Recorded numerical scores are explicitly marked
+USER-REPORTED and not independently verified against benchmark artifacts.
+Existing vendor announcements get updated classifications when displayed:
+embedding-model announcements are evaluated for semantic retrieval rather
+than screenshot understanding, agentic video for frame navigation, and
+WeatherNext for specialist weather forecasting, not general conversational AI.
+
+The server updater already attempted automatic restarts; v0.9.28 hardens it.
+After a verified update, a detached supervisor waits for the old listener to
+release the port, starts the new server, checks `/api/health` for the expected
+version, and records its status in
+`data/server_restart_status.json`. The old server exits through its normal
+shutdown path instead of `os._exit`. The supervisor retries a failed launch,
+but never spawns duplicates when an existing process owns the port. It doesn't
+restart Windows or affect the paired inference worker. No manual server
+restart should be required for a successful automatic update.
+
+No automatic self-modification, model installation, agent spawning, XemTV
+source changes, Fire TV APK build/install, or interference with Build 114
+and Codex's unfinished Build 115.
+
 ## v0.9.27 — XemAi's development mission and responsive hypotheticals
 
 Addresses real user testing in which Qwen3 8B denied that XemAi aims to

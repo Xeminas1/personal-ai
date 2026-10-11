@@ -12,6 +12,10 @@ from .agent_team import (
 )
 from .ai_watch import chat_command as ai_watch_chat_command
 from .ai_watch import current_report as ai_watch_report
+from .watch_intelligence import (
+    watch_focus, watch_context, answer_off_topic as watch_answer_off_topic,
+    watch_fallback, explicit_independent_research,
+)
 from .dialogue_intent import (
     dialogue_intent, dialogue_instructions, dialogue_answer_needs_retry,
     dialogue_retry_instruction, dialogue_fallback,
@@ -611,6 +615,12 @@ class ChatBackend:
             history = worker_db.get_recent_messages(
                 chat_id, limit=int(self.config.get("history_messages", 30))
             )
+            saved_watch = ai_watch_report(DATA_DIR, self.config)
+            watch_linked = watch_focus(
+                query_text, history, str(chat["title"]), saved_watch
+            )
+            if watch_linked and not explicit_independent_research(query_text):
+                tools.web_allowed = False
             messages = [{"role": "system", "content": system_prompt}]
             modding_context = "" if visual_only else skyrim_context(
                 query_text, [str(item.get("name", "")) for item in parsed_attachments],
@@ -670,7 +680,15 @@ class ChatBackend:
                 })
                 messages.append({"role": "user", "content": model_user_text})
 
-            research_query = research_query_for_turn(query_text, previous_user_messages)
+            if watch_linked:
+                messages.append({
+                    "role": "system",
+                    "content": watch_context(saved_watch, query_text),
+                })
+            research_query = (
+                query_text if watch_linked
+                else research_query_for_turn(query_text, previous_user_messages)
+            )
             if research_query != query_text:
                 messages.append({
                     "role": "system",
@@ -697,6 +715,7 @@ class ChatBackend:
                 tools.web_search_enabled
                 and research_mode != "off"
                 and should_research_query(query_text)
+                and (not dialogue_kind or explicit_independent_research(query_text))
             ):
                 if status_callback:
                     status_callback("Researching reputable sources")
@@ -766,6 +785,7 @@ class ChatBackend:
             if (
                 tools.web_search_enabled
                 and should_force_web_search(query_text)
+                and (not watch_linked or explicit_independent_research(query_text))
                 and not research_sources
             ):
                 if status_callback:
@@ -801,7 +821,7 @@ class ChatBackend:
             # no tools or authority to act on instructions inside attachments.
             specialist_config = self.config
             legacy_teacher = str(self.config.get("teacher_review_mode", "auto")).strip().lower() == "legacy"
-            if legacy_teacher or visual_only or agent_mode or dialogue_kind:
+            if legacy_teacher or visual_only or agent_mode or dialogue_kind or watch_linked:
                 specialist_config = dict(self.config, specialists_enabled=False)
             specialists = SpecialistCoordinator(
                 specialist_config, llm, query_text,
@@ -857,6 +877,10 @@ class ChatBackend:
 
             if visual_only:
                 messages.append({"role": "system", "content": VISUAL_ONLY_INSTRUCTIONS})
+            if watch_linked:
+                messages.append({
+                    "role": "system", "content": watch_context(saved_watch, query_text)
+                })
             if dialogue_kind:
                 messages.append({
                     "role": "system",
@@ -1106,6 +1130,39 @@ class ChatBackend:
                     answer = dialogue_fallback(dialogue_kind, query_text)
                     application_answer = True
 
+            if watch_linked and watch_answer_off_topic(answer, saved_watch, query_text):
+                self.logger.warning(
+                    "Technology Watch follow-up off-topic | chat_id=%s turn_id=%s",
+                    chat_id, turn_id,
+                )
+                retry = list(messages) + [
+                    {"role": "assistant", "content": str(answer)[:2200]},
+                    {"role": "system", "content": (
+                        "The previous response ignored the user's Technology "
+                        "Watch follow-up. Use the concrete SAVED WATCH REPORT "
+                        "included in system evidence. Answer the actual "
+                        "question, compare relevance to XemAi, separate "
+                        "hypothetical approval from authorisation, and never "
+                        "invent unrelated web research or completed tests."
+                    )},
+                ]
+                try:
+                    corrected = llm.agent_chat(
+                        retry, tool_registry=task_tools, max_tool_rounds=2,
+                    )
+                    if watch_answer_off_topic(corrected, saved_watch, query_text):
+                        answer = watch_fallback(saved_watch, query_text)
+                        application_answer = True
+                    else:
+                        answer = corrected
+                except Exception as error:
+                    self.logger.warning(
+                        "Technology Watch corrective pass unavailable | type=%s",
+                        type(error).__name__,
+                    )
+                    answer = watch_fallback(saved_watch, query_text)
+                    application_answer = True
+
             # A failed correction can change the client's fallback route while
             # leaving the successful original draft intact. Keep its source.
             answer_model = str(llm.model)
@@ -1156,6 +1213,7 @@ class ChatBackend:
                 and not visual_only
                 and not agent_mode
                 and not dialogue_kind
+                and not watch_linked
                 and not tools.evidence_attempted
                 and len(answer.strip()) >= teacher_min_chars
                 and callable(getattr(llm, "review_answer", None))
@@ -1204,7 +1262,7 @@ class ChatBackend:
             # Reviewer passes do not receive the full read-only source bundle
             # and could rewrite a grounded code explanation into a generic
             # menu or unsupported cross-repository comparison.
-            reviewed = None if developer_context or visual_only or agent_mode or dialogue_kind else specialists.review(
+            reviewed = None if developer_context or visual_only or agent_mode or dialogue_kind or watch_linked else specialists.review(
                 answer, sources=tools.sources, known_urls=tools.known_urls,
                 application_answer=application_answer, self_query=self_query,
             )

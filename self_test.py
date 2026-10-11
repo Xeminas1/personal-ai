@@ -317,7 +317,13 @@ def run() -> None:
     assert "XemAiAutoUpdater" in mobile_server
     assert "active_chat_requests" in mobile_server
     assert "update_restarting" in mobile_server
-    assert 'time.sleep(2.5)' in mobile_server
+    assert "app.restart_supervisor" in mobile_server
+    assert "server.shutdown()" in mobile_server
+    assert "os._exit(0)" not in mobile_server
+    restart_source = (project_root / "app" / "restart_supervisor.py").read_text(encoding="utf-8")
+    assert "/api/health" in restart_source
+    assert "expected_version" in restart_source
+    assert "old_server_still_running" in restart_source
     assert "/api/update/install" not in mobile_js
     assert "/api/update/install" in mobile_server
     assert 'r"/api/chats/(\\d+)/retry"' in mobile_server

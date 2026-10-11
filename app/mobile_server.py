@@ -63,21 +63,20 @@ def _pythonw_executable() -> Path:
     return exe
 
 
-def _schedule_mobile_server_restart() -> None:
-    """
-    Launch a tiny detached helper that waits for this server process to exit,
-    then starts the freshly updated XemAi mobile server.
+def _schedule_mobile_server_restart(server, expected_version: str) -> None:
+    """Restart the server automatically after a verified update is installed.
+
+    A detached supervisor waits for this port to become free and checks that
+    the replacement server is actually running the target version. The
+    existing server shuts down cleanly rather than forcibly exiting.
     """
     executable = _pythonw_executable()
     script = BASE_DIR / "XemAiServer.pyw"
-    helper_code = (
-        "import subprocess,sys,time;"
-        "time.sleep(2.5);"
-        "subprocess.Popen([sys.argv[1],sys.argv[2]],"
-        "cwd=sys.argv[3],stdin=subprocess.DEVNULL,"
-        "stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,"
-        "close_fds=True)"
-    )
+    port = int(server.server_address[1])
+    supervisor = BASE_DIR / "app" / "restart_supervisor.py"
+    if not script.is_file() or not supervisor.is_file():
+        raise RuntimeError("Updated restart supervisor or server launcher is missing.")
+
     kwargs = {
         "cwd": str(BASE_DIR),
         "stdin": subprocess.DEVNULL,
@@ -86,30 +85,28 @@ def _schedule_mobile_server_restart() -> None:
         "close_fds": True,
     }
     if os.name == "nt":
-        detached = getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
-        new_group = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
-        no_window = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-        kwargs["creationflags"] = detached | new_group | no_window
-
+        kwargs["creationflags"] = (
+            getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+            | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+            | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        )
     subprocess.Popen(
         [
-            str(executable),
-            "-c",
-            helper_code,
-            str(executable),
-            str(script),
-            str(BASE_DIR),
+            str(executable), "-m", "app.restart_supervisor",
+            str(executable), str(script), str(BASE_DIR), str(DATA_DIR),
+            str(expected_version), str(port),
         ],
         **kwargs,
     )
 
     def stop_current():
         time.sleep(1.5)
-        # Allow in-flight HTTP responses to flush before the helper binds the
-        # same localhost port using the newly installed code.
-        os._exit(0)
+        server.stop_event.set()
+        server.shutdown()
 
-    threading.Thread(target=stop_current, daemon=True).start()
+    threading.Thread(
+        target=stop_current, daemon=True, name="XemAiGracefulUpdateShutdown"
+    ).start()
 
 
 def _active_chat_requests(server) -> int:
@@ -332,7 +329,7 @@ def _auto_update_loop(server) -> None:
                             )
                         server.update_restarting = True
                         try:
-                            _schedule_mobile_server_restart()
+                            _schedule_mobile_server_restart(server, installed)
                         except Exception:
                             server.update_restarting = False
                             raise
@@ -1136,7 +1133,7 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                 installed = backend.install_update(manifest)
                 self.server.update_restarting = True
                 try:
-                    _schedule_mobile_server_restart()
+                    _schedule_mobile_server_restart(self.server, installed)
                 except Exception:
                     self.server.update_restarting = False
                     raise

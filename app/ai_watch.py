@@ -22,6 +22,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
+from .watch_evaluation import enrich, is_command, transition
+
 
 SOURCES = (
     ("OpenAI", "https://openai.com/news/rss.xml", ("openai.com", "www.openai.com")),
@@ -227,10 +229,12 @@ def _message(events: list[dict], first: bool) -> str:
         "verified improvements or installed changes. Suggested experiments "
         "require your approval; XemAi has modified nothing."
     )]
-    for row in events[:6]:
+    for raw in events[:6]:
+        row = enrich(raw)
         text.append(
             f"\n**{row['source']}: {row['title']}**\n"
             f"{row['url']}\n"
+            f"ID: {row['proposal_id']}; status: {row['evaluation_status']}; priority: {row['priority']}.\n"
             f"Potential relevance: {row['area']}.\n"
             f"Possible next test: {row['proposal']}"
         )
@@ -289,6 +293,7 @@ def scan_once(
             "last_success": instant if good else state.get("last_success"),
             "seen": seen,
             "reports": history[:MAX_EVENTS],
+            "evaluations": state.get("evaluations", {}),
             "source_failures": errors,
             "source_successes": good,
         }
@@ -346,13 +351,15 @@ def deliver_reports(data_dir: Path, logger=None) -> int:
 def current_report(data_dir: Path, config: dict) -> dict:
     state = _load(data_dir)
     recent = state.get("reports", [])
+    evaluations = state.get("evaluations", {})
+    rows = [enrich(row, evaluations) for row in recent[:12] if isinstance(row, dict)] if isinstance(recent, list) else []
     return {
         "enabled": config.get("ai_watch_enabled") is True,
         "interval_hours": interval_hours(config),
         "last_checked": state.get("last_attempt"),
         "last_success": state.get("last_success"),
         "source_failures": state.get("source_failures", []),
-        "reports": recent[:12] if isinstance(recent, list) else [],
+        "reports": rows,
         "source_count": len(SOURCES),
         "note": "Feed claims are leads to benchmark, never automatic model learning or applied updates.",
     }
@@ -366,11 +373,14 @@ def chat_command(question: str, data_dir: Path, logger=None) -> str | None:
         "disable ai technology watch",
         "check ai technology watch now",
         "show ai technology watch report",
-    }:
+    } and not is_command(q):
         return None
     from .config import load_config, save_config
 
     config = load_config()
+    decision = transition(data_dir, q)
+    if decision is not None:
+        return decision
     if q == "enable ai technology watch":
         config["ai_watch_enabled"] = True
         config.setdefault("ai_watch_interval_hours", 168)
@@ -411,4 +421,10 @@ def chat_command(question: str, data_dir: Path, logger=None) -> str | None:
             "Enable it and say 'check AI technology watch now' to establish "
             "an initial baseline."
         )
-    return _message(items, bool(items[0].get("baseline")))
+    return _message(items, bool(items[0].get("baseline"))) + (
+        "\n\nTo propose evaluation: approve AI watch test <ID>. "
+        "To reject: reject AI watch proposal <ID>. "
+        "To record a user-reported numerical test: "
+        "record AI watch benchmark <ID> | <metric> | <baseline> | <candidate> | <higher/lower>. "
+        "These commands never run experiments or modify software."
+    )
