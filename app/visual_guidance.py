@@ -20,6 +20,12 @@ _NEGATIVE_SOURCE = re.compile(
     r"[^\n.!?;]*",
     re.IGNORECASE,
 )
+_NEGATIVE_DEV_MODE = re.compile(
+    r"\b(?:do\s+not|don't|never|without|no)\s+"
+    r"(?:use|using)\s+(?:(?:the|your)\s+)?developer\s+mode\b"
+    r"[^\n.!?;]*",
+    re.IGNORECASE,
+)
 _AFFIRMATIVE_SOURCE = re.compile(
     r"\b(?:use|using|via|with)\s+(?:the\s+|your\s+)?developer\s+mode\b"
     r"|\b(?:inspect|read|trace|analyse|analyze|review|modify|edit|"
@@ -80,7 +86,7 @@ def is_image_only_request(question: str, attachments: Any) -> bool:
     q = str(question or "")[:4000]
     if not _VISUAL_INTENT.search(q):
         return False
-    positive = _NEGATIVE_SOURCE.sub("", q)
+    positive = _NEGATIVE_SOURCE.sub("", _NEGATIVE_DEV_MODE.sub("", q))
     return not bool(_AFFIRMATIVE_SOURCE.search(positive))
 
 
