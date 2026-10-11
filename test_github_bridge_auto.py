@@ -32,12 +32,10 @@ class FakeGitHub:
     def comments(self, repo, issue):
         return list(self.entries)
 
-    def post_comment(self, repo, issue, content):
-        self.posted.append((repo, issue, content))
-        self.entries.append({
-            "id": 200 + len(self.posted), "body":
-             "XemAi follow-up (approved by the user):\n\n" + content,
-        })
+    def post_auto_comment(self, repo, issue, content):
+        body = "XemAi autonomous response (opt-in, read-only):\n\n" + content
+        self.posted.append((repo, issue, body))
+        self.entries.append({"id": 200 + len(self.posted), "body": body})
         return f"https://github.com/{repo}/issues/{issue}#issuecomment-test"
 
 
