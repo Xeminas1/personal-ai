@@ -25,7 +25,7 @@
     {
       "path": "app/bridge_conversation_context.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.44/app/bridge_conversation_context.py",
-      "sha256": "b8e43c83dea56ba9f4727e11f3cd8907a8a62628ab6fb01557fe34308046efe3"
+      "sha256": "2337a618ef13e31454cdd78be40285932172fdc82fcf98c8a46336ec95bba78f"
     },
     {
       "path": "app/capabilities.py",
@@ -435,7 +435,7 @@
     {
       "path": "test_dialogue_mission.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.44/test_dialogue_mission.py",
-      "sha256": "cc5906fcee4e42e99f2e1e72b9d6d336e867e52cf05cc4377529b198374f0b21"
+      "sha256": "a6657c5ae698ab86f9d5a243add612d9435b0108457ed6486cf4809fd0531648"
     },
     {
       "path": "test_drag_drop.js",
