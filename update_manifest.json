@@ -1,6 +1,6 @@
 {
-  "version": "0.9.30",
-  "notes": "Faster, safer staged incremental updates. The auto-updater compares every pinned asset against locally verified SHA-256 and downloads only changed files concurrently with at most six workers. Changed files undergo hash/syntax verification before reserving the chat-blocking installation lock. Final replacement re-verifies stage hashes, backs up only changed files with rollback metadata, preserves user data and uses the existing version-verified automatic restart. Corrupt or tampered downloads fail before live writes. Speedups begin after installing v0.9.30; the v0.9.30 installation itself still uses the previous updater. Also improves self-audit truthfulness by rejecting hypothetical 'benchmarked gains' and unobserved missing-file claims. No new agent privileges, model downloads or XemTV Build 114/unfinished 115 changes.",
+  "version": "0.9.31",
+  "notes": "XemAi chat now accepts drag-and-drop files anywhere in the conversation, with visible drop zone, up to three files in the secure existing uploader, previews in attachment tray, and safe busy/no-chat guards. Mobile plus/camera/gallery upload remains. Code tasks in line-numbered text attachments (including Skyrim MWControls Stage 1) are grounded in the supplied excerpts, external SKSE research is suppressed, and off-topic answers saying no question posed get a targeted retry or honest incomplete report. The system cannot modify or build Skyrim or XemTV from attachment tasks. Cross-platform Python and Node tests pass. Preserves chats, settings, AI Watch, paired worker, and XemTV Build 114/unfinished 115.",
   "files": [
     {
       "path": "app/__init__.py",
@@ -16,6 +16,11 @@
       "path": "app/ai_watch.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.28/app/ai_watch.py",
       "sha256": "0e2bbd5c7268dda8f4d298a65c1f8ce3a7423ce4a557c27468863de09246f966"
+    },
+    {
+      "path": "app/attachment_tasks.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/app/attachment_tasks.py",
+      "sha256": "85aabcbbdc314c2d3d2f16a1a1f8ee3b47e2512674dd662b65328f478e73a67f"
     },
     {
       "path": "app/capabilities.py",
@@ -59,8 +64,8 @@
     },
     {
       "path": "app/gui_backend.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.29/app/gui_backend.py",
-      "sha256": "a15739d008c5270247df80c3a0097847874575e1b4fb9f2e21f452ef51fd6b53"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/app/gui_backend.py",
+      "sha256": "68402710a067e245949678a853c3b5dd014838501ad7cdd6dd45414000245bc7"
     },
     {
       "path": "app/hybrid_autosetup.py",
@@ -124,8 +129,8 @@
     },
     {
       "path": "app/self_knowledge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.30/app/self_knowledge.py",
-      "sha256": "56903abd618879f4e11132117e8e04c6d11e32431ecc4a684f7a64b6f9b46dd6"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/app/self_knowledge.py",
+      "sha256": "6b1b710ff6947f639e1e826561b325be048df1d2edbb7e64e5713edd2089672d"
     },
     {
       "path": "app/skyrim.py",
@@ -159,8 +164,8 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.30/app/version.py",
-      "sha256": "89310de8b1eb293730f4b9696cbc21cc7a7e1c2c425f41229f18429e1cf0d11a"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/app/version.py",
+      "sha256": "b69bdbf1ca289477c531b3cdf92f3a050295b337716f5cb4eb3a609e94c417d0"
     },
     {
       "path": "app/vision.py",
@@ -249,13 +254,13 @@
     },
     {
       "path": "mobile/app.js",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/mobile/app.js",
-      "sha256": "162157893907131f26fb5943b41d025e312886d20c75916b0fd7ab42b3fff053"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/mobile/app.js",
+      "sha256": "5b2bf08fad13400d78dcad75e4bc4d4b48b3a1b38d25f5b96e761d0aef8c13b6"
     },
     {
       "path": "mobile/index.html",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/mobile/index.html",
-      "sha256": "74d8286389656c1202189cf7beeed765ff14814358cb35882b8bc40afadd3f91"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/mobile/index.html",
+      "sha256": "6c3386fb3b08b9424409133b2bce9aeeed50c1283e64f6618521cd533eb5717f"
     },
     {
       "path": "mobile/manifest.webmanifest",
@@ -274,8 +279,8 @@
     },
     {
       "path": "mobile/styles.css",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/mobile/styles.css",
-      "sha256": "a6b63c8bb5cc5665529be9356e3ee596b0ad2ecff950bb590279382e7aa96908"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/mobile/styles.css",
+      "sha256": "b5021851cbbbf266b4a685f4b79e2ed82339338946ed5e1b7e5d8103495d1c97"
     },
     {
       "path": "mobile/support.html",
@@ -289,13 +294,13 @@
     },
     {
       "path": "mobile/sw.js",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/mobile/sw.js",
-      "sha256": "b486c0386ccbca9a0f006f28ff91ca32b3253aef2d15af3ce278a02a87388f55"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/mobile/sw.js",
+      "sha256": "9be82b346146f366316bf0f44a60be2bb980976655458c9a0565958e15a33b7a"
     },
     {
       "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.30/README.md",
-      "sha256": "aedb59a8759385032500d9229f81d31d56d226851d192d884f480c9703a20b21"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/README.md",
+      "sha256": "440d61c6c1171c4275e34eec377c87f42ef2a031c9934163ff98ebe6f3751c6c"
     },
     {
       "path": "restart_mobile_server.bat",
@@ -309,8 +314,8 @@
     },
     {
       "path": "self_test.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.28/self_test.py",
-      "sha256": "1b490774be95ec143349edf8ad42b6408c58541234d46f8ef60b9f1fe4a4ed3a"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/self_test.py",
+      "sha256": "d73d30ded8544492622af9fd685619f9477fa83d89249960978ce40e5267757c"
     },
     {
       "path": "test_agent_team.py",
@@ -323,14 +328,19 @@
       "sha256": "1d7640df3deb370f064ea34e210bd6a9731f24c6fc895a56943cd7232c669cdd"
     },
     {
+      "path": "test_attachment_challenges.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/test_attachment_challenges.py",
+      "sha256": "fec0287744ebf414392a08aabceb7764d86f5290c16875611aa48256b1cd2f2e"
+    },
+    {
       "path": "test_auto_updates.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/test_auto_updates.py",
       "sha256": "336228e3113b05770edd2d84e23133b3fc1fdeee3110acf203b115efc7aca806"
     },
     {
       "path": "test_capability_inventory.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.30/test_capability_inventory.py",
-      "sha256": "99828044bb39b56d6a4c6ee2a50b3f05e73f059582093fad2181d4d4c8179f82"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/test_capability_inventory.py",
+      "sha256": "fef4db5e105407f3136ef3da09c6f90e4f2868294d2fd44b60c11a2ac675b145"
     },
     {
       "path": "test_chat_delete.py",
@@ -381,6 +391,11 @@
       "path": "test_dialogue_mission.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.27/test_dialogue_mission.py",
       "sha256": "663161c73665390d211d7c063d0a5d0f2f7f47b3af82524ac5261d7a2e62c352"
+    },
+    {
+      "path": "test_drag_drop.js",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/test_drag_drop.js",
+      "sha256": "a1705cf6c6d57a006b80ee88d0c1e6124f33a2f331a60b7bd2134d99f8247814"
     },
     {
       "path": "test_evidence_quality.py",
