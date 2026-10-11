@@ -432,6 +432,27 @@ def _row_dict(row) -> dict:
 
 
 
+def _github_dialogue_loop(server) -> None:
+    """Poll only after explicit user opt-in; no tool use or code mutations."""
+    from .github_bridge_auto import tick, AUTO_POLL_SECONDS
+    stop = getattr(server, "stop_event", None)
+    logger = getattr(server, "xemai_logger", None)
+    if stop is None or stop.wait(18):
+        return
+    while not stop.is_set():
+        try:
+            if not getattr(server, "update_restarting", False):
+                tick(DATA_DIR, logger=logger)
+        except Exception as error:
+            if logger:
+                logger.warning(
+                    "GitHub discussion tick failed | error_type=%s",
+                    type(error).__name__,
+                )
+        if stop.wait(AUTO_POLL_SECONDS):
+            return
+
+
 def _ai_watch_loop(server) -> None:
     """Opt-in, slow-polling source monitor. Never schedules model inference."""
     stop_event = getattr(server, "stop_event", None)
@@ -1268,6 +1289,12 @@ def run_mobile_server() -> int:
         args=(server,),
         daemon=True,
         name="XemAiTechnologyWatch",
+    ).start()
+    threading.Thread(
+        target=_github_dialogue_loop,
+        args=(server,),
+        daemon=True,
+        name="XemAiPrivateGithubDialogue",
     ).start()
     start_hybrid_auto_setup(server.stop_event, logger)
     try:
