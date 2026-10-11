@@ -111,7 +111,7 @@ class GovernanceTests(unittest.TestCase):
             tools,
             {"model": "qwen3:8b", "compute": "remote_worker"}
         )
-        self.assertIn("not proof that the model cannot make errors", context.lower())
+        self.assertIn("not proof that the model cannot make errors", " ".join(context.lower().split()))
         self.assertIn("no separate live human moderator", context)
         self.assertIn("weights do not change after each conversation", context)
         for topic, qs in QUESTIONS.items():
