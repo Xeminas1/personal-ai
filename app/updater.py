@@ -176,6 +176,7 @@ class PreparedFileUpdate:
     changed: tuple[Path, ...]
     skipped: int
     download_count: int
+    expected_hashes: dict[str, str]
     prepared_at: float
 
     def close(self) -> None:
@@ -266,7 +267,9 @@ def prepare_file_update(
             version=version, base_dir=base_dir.resolve(),
             temporary=temp, stage=stage, changed=tuple(changes),
             skipped=len(items) - len(to_download),
-            download_count=len(to_download), prepared_at=time.monotonic(),
+            download_count=len(to_download),
+            expected_hashes={p.as_posix(): digest for p, _, digest in items},
+            prepared_at=time.monotonic(),
         )
         if logger:
             logger.info(
@@ -298,6 +301,11 @@ def install_prepared_update(
         staged = prepared.stage / relative
         if not staged.is_file() or staged.is_symlink():
             raise UpdateError(f"Staged update file is missing: {relative}")
+        expected = prepared.expected_hashes.get(relative.as_posix())
+        if expected is None or _existing_sha256(staged) != expected:
+            raise UpdateError(
+                f"Staged update file failed SHA-256 recheck: {relative}"
+            )
         _safe_update_target(base_dir, relative)
         changed.append(relative)
     if backup_dir.exists():
