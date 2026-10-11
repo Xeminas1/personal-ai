@@ -19,7 +19,9 @@ from .agent_team import (
 from .ai_watch import chat_command as ai_watch_chat_command
 from .ai_watch import current_report as ai_watch_report
 from .attachment_tasks import (
-    is_attached_code_assignment, source_assignment_context,
+    SourceTaskReadOnlyTools, is_attached_code_assignment,
+    refers_to_previously_attached_code, has_readable_source,
+    source_assignment_context, source_evidence_status,
     answer_incomplete as attachment_answer_incomplete,
     retry_instruction as attachment_retry_instruction,
     incomplete_fallback as attachment_incomplete_fallback,
@@ -643,6 +645,51 @@ class ChatBackend:
             history = worker_db.get_recent_messages(
                 chat_id, limit=int(self.config.get("history_messages", 30))
             )
+            if (
+                not parsed_attachments and not attached_code_task
+                and refers_to_previously_attached_code(query_text)
+            ):
+                # A user may upload a text challenge first, then send its task
+                # instructions in a separate turn. Reopen only attachments
+                # already saved in THIS conversation, from the last 8 rows.
+                for earlier in reversed(history[-8:]):
+                    if earlier["role"] != "user" or earlier["content"] == stored_user_text:
+                        continue
+                    prior_refs, _ = _parse_attachment_markers(earlier["content"])
+                    if not prior_refs:
+                        continue
+                    # Do not reuse files from another chat even if a stale
+                    # marker somehow appears in this conversation history.
+                    own_prefix = f"attachments/chat_{int(chat_id)}/"
+                    if any(
+                        not str(ref.get("path", "")).replace("\\", "/").startswith(own_prefix)
+                        for ref in prior_refs
+                    ):
+                        continue
+                    previous_payload = _expand_attachment_message(earlier["content"])
+                    if (
+                        is_attached_code_assignment(query_text, previous_payload, prior_refs)
+                        and has_readable_source(previous_payload)
+                    ):
+                        model_user_text = (
+                            query_text
+                            + "\n\nPREVIOUSLY UPLOADED SOURCE FOR THIS CHAT "
+                            "(re-read from original attachment):\n"
+                            + previous_payload
+                        )
+                        attached_code_task = True
+                        self.logger.info(
+                            "Reused earlier source attachment | chat_id=%s turn_id=%s "
+                            "count=%d", chat_id, turn_id, len(prior_refs),
+                        )
+                        break
+            if attached_code_task:
+                # Recovery happens after generic prompt/tool preparation; do
+                # not carry that unrelated source context into this analysis.
+                tools.web_allowed = False
+                developer_context = ""
+                system_prompt = full_system_prompt
+                llm.local_system_prompt = None
             saved_watch = ai_watch_report(DATA_DIR, self.config)
             watch_linked = watch_focus(
                 query_text, history, str(chat["title"]), saved_watch
@@ -697,6 +744,21 @@ class ChatBackend:
                     row_content = model_user_text if is_latest_user else _expand_attachment_message(row_content)
                 messages.append(
                     {"role": row["role"], "content": row_content}
+                )
+
+            if attached_code_task:
+                # Treat this message as an isolated source exercise. A long
+                # history of failed Qwen drafts and unrelated web citations
+                # can otherwise crowd out actual numbered file excerpts.
+                messages = [row for row in messages if row["role"] == "system"]
+                messages.append({"role": "user", "content": model_user_text})
+                evidence = source_evidence_status(model_user_text)
+                self.logger.info(
+                    "Source attachment delivered to model | chat_id=%s turn_id=%s "
+                    "files=%d numbered_lines=%d tasks=%d truncated=%s",
+                    chat_id, turn_id, len(evidence["file_names"]),
+                    evidence["numbered_source_lines"],
+                    len(evidence["tasks_detected"]), evidence["truncated"],
                 )
 
             if self_query:
@@ -977,7 +1039,8 @@ class ChatBackend:
             answer_started = time.monotonic()
             application_answer = False
             task_tools = (
-                NoExternalOrSourceTools() if visual_only
+                SourceTaskReadOnlyTools() if attached_code_task
+                else NoExternalOrSourceTools() if visual_only
                 else ReadOnlyTeamTools(tools, allow_web=tools.web_allowed)
                 if agent_mode else tools
             )
@@ -993,7 +1056,8 @@ class ChatBackend:
                 answer = llm.agent_chat(
                     messages,
                     tool_registry=task_tools,
-                    max_tool_rounds=int(self.config.get("max_tool_rounds", 6)),
+                    max_tool_rounds=0 if attached_code_task
+                    else int(self.config.get("max_tool_rounds", 6)),
                 )
             timing("answer", answer_started)
 
@@ -1265,8 +1329,8 @@ class ChatBackend:
                 ]
                 try:
                     revised = llm.agent_chat(
-                        corrective, tool_registry=NoExternalOrSourceTools(),
-                        max_tool_rounds=1,
+                        corrective, tool_registry=SourceTaskReadOnlyTools(),
+                        max_tool_rounds=0,
                     )
                     if attachment_answer_incomplete(revised, model_user_text):
                         answer = attachment_incomplete_fallback(model_user_text)

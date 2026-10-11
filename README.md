@@ -1,3 +1,33 @@
+## v0.9.32 — Stop inventing missing source code in Skyrim benchmark answers
+
+Fixes the observed failure in which Qwen3:8b insisted CMakeLists.txt,
+Controls.cpp and MWInterventionScopeAlias.psc source excerpts were missing,
+despite the supplied Stage 1 text containing all three line-numbered files.
+
+Source-task handling now verifies which excerpt files and numbered code
+lines were actually decoded, supplies that evidence to the model, and
+isolates the user's code-assignment turn from irrelevant earlier assistant
+messages and internet search results. It permits **no model tool calls**
+for this already-supplied source-only exercise, and rejects responses
+claiming the code or task were missing when the excerpts were read.
+The verifier also requires all five numbered Stage 1 answer sections.
+A failed answer receives one constrained retry, followed by an honest
+evidence-aware failure summary if Qwen still does not complete the test.
+It never claims a working Skyrim build or installed DLL was verified.
+
+If a user uploads the text file in one message and asks about that
+specific attached challenge in the next message, XemAi can now safely
+re-read a recent file from the same chat (never another chat or library
+folder), instead of telling the user to upload it again. Attachment data
+is not exposed to unrelated web research or application permissions.
+
+Regression tests cover the exact response reported by the user, a
+two-attempt missing-source failure, accurate source-line metadata, zero
+tool calls and follow-up attachment reuse. This update does not add
+Skyrim specialist agents yet: we will benchmark the repaired evidence
+handling first. No Skyrim installation, XemTV Build 114, unfinished
+Build 115, user models or settings were modified.
+
 ## v0.9.31 — Drag-and-drop attachments and reliable Skyrim source challenges
 
 On desktop, drag files over the XemAi conversation to reveal a prominent
