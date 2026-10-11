@@ -15,7 +15,7 @@ from .version import VERSION
 
 
 _ALLOWED_TEAM_TOOLS = frozenset({
-    "calculator", "current_time", "workspace_list", "workspace_read",
+    "calculator", "current_time", "workspace_list", "workspace_read", "ai_watch_report",
     "dev_projects", "dev_list", "dev_read", "dev_search", "dev_trace",
     "web_search", "web_fetch", "research_evidence",
 })
@@ -144,7 +144,9 @@ _ROLE_RULES = {
     ),
     "self_improvement": (
         "SELF-IMPROVEMENT AUDITOR: Analyse the supplied XemAi version, "
-        "capabilities, known limits and research evidence. Suggest at most "
+        "capabilities, known limits, saved official AI release watch and research evidence. "
+        "Treat all vendor announcements as untested leads, not proven capabilities. "
+        "Suggest at most "
         "three specific, reversible improvements, each with current weakness, "
         "expected benefit, prerequisites, risk, test/benchmark, and confidence. "
         "An upgrade idea is not verified as beneficial without comparative tests. "
@@ -163,6 +165,7 @@ def run_agent_team(
     question: str, llm, *, mode: str, config: dict,
     capabilities: list[str], runtime: dict, tools,
     source_context: str = "", visual_context: str = "",
+    watch_context: str = "",
     status_callback=None, logger=None,
 ) -> dict:
     """Run at most three sequential, no-tool passes on the already selected model.
@@ -206,6 +209,7 @@ def run_agent_team(
         "runtime": snapshot,
         "local_source_excerpt": _bounded(source_context, 7500),
         "vision_report_excerpt": _bounded(visual_context, 5500),
+        "saved_ai_technology_watch": _bounded(watch_context, 4500),
         "research": research,
         "evidence_limits": (
             "Only supplied code excerpts were inspected; no complete repo scan, "
