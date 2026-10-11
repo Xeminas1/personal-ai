@@ -167,6 +167,7 @@ class GovernanceTests(unittest.TestCase):
                 for m in model.agent_chat.call_args_list[-1].args[0]
                 if m.get("role") == "system"
             ))
+            db.close()  # Release SQLite handle before Windows temp directory cleanup.
 
 
 if __name__ == "__main__":
