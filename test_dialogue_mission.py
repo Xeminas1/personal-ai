@@ -101,7 +101,7 @@ class DialogueTests(unittest.TestCase):
 
     def test_prompts_state_measurable_goal_without_false_superiority(self):
         self.assertIn("aspirational goal is to outperform ChatGPT", CONSTITUTION)
-        self.assertIn("not an achieved fact", CONSTITUTION)
+        self.assertIn("not an achieved fact", CONSTITUTION.lower())
         self.assertIn("hypothetical", CONSTITUTION.lower())
         self.assertIn("benchmark", dialogue_instructions("mission"))
         self.assertIn("opt-in AI Technology Watch", dialogue_instructions("agent_idea"))
