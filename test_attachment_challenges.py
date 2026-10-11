@@ -13,6 +13,8 @@ from app.attachment_tasks import (
     source_assignment_context, source_names, incomplete_fallback,
     source_evidence_status, has_readable_source, refers_to_previously_attached_code,
     is_inline_source_assignment, inline_source_answer_needs_retry,
+    incomplete_reasons, recovery_task_groups, recovery_task_instruction,
+    recovery_part_incomplete,
 )
 from app.database import Database
 
@@ -236,6 +238,80 @@ class AttachmentTasksTests(unittest.TestCase):
         self.assertIn("source excerpts", answer)
         self.assertNotIn("Please provide the exact text", answer)
         self.assertEqual(model.agent_chat.call_count, 2)
+
+    def test_accepts_valid_task_headings_and_installed_artifact_uncertainty(self):
+        payload = "ATTACHED FILE: Stage1_Trace.txt\n--- UNTRUSTED FILE CONTENT ---\n" + ASSIGNMENT
+        answer = GOOD.replace("\n2.", "\n## Task 2:").replace("\n3.", "\n**Task 3:**") \
+                     .replace("\n4.", "\n### 4 —").replace("\n5.", "\nTask 5:")
+        self.assertFalse(answer_incomplete(answer, payload))
+        self.assertEqual(incomplete_reasons(answer, payload), [])
+        evidence = GOOD + (
+            "\nThe installed DLL is missing from the evidence, "
+            "and the real game logs have not been provided."
+        )
+        self.assertFalse(answer_incomplete(evidence, payload))
+
+    def test_segmented_recovery_keeps_evidence_and_completes_all_five_tasks(self):
+        payload = "ATTACHED FILE: Stage1_Trace.txt\n--- UNTRUSTED FILE CONTENT ---\n" + ASSIGNMENT
+        self.assertEqual(recovery_task_groups(payload), [["1", "2", "3"], ["4", "5"]])
+        self.assertIn("ONLY task numbers 1, 2, 3", recovery_task_instruction(["1", "2", "3"]))
+        part1 = (
+            "1. CMakeLists.txt line 1 declares project 0.6.15, and "
+            "src/Controls.cpp lines 16 and 22 expose plugin version 615. "
+            "The Papyrus source MWControls.psc lines 12–23 checks the same version. "
+            "\n2. A plausible cause is a stale installed native DLL, causing "
+            "the Papyrus gate to select a previous aim path. This is not proof "
+            "that the currently installed DLL is stale or that the hook failed. "
+            "\n3. Read-only diagnostics: inspect MWControls.log for startup, "
+            "inspect deployed MWControls.dll version metadata, and inspect "
+            "the installed MWControls.pex alongside the corresponding script source."
+        )
+        part2 = (
+            "4. Preserve working files; first identify the actually loaded "
+            "MWControls.dll and MWControls.pex and compare with CMakeLists.txt "
+            "and src/Controls.cpp. Then plan one compatible change, ask permission "
+            "before touching installation files, and retest Skyrim afterward. "
+            "\n5. CMakeLists.txt and src/Controls.cpp do not prove which DLL "
+            "Skyrim loaded, whether the Papyrus script compiled successfully, "
+            "what the runtime game logs contain, or whether the melee issue "
+            "was reproduced during real gameplay. No build or test was run."
+        )
+        self.assertFalse(recovery_part_incomplete(part1, ["1", "2", "3"]))
+        self.assertFalse(recovery_part_incomplete(part2, ["4", "5"]))
+        self.assertFalse(answer_incomplete(part1 + "\n\n" + part2, payload))
+        self.assertTrue(recovery_part_incomplete(part1, ["4", "5"]))
+
+        model = Mock()
+        model.model = "qwen3.5:9b-q8_0"
+        model.route_info = {"compute": "remote_worker"}
+        model.agent_chat.side_effect = [BAD, BAD, part1, part2]
+        runtime = {"model": "qwen3.5:9b-q8_0", "compute": "remote_worker",
+                   "worker_available": True}
+        with patch.object(gui_backend, "DATA_DIR", self.data), \
+             patch.object(gui_backend, "build_llm_client", return_value=model), \
+             patch.object(self.backend, "refresh_runtime_model", return_value=runtime), \
+             patch.object(gui_backend, "source_context_for_request",
+                          side_effect=AssertionError("only attached source is allowed")), \
+             patch.object(gui_backend, "should_research_query",
+                          side_effect=AssertionError("no live web")):
+            answer = self.backend.send(
+                self.chat["id"], QUESTION, attachments=[self.attachment],
+            )
+        self.assertIn("5. CMakeLists.txt", answer)
+        self.assertNotIn("did not pass the coding-task checks", answer)
+        self.assertEqual(model.agent_chat.call_count, 4)
+        for call, group in zip(model.agent_chat.call_args_list[2:],
+                               (["1", "2", "3"], ["4", "5"])):
+            self.assertEqual(call.kwargs["max_tool_rounds"], 0)
+            self.assertEqual(call.kwargs["tool_registry"].definitions(), [])
+            self.assertTrue(any(
+                "ONLY task numbers " + ", ".join(group) in m["content"]
+                for m in call.args[0] if m["role"] == "system"
+            ))
+            self.assertTrue(any(
+                "YOUR TASK" in m["content"]
+                for m in call.args[0] if m["role"] == "user"
+            ))
 
     def test_source_can_be_reused_if_sent_separately_in_recent_chat(self):
         db = Database(self.data / "personal_ai.db")
