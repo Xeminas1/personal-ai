@@ -14,7 +14,10 @@ import threading
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
+
+from .version import VERSION
 
 from .secrets import load_github_bridge_token
 
@@ -25,6 +28,18 @@ _LOCK = threading.RLock()
 _MAX_OUTBOUND = 2800
 _MAX_COMMENT = 3500
 _ENDPOINT = "https://api.github.com"
+
+
+def _host_provenance() -> str:
+    """Identify the actual running host code, not an LLM self-report.
+
+    GitHub's created_at remains the authoritative timestamp for publication;
+    this UTC timestamp is a diagnostic rather than a claim of model learning.
+    """
+    return (
+        f"XemAi app version: v{VERSION}\n"
+        f"Host timestamp (UTC): {datetime.now(timezone.utc).isoformat(timespec='seconds')}\n"
+    )
 
 
 class BridgeError(Exception):
@@ -111,7 +126,8 @@ class GitHubBridgeClient:
     def post_issue(self, repo: str, text: str) -> tuple[int, str]:
         created = self.request(repo, "/issues", {
             "title": "XemAi bridge: " + text.splitlines()[0][:74],
-            "body": "XemAi message (approved by the user):\n\n" + text,
+            "body": "XemAi message (approved by the user):\n"
+                    + _host_provenance() + "\n" + text,
         })
         number = created.get("number") if isinstance(created, dict) else None
         link = created.get("html_url") if isinstance(created, dict) else None
@@ -121,7 +137,8 @@ class GitHubBridgeClient:
 
     def post_comment(self, repo: str, issue: int, text: str) -> str:
         created = self.request(repo, f"/issues/{issue}/comments", {
-            "body": "XemAi follow-up (approved by the user):\n\n" + text,
+            "body": "XemAi follow-up (approved by the user):\n"
+                    + _host_provenance() + "\n" + text,
         })
         link = created.get("html_url") if isinstance(created, dict) else None
         if not isinstance(link, str):
@@ -143,7 +160,8 @@ class GitHubBridgeClient:
             mode = "unknown"
         body = (
             "XemAi autonomous response (opt-in, read-only):\n"
-            f"Model: {model}\n"
+            + _host_provenance()
+            + f"Model: {model}\n"
             f"Compute: {compute}\n"
             f"Discussion mode: {mode}\n"
             "Learning status: unverified discussion, NOT trained knowledge\n\n"
