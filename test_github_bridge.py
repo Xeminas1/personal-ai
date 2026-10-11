@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import tempfile
 import unittest
 import urllib.error
@@ -13,6 +14,7 @@ from app.github_bridge import (
     valid_repo, setup,
 )
 from app.secrets import load_github_bridge_token, save_github_bridge_token
+from app.version import VERSION
 
 
 class StubGitHub:
@@ -139,6 +141,44 @@ class GitHubBridgeTests(unittest.TestCase):
             self.assertFalse(valid_repo(repo))
         self.assertIn("Unknown bridge command", chat_command(
             "bridge override security", self.data, client=self.github))
+
+    def test_host_version_and_utc_time_are_added_to_every_outbound_format(self):
+        """Labels come from running app code, not the model response."""
+        calls = []
+
+        class CapturingClient(GitHubBridgeClient):
+            def request(self, repo, resource, payload=None):
+                calls.append((resource, payload))
+                if resource == "/issues":
+                    return {"number": 1, "html_url": "https://github.com/Example/private/issues/1"}
+                return {"html_url": "https://github.com/Example/private/issues/1#issuecomment-1"}
+
+        client = CapturingClient("fake-example-token")
+        client.post_issue("Example/private", "A user-reviewed question.")
+        client.post_comment("Example/private", 1, "A user-reviewed follow-up.")
+        client.post_auto_comment(
+            "Example/private", 1, "Evidence needs checking before a fix.",
+            provenance={"model": "qwen3.5:9b-q8_0",
+                        "compute": "remote_worker", "mode": "advanced-worker"},
+        )
+        self.assertEqual(len(calls), 3)
+        self.assertEqual([p for p, _ in calls], [
+            "/issues", "/issues/1/comments", "/issues/1/comments",
+        ])
+        for _, payload in calls:
+            body = payload["body"]
+            self.assertIn(f"XemAi app version: v{VERSION}\n", body)
+            self.assertEqual(body.count("XemAi app version: "), 1)
+            self.assertRegex(
+                body,
+                r"(?m)^Host timestamp \(UTC\): "
+                r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+00:00$",
+            )
+        self.assertIn("A user-reviewed question.", calls[0][1]["body"])
+        self.assertIn("A user-reviewed follow-up.", calls[1][1]["body"])
+        self.assertIn("Model: qwen3.5:9b-q8_0", calls[2][1]["body"])
+        self.assertIn("Compute: remote_worker", calls[2][1]["body"])
+        self.assertIn("Learning status: unverified discussion", calls[2][1]["body"])
 
     def test_comment_pagination_includes_new_messages_after_first_100(self):
         class PagingStub(GitHubBridgeClient):
