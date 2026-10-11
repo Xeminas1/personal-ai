@@ -30,6 +30,10 @@ SPECIALIST_ROLES = frozenset({"research", "skyrim", "reviewer"})
 MAX_SPECIALIST_PROMPT_BYTES = 7000
 SPECIALIST_MAX_OUTPUT = 6000
 
+# User-approved quality comparison: prefer this exact 9B Q8 build only when
+# already installed; never trigger a model download or replace old 8B data.
+PREFERRED_EVERYDAY_MODEL = "qwen3.5:9b-q8_0"
+
 
 def _model_name(item: dict) -> str:
     return str(item.get("name") or item.get("model") or "").strip()
@@ -66,17 +70,23 @@ def _recommended_model(client: OllamaClient) -> tuple[str, list[str], list[str]]
     except Exception:
         running = []
 
-    # Keep the configured everyday worker model stable even when a larger
-    # teacher is temporarily running after a review.
-    configured = str(getattr(client, "model", "") or "").strip().lower()
+    # Prefer the explicitly selected Qwen3.5 9B Q8 once Ollama has it.
+    # With no 9B installed, retain the existing configured/running 8B model.
+    # This avoids a forced download or broken worker after the software update.
     selected = next(
-        (
-            item for item in installed
-            if _model_name(item).lower() == configured
-            or _model_name(item).lower() == configured + ":latest"
-        ),
-        None,
+        (item for item in installed
+         if _model_name(item).lower() == PREFERRED_EVERYDAY_MODEL), None
     )
+    configured = str(getattr(client, "model", "") or "").strip().lower()
+    if selected is None:
+        selected = next(
+            (
+                item for item in installed
+                if _model_name(item).lower() == configured
+                or _model_name(item).lower() == configured + ":latest"
+            ),
+            None,
+        )
     if selected is None:
         teacher_names = {"qwen3:14b", "qwen3:30b"}
         ordinary_running = [
@@ -459,8 +469,9 @@ def _specialist_model(server, role: str, requested: str, deadline: float) -> str
     installed = {_model_name(item).lower(): _model_name(item) for item in inventory}
     ordinary = {
         _model_name(item).lower(): _model_name(item) for item in inventory
-        # Ollama reports the advertised Qwen3 8B model as 8.2B parameters.
-        if 0 < _parameter_billions(item) <= 8.5
+        # Qwen3 8B reports ~8.2B; Qwen3.5 9B reports ~9B.
+        # Keep larger teacher models out of ordinary specialist passes.
+        if 0 < _parameter_billions(item) <= 10.5
     }
     configured = str(getattr(server.ollama_client, "model", "") or "").lower()
     configured_key = configured.replace(":latest", "")
