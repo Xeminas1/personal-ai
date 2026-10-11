@@ -1,3 +1,30 @@
+## v0.9.31 — Drag-and-drop attachments and reliable Skyrim source challenges
+
+On desktop, drag files over the XemAi conversation to reveal a prominent
+"Drop files to attach" zone; release to queue them through the existing
+secured 3-file upload service. Existing size and media restrictions remain.
+The attached files appear as removable chips before pressing Send, so users
+can add a message; dragging never silently sends a prompt or overwrites a
+file. Dragging ordinary text is unaffected. If a reply is underway or no
+chat is selected, drop is disabled. The plus button and mobile camera/gallery
+workflow remain supported. Browser file drops never navigate away from
+XemAi's chat history.
+
+When a user supplies a numbered source-code challenge as a text attachment
+and explicitly requests completion, XemAi now treats the task as the main
+evidence. It reads the attached excerpts, tells Qwen to answer each numbered
+item using supplied filenames and line references, and prevents unrelated
+SKSE documentation searches. Generic responses such as "no specific
+question was posed" trigger one narrowly scoped read-only retry. A second
+failure is reported honestly rather than replaced with unrelated web claims.
+Read-only attachment handling cannot build or install a Skyrim mod.
+
+Windows/Linux tests cover the user-observed MWControls C++/Papyrus challenge,
+attachment delivery to Qwen and off-topic correction, plus JavaScript
+drag/drop behaviour and browser navigation prevention. No change to existing
+chat databases, Technology Watch preferences, background model training,
+independent agent permissions, or XemTV Build 114/unfinished 115.
+
 ## v0.9.30 — Faster non-blocking staged delta updates and audit truthfulness
 
 Most update releases modify only a few files, but earlier versions downloaded

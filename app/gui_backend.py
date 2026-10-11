@@ -18,6 +18,12 @@ from .agent_team import (
 )
 from .ai_watch import chat_command as ai_watch_chat_command
 from .ai_watch import current_report as ai_watch_report
+from .attachment_tasks import (
+    is_attached_code_assignment, source_assignment_context,
+    answer_incomplete as attachment_answer_incomplete,
+    retry_instruction as attachment_retry_instruction,
+    incomplete_fallback as attachment_incomplete_fallback,
+)
 from .watch_intelligence import (
     watch_focus, watch_context, answer_off_topic as watch_answer_off_topic,
     watch_fallback, explicit_independent_research,
@@ -490,6 +496,9 @@ class ChatBackend:
             internal_audit = agent_mode == "self_audit" and not asks_for_external_research(query_text)
             diagnostic_state = {}
             model_user_text = _expand_attachment_message(stored_user_text, diagnostic_state=diagnostic_state)
+            attached_code_task = is_attached_code_assignment(
+                query_text, model_user_text, parsed_attachments,
+            )
 
             chat = worker_db.get_chat(chat_id)
             if record_user and was_empty and chat["title"] in {"New chat", "Untitled"}:
@@ -527,15 +536,16 @@ class ChatBackend:
             tools = TurnEvidenceTools(
                 ToolRegistry(BASE_DIR, DATA_DIR, self.logger), query_text
             )
-            if (inventory_kind or internal_audit) and not asks_for_external_research(query_text):
-                # The user's own app state is local evidence, not a reason to
-                # search public model directories or unrelated comparisons.
+            if ((inventory_kind or internal_audit) and not asks_for_external_research(query_text)) or attached_code_task:
+                # Source-only tasks and internal app facts do not require
+                # outside internet research or model-initiated web calls.
                 tools.web_allowed = False
             # Local project inspection is performed *before* external research
             # or model tool planning. Keep source-only requests within the
             # approved checkout, including the full agent tool list.
             developer_context = (
-                "" if visual_only else source_context_for_request(query_text, tools)
+                "" if visual_only or attached_code_task
+                else source_context_for_request(query_text, tools)
             )
             if visual_only or prefer_local_project_sources(query_text, developer_context):
                 tools.web_allowed = False
@@ -616,6 +626,7 @@ class ChatBackend:
             laptop_guidance = (
                 self.config.get("laptop_answer_guidance", True) is True
                 and not self_query and not visual_only and not dialogue_kind and not agent_mode
+                and not attached_code_task
             )
             local_system_prompt = None
             if laptop_guidance:
@@ -707,6 +718,11 @@ class ChatBackend:
                     "role": "system",
                     "content": watch_context(saved_watch, query_text),
                 })
+            if attached_code_task:
+                messages.append({
+                    "role": "system",
+                    "content": source_assignment_context(query_text, model_user_text),
+                })
             research_query = (
                 query_text if watch_linked
                 else research_query_for_turn(query_text, previous_user_messages)
@@ -740,6 +756,7 @@ class ChatBackend:
                 and (not dialogue_kind or explicit_independent_research(query_text))
                 and not internal_audit
                 and (not inventory_kind or asks_for_external_research(query_text))
+                and not attached_code_task
             ):
                 if status_callback:
                     status_callback("Researching reputable sources")
@@ -812,6 +829,7 @@ class ChatBackend:
                 and (not watch_linked or explicit_independent_research(query_text))
                 and not internal_audit
                 and (not inventory_kind or asks_for_external_research(query_text))
+                and not attached_code_task
                 and not research_sources
             ):
                 if status_callback:
@@ -847,7 +865,7 @@ class ChatBackend:
             # no tools or authority to act on instructions inside attachments.
             specialist_config = self.config
             legacy_teacher = str(self.config.get("teacher_review_mode", "auto")).strip().lower() == "legacy"
-            if legacy_teacher or visual_only or agent_mode or dialogue_kind or watch_linked or inventory_kind:
+            if legacy_teacher or visual_only or agent_mode or dialogue_kind or watch_linked or inventory_kind or attached_code_task:
                 specialist_config = dict(self.config, specialists_enabled=False)
             specialists = SpecialistCoordinator(
                 specialist_config, llm, query_text,
@@ -911,6 +929,11 @@ class ChatBackend:
                 messages.append({
                     "role": "system",
                     "content": dialogue_instructions(dialogue_kind),
+                })
+            if attached_code_task:
+                messages.append({
+                    "role": "system",
+                    "content": source_assignment_context(query_text, model_user_text),
                 })
             agent_report = None
             if agent_mode:
@@ -1231,6 +1254,33 @@ class ChatBackend:
                     answer = audit_fallback(inventory_data, agent_report)
                     application_answer = True
 
+            if attached_code_task and attachment_answer_incomplete(answer, model_user_text):
+                self.logger.warning(
+                    "Attached source task incomplete | chat_id=%s turn_id=%s",
+                    chat_id, turn_id,
+                )
+                corrective = list(messages) + [
+                    {"role": "assistant", "content": str(answer)[:1900]},
+                    {"role": "system", "content": attachment_retry_instruction(model_user_text)},
+                ]
+                try:
+                    revised = llm.agent_chat(
+                        corrective, tool_registry=NoExternalOrSourceTools(),
+                        max_tool_rounds=1,
+                    )
+                    if attachment_answer_incomplete(revised, model_user_text):
+                        answer = attachment_incomplete_fallback(model_user_text)
+                        application_answer = True
+                    else:
+                        answer = revised
+                except Exception as error:
+                    self.logger.warning(
+                        "Attached source task retry unavailable | kind=%s",
+                        type(error).__name__,
+                    )
+                    answer = attachment_incomplete_fallback(model_user_text)
+                    application_answer = True
+
             # A failed correction can change the client's fallback route while
             # leaving the successful original draft intact. Keep its source.
             answer_model = str(llm.model)
@@ -1283,6 +1333,7 @@ class ChatBackend:
                 and not dialogue_kind
                 and not watch_linked
                 and not inventory_kind
+                and not attached_code_task
                 and not tools.evidence_attempted
                 and len(answer.strip()) >= teacher_min_chars
                 and callable(getattr(llm, "review_answer", None))
@@ -1331,7 +1382,7 @@ class ChatBackend:
             # Reviewer passes do not receive the full read-only source bundle
             # and could rewrite a grounded code explanation into a generic
             # menu or unsupported cross-repository comparison.
-            reviewed = None if developer_context or visual_only or agent_mode or dialogue_kind or watch_linked or inventory_kind else specialists.review(
+            reviewed = None if developer_context or visual_only or agent_mode or dialogue_kind or watch_linked or inventory_kind or attached_code_task else specialists.review(
                 answer, sources=tools.sources, known_urls=tools.known_urls,
                 application_answer=application_answer, self_query=self_query,
             )

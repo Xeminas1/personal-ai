@@ -65,7 +65,7 @@ class LocalInventoryTests(unittest.TestCase):
         ))
 
     def test_inventory_contains_exact_roles_release_history_and_no_secrets(self):
-        self.assertEqual(self.data["application_version"], "0.9.30")
+        self.assertEqual(self.data["application_version"], "0.9.31")
         self.assertEqual(len(self.data["agents"]), 9)
         names = {item["name"] for item in self.data["agents"]}
         self.assertIn("Self-Improvement Agent", names)
@@ -209,7 +209,7 @@ class LocalInventoryTests(unittest.TestCase):
                      side_effect=AssertionError("No web research expected")), \
                  patch.object(gui_backend, "source_context_for_request", return_value=""):
                 answer = backend.send(chat["id"], prompt)
-            self.assertIn("XemAi v0.9.30", answer)
+            self.assertIn("XemAi v0.9.31", answer)
             self.assertIn("Verifier caution", answer)
             self.assertNotIn("RTX 3090", answer)
             self.assertEqual(client.chat.call_count, 3)
