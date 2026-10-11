@@ -12,6 +12,7 @@ import time
 from typing import Any
 
 from .version import VERSION
+from .capability_inventory import asks_for_external_research
 
 
 _ALLOWED_TEAM_TOOLS = frozenset({
@@ -143,8 +144,10 @@ _ROLE_RULES = {
         "No claim that visual model observations are infallible."
     ),
     "self_improvement": (
-        "SELF-IMPROVEMENT AUDITOR: Analyse the supplied XemAi version, "
-        "capabilities, known limits, saved official AI release watch and research evidence. "
+        "SELF-IMPROVEMENT AUDITOR: Analyse the supplied authoritative XemAi runtime "
+        "capability inventory, version, actual release history, known limits and saved "
+        "AI release watch leads. Report specific improvements implemented in past releases; "
+        "do not claim improved accuracy until actual XemAi benchmark results exist. "
         "Treat all vendor announcements as untested leads, not proven capabilities. "
         "Suggest at most "
         "three specific, reversible improvements, each with current weakness, "
@@ -154,7 +157,9 @@ _ROLE_RULES = {
     ),
     "verifier": (
         "VERIFICATION AGENT: Challenge preceding agent proposals rather than "
-        "rubber-stamping them. Identify unsupported details, unavailable "
+        "rubber-stamping them. Confirm whether each statement is supported by "
+        "the LOCAL XemAi inventory/release history, and flag all external model "
+        "comparisons that were not actually benchmarked in XemAi.  Identify unsupported details, unavailable "
         "evidence, possible model hallucinations and permissions needed. "
         "Return a concise VERIFIED/UNCERTAIN/REJECT assessment and safe next steps."
     ),
@@ -165,7 +170,7 @@ def run_agent_team(
     question: str, llm, *, mode: str, config: dict,
     capabilities: list[str], runtime: dict, tools,
     source_context: str = "", visual_context: str = "",
-    watch_context: str = "",
+    watch_context: str = "", local_inventory: str = "",
     status_callback=None, logger=None,
 ) -> dict:
     """Run at most three sequential, no-tool passes on the already selected model.
@@ -180,7 +185,9 @@ def run_agent_team(
     snapshot = _capability_snapshot(config, capabilities, runtime)
     research = {"status": "not_requested"}
     if mode == "self_audit":
-        if getattr(tools, "web_allowed", False) and getattr(tools, "web_search_enabled", False):
+        if (asks_for_external_research(question) and
+                getattr(tools, "web_allowed", False) and
+                getattr(tools, "web_search_enabled", False)):
             try:
                 topic = "Ollama local coding vision AI model evaluation benchmarks tool use 2026"
                 bundle = tools.research_evidence(topic, max_sources=2)
@@ -204,16 +211,20 @@ def run_agent_team(
             except Exception:
                 research = {"status": "research_unavailable"}
         else:
-            research = {"status": "web_not_configured_or_disallowed"}
+            research = {"status": "not_requested_for_internal_audit" if not asks_for_external_research(question)
+                        else "web_not_configured_or_disallowed"}
     evidence = {
         "runtime": snapshot,
+        "authoritative_local_inventory_and_releases": _bounded(local_inventory, 6800),
         "local_source_excerpt": _bounded(source_context, 7500),
         "vision_report_excerpt": _bounded(visual_context, 5500),
         "saved_ai_technology_watch": _bounded(watch_context, 4500),
         "research": research,
         "evidence_limits": (
-            "Only supplied code excerpts were inspected; no complete repo scan, "
-            "full hardware benchmark or independent audit of services was performed."
+            "Inventory and release history describe implemented code, not measured gains. "
+            "No complete repository audit, live process inspection, model introspection, "
+            "full hardware benchmark or independent audit was performed. "
+            "Do not compare unrelated public AI models as though they were tested in XemAi."
         ),
     }
     history = []
