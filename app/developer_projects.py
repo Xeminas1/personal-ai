@@ -276,3 +276,60 @@ class DeveloperProjects:
                 break
         ranked.sort()
         return [relative for _, _, relative in ranked[:limit]]
+
+
+    def trace_symbol(
+        self, project: str, symbol: str, *, max_results: int = 12,
+    ) -> dict:
+        """Find source-code references to one class/function without running code.
+
+        Source paths, line numbers and excerpts are evidence of occurrences,
+        not proof of a call edge or of runtime control flow.
+        """
+        if not isinstance(symbol, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]{2,79}", symbol):
+            raise ProjectError("Trace symbol must be a valid source identifier.")
+        if isinstance(max_results, bool) or not isinstance(max_results, int) or not 1 <= max_results <= 20:
+            raise ProjectError("Trace result limit must be from 1 to 20.")
+        root, _ = self._location(project, ".", directory=True)
+        pattern = re.compile(r"(?<![A-Za-z0-9_])" + re.escape(symbol) + r"(?![A-Za-z0-9_])")
+        items = []
+        scanned = 0
+        source_extensions = {".kt", ".kts", ".java", ".py", ".cs", ".js", ".jsx",
+                             ".ts", ".tsx", ".c", ".cpp", ".h", ".hpp", ".go", ".rs"}
+        for current, folders, files in os.walk(root, followlinks=False):
+            parent = Path(current)
+            folders[:] = sorted(
+                folder for folder in folders
+                if not _blocked_name(folder, is_dir=True) and not (parent / folder).is_symlink()
+            )
+            for filename in sorted(files):
+                candidate = parent / filename
+                if (candidate.is_symlink() or _blocked_name(filename)
+                        or candidate.suffix.lower() not in source_extensions):
+                    continue
+                scanned += 1
+                if scanned > MAX_SCAN_FILES:
+                    return {"project": project, "symbol": symbol,
+                            "references": items, "scanned": MAX_SCAN_FILES,
+                            "scan_limited": True}
+                try:
+                    if candidate.stat().st_size > MAX_FILE_BYTES:
+                        continue
+                    with candidate.open("rb") as stream:
+                        raw = stream.read(MAX_FILE_BYTES + 1)
+                    if b"\x00" in raw:
+                        continue
+                    lines = raw.decode("utf-8", errors="replace").splitlines()
+                except OSError:
+                    continue
+                path = candidate.relative_to(root).as_posix()
+                for number, line in enumerate(lines, 1):
+                    if pattern.search(line):
+                        items.append({"path": path, "line": number,
+                                      "excerpt": line.strip()[:220]})
+                        if len(items) >= max_results:
+                            return {"project": project, "symbol": symbol,
+                                    "references": items, "scanned": scanned,
+                                    "scan_limited": True}
+        return {"project": project, "symbol": symbol,
+                "references": items, "scanned": scanned, "scan_limited": False}

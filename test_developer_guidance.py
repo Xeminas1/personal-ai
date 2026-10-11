@@ -89,7 +89,8 @@ def run():
         )
         assert context
         assert "SidebarGlowGeometry.kt" in context or "SidebarEdgeGlow.kt" in context
-        assert logger.calls and all(name == "dev_read" for name in logger.calls)
+        assert "dev_read" in logger.calls
+        assert all(name in {"dev_read", "dev_trace"} for name in logger.calls)
 
         # No developer request must not trigger private source reads.
         logger.calls.clear()
