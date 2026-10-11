@@ -9,6 +9,7 @@ from pathlib import Path
 from .capabilities import build_capability_status
 from .config import DATA_DIR, LOG_DIR, load_config, save_config
 from .database import Database
+from .developer_guidance import source_context_for_request
 from .evidence import (
     TurnEvidenceTools,
     mark_unverified_references,
@@ -764,6 +765,19 @@ class ChatBackend:
                     "Synthesizing evidence"
                     if research_sources
                     else "XemAi is thinking"
+                )
+
+            # Deterministic local evidence for explicit source-inspection tasks.
+            # Smaller Ollama models sometimes stop after dev_list without
+            # following through with the requested dev_read. This read-only
+            # preflight uses the same approved project paths and tool registry.
+            # Retrieved code is untrusted evidence, never runtime instructions.
+            developer_context = source_context_for_request(query_text, tools)
+            if developer_context:
+                messages.append({"role": "system", "content": developer_context})
+                self.logger.info(
+                    "Developer read-only context supplied | chat_id=%s turn_id=%s chars=%d",
+                    chat_id, turn_id, len(developer_context),
                 )
 
             answer_started = time.monotonic()

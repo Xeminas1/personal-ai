@@ -1,3 +1,15 @@
+## v0.9.20 — Developer Mode source follow-through
+
+Explicit XemTV source-inspection requests now trigger an application-controlled
+read-only file lookup and `dev_read` evidence gathering before the local model
+answers. This addresses Qwen3 8B stopping after listing project files rather
+than opening the requested Kotlin file. It uses the existing approved project
+boundaries, skips protected locations, limits search scope and source length,
+and labels retrieved code as untrusted data. XemAi still cannot change XemTV,
+run a terminal, build APKs or install anything onto the Fire Stick. Test both
+an exact source-file question and a broader sidebar/glow investigation after
+the XemAi host has updated. Unpublished Codex Build 115 is unaffected.
+
 ## v0.9.19 — XemTV Developer Mode, phase 1 (read-only)
 
 XemAi now supports **opt-in read-only inspection** of explicitly registered
