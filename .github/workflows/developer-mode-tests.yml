@@ -9,6 +9,8 @@ on:
       - "test_developer_multifile.py"
       - "test_developer_trace.py"
       - "test_visual_routing.py"
+      - "test_media_support.py"
+      - "test_vision_worker.py"
       - "app/version.py"
       - "self_test.py"
       - "test_updater.py"
@@ -38,6 +40,10 @@ jobs:
         run: python test_developer_trace.py
       - name: Test image-only visual routing
         run: python test_visual_routing.py
+      - name: Test existing image attachment and vision worker features
+        run: |
+          python test_media_support.py
+          python test_vision_worker.py
       - name: Run XemAi built-in test suite
         run: python self_test.py
       - name: Run update validation tests
