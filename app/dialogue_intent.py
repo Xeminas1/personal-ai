@@ -37,6 +37,24 @@ _MISSION = re.compile(
     r"\b(?:xemai|you|chat\s*gpt|gpt)\b",
     re.I,
 )
+
+# Polite questions about XemAi's own private discussion, not the user's past
+# ChatGPT use or broad AI comparisons. Never triggered by untrusted issue text.
+_BRIDGE_CONVERSATION = re.compile(
+    r"\b(?:your|our)\s+(?:chat|conversation|discussion|dialogue|exchange)\s+"
+    r"(?:with\s+)?(?:chat\s*gpt|gpt)\b"
+    r"|\b(?:how\s+(?:are|do)\s+you|are\s+you|do\s+you|what\s+do\s+you)\b"
+    r".{0,95}\b(?:chat|conversation|discussion|dialogue|exchange)\s+"
+    r"(?:with\s+)?(?:chat\s*gpt|gpt)\b",
+    re.I,
+)
+_BRIDGE_OFF_TOPIC = re.compile(
+    r"(?i)\b(?:your\s+personal\s+experience\s+(?:with|using)\s+"
+    r"(?:gpt|chatgpt)|your\s+skyrim\s+(?:project|modding)|"
+    r"i\s+(?:cannot|can't)\s+offer\s+a\s+personal\s+opinion\s+"
+    r"on\s+how\s+you\s+(?:found|felt))\b"
+)
+
 _UNHELPFUL_HYPOTHETICAL = re.compile(
     r"\b(?:please\s+clarify\s+the\s+(?:context|question)|"
     r"if\s+you\s+have\s+(?:another|specific)\s+"
@@ -64,6 +82,8 @@ def dialogue_intent(question: str) -> str:
     if not isinstance(question, str) or len(question) > 4000:
         return ""
     q = " ".join(question.replace("’", "'").split())
+    if _BRIDGE_CONVERSATION.search(q):
+        return "bridge_conversation"
     if _AGENT_IDEA.search(q):
         return "agent_idea"
     if _MISSION.search(q):
@@ -75,6 +95,20 @@ def dialogue_intent(question: str) -> str:
 
 def dialogue_instructions(kind: str) -> str:
     rules = {
+        "bridge_conversation": (
+            "FRIENDLY QUESTION ABOUT YOUR OWN CHATGPT GITHUB DISCUSSION: "
+            "The user asks how YOUR conversation with ChatGPT is going, "
+            "not how the user found ChatGPT and not about Skyrim. "
+            "Answer conversationally from the HOST-SUPPLIED BRIDGE STATUS. "
+            "You may describe the exchange as a technical collaboration, "
+            "but if no transcript is provided do not invent exact topics, "
+            "specific claims, emotions, or results. State clearly that the "
+            "ordinary chat has no full GitHub transcript. If useful, mention "
+            "'bridge transcript' as the explicit way to view its messages. "
+            "Don't substitute a lecture about lacking emotions or consciousness; "
+            "avoid claiming subjective enjoyment or other human experiences. "
+            "No web, other chats, project files, or memory are evidence here."
+        ),
         "mission": (
             "DEVELOPMENT MISSION QUESTION: Explain that XemAi's project goal "
             "is to strive to outperform ChatGPT in user-relevant, measurable "
@@ -121,6 +155,11 @@ def dialogue_answer_needs_retry(kind: str, answer: str) -> bool:
     a = str(answer or "").strip()
     if len(a) < 75:
         return True
+    if kind == "bridge_conversation":
+        return bool(_BRIDGE_OFF_TOPIC.search(a)) or not (
+            re.search(r"(?i)\\b(?:chat\\s*gpt|gpt)\\b", a)
+            and re.search(r"(?i)\\b(?:github|bridge|discussion|conversation|exchange|chat)\\b", a)
+        ) or bool(re.search(r"(?i)\\bi\\s+(?:enjoyed|love|felt|feel)\\s+(?:the|our|my)\\s+chat\\b", a))
     if kind == "mission":
         return bool(_DENIAL.search(a)) or not (
             re.search(r"\b(?:goal|objective|mission|ambition|aim|develop)\b", a, re.I)
@@ -159,6 +198,15 @@ def dialogue_retry_instruction(kind: str) -> str:
 
 
 def dialogue_fallback(kind: str, question: str) -> str:
+    if kind == "bridge_conversation":
+        return (
+            "My GitHub bridge is a way to exchange ideas and critique tests "
+            "with ChatGPT. I can discuss that collaboration, but this ordinary "
+            "chat does not contain the private GitHub transcript, so I cannot "
+            "give a grounded review of specific replies from here. "
+            "Use 'bridge transcript' if you want to inspect the actual exchange. "
+            "I won't invent experiences or claim to have verified its results."
+        )
     if kind == "mission":
         return (
             "Yes. XemAi's development mission is to try to outperform ChatGPT "
