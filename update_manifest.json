@@ -1,6 +1,6 @@
 {
-  "version": "0.9.21",
-  "notes": "Fix multi-file Developer Mode investigations: use up to four real Kotlin/source files rather than markdown documentation, prioritise the approved local checkout rather than unrelated web research, and retry once if the model stops after listing files or fails to discuss inspected code. Disclose incomplete analysis instead of guessing. Maintains read-only sandbox and existing XemAi data/memories/hybrid pairing. No XemTV Build 114/115 changes or code editing, builds, terminal, Git push or ADB access.",
+  "version": "0.9.22",
+  "notes": "Developer Mode source tracing (read-only): new dev_trace tool and automatic cross-file identifier reference lookup with source paths, line numbers and bounded excerpts for deeper XemTV navigation/focus/glow investigations. Helps find MainActivity/Theme callers and prevents guessing file relationships; references do not prove runtime calls. Existing optional qwen2.5vl PC vision now better describes UI screenshots, concepts, glow, spacing and focus. No new model downloads or write/build/shell/ADB/Git permissions. Preserves memory, settings, chat and hybrid pairing. XemTV Build 114 and Codex Build 115 unchanged.",
   "files": [
     {
       "path": "app/__init__.py",
@@ -24,13 +24,13 @@
     },
     {
       "path": "app/developer_guidance.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.21/app/developer_guidance.py",
-      "sha256": "0b0eb268e6c3a15b8c133c75c4b9b56e036685f9fe7aacfb6830908b3e23c4a4"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.22/app/developer_guidance.py",
+      "sha256": "edbc5c5db582b5ac4474bdd67fb5bc07eb7d5fd4e4da7dbc8ed38f0dc0ac768f"
     },
     {
       "path": "app/developer_projects.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.21/app/developer_projects.py",
-      "sha256": "b1e6edaccaf3e750cec7dd1c34e738d4e0f60902c3ae8dfa8c3be17005a61338"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.22/app/developer_projects.py",
+      "sha256": "e1349c68a45990d1f29ad95d147658e2f8ec965f1728d13f3ee74244ce1090fe"
     },
     {
       "path": "app/evidence.py",
@@ -74,8 +74,8 @@
     },
     {
       "path": "app/media_support.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/app/media_support.py",
-      "sha256": "d9157f2eab061801d4f11f1aad86c2dc559c56557bea9da05a7785b3cfb8f0c6"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.22/app/media_support.py",
+      "sha256": "9aabf742fa71b2ce3eb059f4cbdf50445e017d16041e6259aae0445cb3de8c2f"
     },
     {
       "path": "app/mobile_runtime.py",
@@ -124,8 +124,8 @@
     },
     {
       "path": "app/tools.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.19/app/tools.py",
-      "sha256": "4738357cfcd29ee9d5810c343eb664a7442c77b2fe34bc465e4250d9cddec6b2"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.22/app/tools.py",
+      "sha256": "10aeb0114eb7232cc04ca70cf4bbae24b7443c1041438f7c2ef740eb890ce6dc"
     },
     {
       "path": "app/updater.py",
@@ -134,8 +134,8 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.21/app/version.py",
-      "sha256": "c96f48e464e274d636bd5d7f06b0f205ee69af2f467bcc0d06ac4b074bdc6742"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.22/app/version.py",
+      "sha256": "2d5b32e2158a229436335517a640b50ecdb36796ef04b4915df0ab6dec4ddae2"
     },
     {
       "path": "app/vision.py",
@@ -254,8 +254,8 @@
     },
     {
       "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.21/README.md",
-      "sha256": "8eee296b4aaf81a28fa21f26571897db901959c321e49a44c7eb6e92dc5a7837"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.22/README.md",
+      "sha256": "24dbd796779e0818fdb147030fdab68f74304e7a0b3a19224240559df71233cc"
     },
     {
       "path": "restart_mobile_server.bat",
@@ -304,8 +304,8 @@
     },
     {
       "path": "test_developer_guidance.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.20/test_developer_guidance.py",
-      "sha256": "88e0295ad459aedef6062ac8e0a01cda7d517db7f0c8029e8f95f742629b9c39"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.22/test_developer_guidance.py",
+      "sha256": "1178ca837c1a7d5c95a060e1714cafeb80a1eca7ac1d64741efb2a326b879806"
     },
     {
       "path": "test_developer_multifile.py",
@@ -316,6 +316,11 @@
       "path": "test_developer_projects.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.19/test_developer_projects.py",
       "sha256": "3dcd15eff6842457410d454ca79d89a500c1ae981589aa9c02e499d015b44cb1"
+    },
+    {
+      "path": "test_developer_trace.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.22/test_developer_trace.py",
+      "sha256": "b813ee6e0191dd74e38432011a684243e91aab0c1d5140c98c984a098f79e1af"
     },
     {
       "path": "test_evidence_quality.py",
