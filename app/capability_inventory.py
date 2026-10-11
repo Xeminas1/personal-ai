@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import re
 
 from .version import VERSION
 from .dialogue_intent import dialogue_intent
@@ -201,6 +202,19 @@ def audit_response_needs_retry(answer: str, report: dict) -> bool:
         return False
     value = str(answer or "").lower()
     if len(value) < 200:
+        return True
+    # Qwen sometimes calls speculative *future* outcomes "benchmarked gains".
+    # A locally implemented workflow is evidence of software, not a measured
+    # improvement in accuracy, VRAM, memory or model reasoning.
+    if re.search(r"\bbenchmarked gains?\b", value) and re.search(
+        r"\b(?:potential|expected|hypothetical)\b.{0,120}"
+        r"\b(?:gain|improvement|reduction|speed|latency)\b",
+        value, re.S,
+    ):
+        return True
+    if "self-audit failed due to missing evidence" in value:
+        return True
+    if "file does not exist" in value and not report.get("source_evidence_provided"):
         return True
     if not any(word in value for word in ("xemai", "my current", "my capabilities")):
         return True

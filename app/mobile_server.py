@@ -282,6 +282,7 @@ def _auto_update_loop(server) -> None:
         return
 
     pending = None
+    prepared = None
     pending_channel = ""
     while not stop_event.is_set():
         interval = 15
@@ -294,8 +295,11 @@ def _auto_update_loop(server) -> None:
                 and bool(config.get("auto_install_updates", True))
                 and bool(channel)
             )
-            if not enabled or channel != pending_channel:
+            if not enabled or (pending is not None and channel != pending_channel):
                 pending = None
+                if prepared is not None:
+                    prepared.close()
+                    prepared = None
             if enabled and pending is None:
                 # Manifest checks are reads. Keep chats available while the
                 # network responds; install ownership is reserved only below.
@@ -311,15 +315,43 @@ def _auto_update_loop(server) -> None:
                 ):
                     pending = manifest
                     pending_channel = channel
+            if pending is not None and "files" in pending and prepared is None:
+                # Network downloads and Python validation run before acquiring
+                # the update lock, so message generation remains available.
+                prepared = updater.prepare_file_update(
+                    base_dir=BASE_DIR, manifest=pending, logger=logger,
+                )
+                if stop_event.is_set():
+                    prepared.close()
+                    prepared = None
+                    return
+                latest = load_config()
+                if not (
+                    latest.get("mobile_updates_enabled", True)
+                    and latest.get("auto_install_updates", True)
+                    and str(latest.get("update_manifest_url") or "").strip() == channel
+                ):
+                    pending = None
+                    prepared.close()
+                    prepared = None
             if pending is not None:
                 reason = _reserve_update(server)
                 if reason is None:
                     update_lock = getattr(server, "update_lock", None)
                     try:
                         if stop_event.is_set():
+                            if prepared is not None:
+                                prepared.close()
+                                prepared = None
                             return
-                        installed = updater.install_update(
-                            base_dir=BASE_DIR, manifest=pending, logger=logger,
+                        installed = (
+                            updater.install_prepared_update(
+                                base_dir=BASE_DIR, prepared=prepared, logger=logger,
+                            )
+                            if prepared is not None
+                            else updater.install_update(
+                                base_dir=BASE_DIR, manifest=pending, logger=logger,
+                            )
                         )
                         if logger:
                             logger.info(
@@ -327,6 +359,9 @@ def _auto_update_loop(server) -> None:
                                 VERSION,
                                 installed,
                             )
+                        if prepared is not None:
+                            prepared.close()
+                            prepared = None
                         server.update_restarting = True
                         try:
                             _schedule_mobile_server_restart(server, installed)
@@ -342,10 +377,15 @@ def _auto_update_loop(server) -> None:
                 return
         except Exception as e:
             pending = None
+            if prepared is not None:
+                prepared.close()
+                prepared = None
             if logger:
                 logger.warning("Automatic update check failed | error=%r", e)
             if stop_event.wait(interval):
                 return
+    if prepared is not None:
+        prepared.close()
 
 
 def _attachment_root(chat_id: int) -> Path:
