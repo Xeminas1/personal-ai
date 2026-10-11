@@ -55,12 +55,25 @@ def command(data_dir: Path, cmd: str) -> str:
                 "candidates are retained for manual review; no model was trained."
             )
         count = _count(data_dir)
+        # Review metadata is a separate, local, append-only journal.
+        try:
+            from .github_bridge_review import review_counts
+            review = review_counts(data_dir)
+            review_label = (
+                f" Owner-reviewed lessons: {review['approved']}; "
+                f"drafts awaiting approval: {review['proposed']}. "
+            )
+        except (OSError, ValueError, UnicodeError):
+            review_label = " Review journal unavailable. "
         return (
             f"Learning-candidate collection: "
             f"{'ON' if state.get('learning_enabled') is True else 'OFF'}. "
             f"Locally archived candidates: {count}/{MAX_RECORDS}. "
-            "All entries are UNVERIFIED and cannot be promoted into trusted "
-            "memory or model weights automatically."
+            + review_label
+            + "Examples are UNVERIFIED until personally reviewed. An approved "
+            "lesson is owner-reviewed, not independently fact-checked; nothing "
+            "alters model weights or personal memory automatically. "
+            "Use 'bridge learning review' to inspect candidates."
         )
 
 
