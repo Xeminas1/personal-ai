@@ -10,6 +10,7 @@ from .capabilities import build_capability_status
 from .agent_team import (
     ReadOnlyTeamTools, requested_agent_mode, run_agent_team, agent_team_context,
 )
+from .ai_watch import chat_command as ai_watch_chat_command
 from .config import DATA_DIR, LOG_DIR, load_config, save_config
 from .database import Database
 from .developer_guidance import (
@@ -479,6 +480,24 @@ class ChatBackend:
                         parsed_attachments[0].get("name", "file")
                     )
                 worker_db.rename_chat(chat_id, title_from_message(title_seed))
+
+            # Exact explicit user commands are application actions, not model
+            # tool calls. A model cannot silently enable background monitoring.
+            if record_user and not parsed_attachments:
+                watch_command = " ".join(str(query_text).lower().split()).strip(" .!?")
+                if watch_command == "check ai technology watch now" and status_callback:
+                    status_callback("Checking official AI technology updates")
+                watch_answer = ai_watch_chat_command(
+                    query_text, DATA_DIR, logger=self.logger
+                )
+                if watch_answer is not None:
+                    worker_db.add_assistant_message(
+                        chat_id, watch_answer, compute_source="application",
+                    )
+                    assistant_recorded = True
+                    if status_callback:
+                        status_callback(None)
+                    return watch_answer
 
             user = worker_db.get_user()
             memories = worker_db.relevant_memories(
