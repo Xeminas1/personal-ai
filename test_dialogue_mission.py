@@ -112,7 +112,7 @@ class DialogueTests(unittest.TestCase):
             ), {"model": "qwen3:8b", "compute": "remote_worker"},
         )
         self.assertIn("user-defined development objective", context)
-        self.assertIn("not an achieved superiority claim", context)
+        self.assertIn("not an achieved superiority claim", " ".join(context.split()))
         for kind in ("mission", "hypothetical", "agent_idea"):
             self.assertFalse(dialogue_answer_needs_retry(kind, GOOD[kind]))
             self.assertTrue(dialogue_answer_needs_retry(kind, BAD[kind]))
