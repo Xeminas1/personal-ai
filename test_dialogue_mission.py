@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 
 from app import gui_backend
 from app.database import Database
+from app.github_bridge import save_state
 from app.dialogue_intent import (
     dialogue_intent, dialogue_answer_needs_retry,
     dialogue_fallback, dialogue_instructions,
@@ -129,6 +130,95 @@ class DialogueTests(unittest.TestCase):
             self.assertFalse(dialogue_intent(q), q)
         self.assertEqual(dialogue_intent(None), "")
         self.assertEqual(dialogue_intent("x"*4500), "")
+
+    def test_friendly_gpt_bridge_intent_and_no_unrelated_triggers(self):
+        for q in (
+            "are you enjoying your chat with gpt?",
+            "how are you finding the chat with gpt then?",
+            "What do you think of your conversation with ChatGPT?",
+            "How is your discussion with GPT going?",
+        ):
+            with self.subTest(question=q):
+                self.assertEqual(dialogue_intent(q), "bridge_conversation")
+        for q in (
+            "How did I find my chat with GPT?",
+            "What is GPT?",
+            "Help with Skyrim mods from my ChatGPT conversation",
+            "How does the OpenAI API work?",
+        ):
+            self.assertNotEqual(dialogue_intent(q), "bridge_conversation")
+        off_topic = (
+            "I am observing the data from that project file regarding your "
+            "Skyrim modding work and earlier attempt to build an AI with GPT. "
+            "I cannot offer a personal opinion on how you found those interactions."
+        )
+        grounded = (
+            "My GitHub bridge with ChatGPT has been exchanging comments, according "
+            "to the host's status. This ordinary chat does not include the "
+            "private transcript, so I cannot judge individual arguments here. "
+            "Use bridge transcript if you want us to examine those messages."
+        )
+        self.assertTrue(dialogue_answer_needs_retry("bridge_conversation", off_topic))
+        self.assertFalse(dialogue_answer_needs_retry("bridge_conversation", grounded))
+        self.assertIn("how YOUR conversation with ChatGPT", dialogue_instructions("bridge_conversation"))
+        self.assertIn("bridge transcript", dialogue_fallback("bridge_conversation", ""))
+
+    def test_real_chat_gpt_bridge_question_uses_only_host_status(self):
+        with tempfile.TemporaryDirectory() as temp:
+            data = Path(temp) / "data"
+            data.mkdir()
+            db = Database(data / "personal_ai.db")
+            user = db.create_user("Tester")
+            chat = db.create_chat(user["id"], "New chat")
+            db.add_message(chat["id"], "user", "Help fix my secret Skyrim project file")
+            db.add_assistant_message(chat["id"], "We talked about Skyrim mods before.")
+            db.close()
+            save_state(data, {
+                "repo": "Example/private-bridge", "issue_number": 1,
+                "auto_enabled": True, "auto_issue": 1,
+                "auto_total": 4, "auto_today": 4,
+            })
+            backend = gui_backend.ChatBackend.__new__(gui_backend.ChatBackend)
+            backend.logger = logging.getLogger("bridge-conversation-test")
+            backend.config = {
+                "model": "qwen3:8b", "auto_memory": False,
+                "specialists_enabled": False, "laptop_answer_guidance": False,
+                "evidence_research_mode": "off",
+            }
+            off_topic = (
+                "I have been observing your personal Skyrim project file and "
+                "I cannot offer a personal opinion on how you found those ChatGPT talks."
+            )
+            correct = (
+                "My GitHub bridge with ChatGPT has posted a few replies, according "
+                "to local status. I can't inspect the full discussion transcript in "
+                "this ordinary chat, so I shouldn't invent its contents. "
+                "You can read it via the separate bridge transcript command."
+            )
+            model = Mock()
+            model.model = "qwen3:8b"
+            model.route_info = {"compute": "remote_worker"}
+            model.agent_chat.side_effect = [off_topic, correct]
+            with patch.object(gui_backend, "DATA_DIR", data), \
+                 patch.object(gui_backend, "build_llm_client", return_value=model), \
+                 patch.object(backend, "refresh_runtime_model",
+                     return_value={"model": "qwen3:8b", "compute": "remote_worker",
+                                   "worker_available": True}):
+                result = backend.send(chat["id"], "how are you finding the chat with gpt then?")
+            self.assertEqual(model.agent_chat.call_count, 2)
+            self.assertIn("GitHub bridge with ChatGPT", result)
+            initial_messages = model.agent_chat.call_args_list[0].args[0]
+            joined = "\n".join(m["content"] for m in initial_messages)
+            self.assertIn("HOST-VERIFIED LOCAL BRIDGE METADATA", joined)
+            self.assertIn("Replies: 4/500 total", joined)
+            self.assertIn("FRIENDLY QUESTION ABOUT YOUR OWN", joined)
+            self.assertNotIn("Help fix my secret Skyrim project file", joined)
+            self.assertNotIn("We talked about Skyrim mods before", joined)
+            self.assertNotIn("private Github discussion payload", joined)
+            self.assertEqual(model.agent_chat.call_args_list[0].kwargs["max_tool_rounds"], 0)
+            self.assertEqual(
+                model.agent_chat.call_args_list[0].kwargs["tool_registry"].definitions(), []
+            )
 
     def test_real_chat_agent_proposal_retries_instead_of_memory_fallback(self):
         with tempfile.TemporaryDirectory() as temp:
