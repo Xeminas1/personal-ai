@@ -68,7 +68,7 @@ def _safe_output(text: str) -> bool:
     if text == "NO_REPLY" or _SECRET.search(text):
         return False
     # Refuse likely private host identifiers, e-mail addresses, and local paths.
-    if re.search(r"(?i)(?:[A-Z]:\\\\|/home/[^/\s]+/|\\\\Users\\\\|\b(?:\d{1,3}\.){3}\d{1,3}\b|[\w.+-]+@[\w.-]+\.[a-z]{2,})", text):
+    if re.search(r"(?i)(?:[A-Z]:\\|/home/[^/\s]+/|\\Users\\|\b(?:\d{1,3}\.){3}\d{1,3}\b|[\w.+-]+@[\w.-]+\.[a-z]{2,})", text):
         return False
     return True
 
