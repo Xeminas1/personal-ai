@@ -1,6 +1,6 @@
 {
-  "version": "0.9.31",
-  "notes": "XemAi chat now accepts drag-and-drop files anywhere in the conversation, with visible drop zone, up to three files in the secure existing uploader, previews in attachment tray, and safe busy/no-chat guards. Mobile plus/camera/gallery upload remains. Code tasks in line-numbered text attachments (including Skyrim MWControls Stage 1) are grounded in the supplied excerpts, external SKSE research is suppressed, and off-topic answers saying no question posed get a targeted retry or honest incomplete report. The system cannot modify or build Skyrim or XemTV from attachment tasks. Cross-platform Python and Node tests pass. Preserves chats, settings, AI Watch, paired worker, and XemTV Build 114/unfinished 115.",
+  "version": "0.9.32",
+  "notes": "Grounds Skyrim MWControls source assignment in actual CMake/C++/Papyrus line-numbered excerpts. Isolates latest source question from irrelevant chat history and web, blocks all model-chosen tools for provided source tasks, rejects false missing-code assertions, enforces five numbered benchmark sections, and retries once with an honest evidence-aware failure response if needed. Explicit follow-up questions can reuse recently uploaded text in the same chat only. Windows/Linux regression suite passed. No new Skyrim agents yet, no code/model self modification, no changes to Skyrim installation or XemTV Build 114/unfinished Build 115. Retains settings, chat, AI Technology Watch, worker pairing.",
   "files": [
     {
       "path": "app/__init__.py",
@@ -19,8 +19,8 @@
     },
     {
       "path": "app/attachment_tasks.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/app/attachment_tasks.py",
-      "sha256": "85aabcbbdc314c2d3d2f16a1a1f8ee3b47e2512674dd662b65328f478e73a67f"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.32/app/attachment_tasks.py",
+      "sha256": "e9ea37070bfefd137dd5f6394b2a0ebf426a69ca48f3f3ff8fe547ce4a2d6869"
     },
     {
       "path": "app/capabilities.py",
@@ -64,8 +64,8 @@
     },
     {
       "path": "app/gui_backend.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/app/gui_backend.py",
-      "sha256": "68402710a067e245949678a853c3b5dd014838501ad7cdd6dd45414000245bc7"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.32/app/gui_backend.py",
+      "sha256": "c9a9e89bfa2a067472a0e48a39219204118126abcb8992e7b8e0f825d161443e"
     },
     {
       "path": "app/hybrid_autosetup.py",
@@ -129,8 +129,8 @@
     },
     {
       "path": "app/self_knowledge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/app/self_knowledge.py",
-      "sha256": "6b1b710ff6947f639e1e826561b325be048df1d2edbb7e64e5713edd2089672d"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.32/app/self_knowledge.py",
+      "sha256": "babba20de80eed8249eec51be0505c22df7de277cd775dfde441e3bab6036456"
     },
     {
       "path": "app/skyrim.py",
@@ -164,8 +164,8 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/app/version.py",
-      "sha256": "b69bdbf1ca289477c531b3cdf92f3a050295b337716f5cb4eb3a609e94c417d0"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.32/app/version.py",
+      "sha256": "1efaa53238895467389fb06dccaf9c1b4ed71af0b223181b22e1ff0e7bf0a766"
     },
     {
       "path": "app/vision.py",
@@ -299,8 +299,8 @@
     },
     {
       "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/README.md",
-      "sha256": "440d61c6c1171c4275e34eec377c87f42ef2a031c9934163ff98ebe6f3751c6c"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.32/README.md",
+      "sha256": "1746e0b65ff8efd3a7f76777b850215b3a7cc0a92f23308b8d132b41ef105aad"
     },
     {
       "path": "restart_mobile_server.bat",
@@ -329,8 +329,8 @@
     },
     {
       "path": "test_attachment_challenges.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/test_attachment_challenges.py",
-      "sha256": "fec0287744ebf414392a08aabceb7764d86f5290c16875611aa48256b1cd2f2e"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.32/test_attachment_challenges.py",
+      "sha256": "f47de6a82ba1298cc41f079b62f26347e67ef1c392145c4406509de19a4de397"
     },
     {
       "path": "test_auto_updates.py",
@@ -339,8 +339,8 @@
     },
     {
       "path": "test_capability_inventory.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/test_capability_inventory.py",
-      "sha256": "fef4db5e105407f3136ef3da09c6f90e4f2868294d2fd44b60c11a2ac675b145"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.32/test_capability_inventory.py",
+      "sha256": "53c6a829dc33261f18a1ded0ea5f3f6e12aa4e0b25bccc2e01010eef6d23e2cb"
     },
     {
       "path": "test_chat_delete.py",
