@@ -80,6 +80,10 @@ def build_capability_status(
             if installed_qwen
             else "Qwen models detected by Ollama: none reported"
         ),
+        ("Developer mode: read-only project inspection (list, read and search); "
+         "never edits the project or invokes terminal commands"
+         if getattr(getattr(tool_registry, "developer", None), "enabled", False)
+         else "Developer mode: not configured; no project repository access"),
         "Arbitrary shell/command execution: disabled",
         "Unrestricted filesystem access: disabled",
         "Unrestricted computer/desktop control: disabled",
