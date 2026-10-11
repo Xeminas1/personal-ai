@@ -9,6 +9,8 @@ on:
       - "test_developer_multifile.py"
       - "test_developer_trace.py"
       - "test_visual_routing.py"
+      - "test_governance_reporting.py"
+      - "test_self_knowledge.py"
       - "test_media_support.py"
       - "test_vision_worker.py"
       - "app/version.py"
@@ -29,7 +31,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile all Python modules
-        run: python -m compileall -q app developer_setup.py test_developer_projects.py test_developer_guidance.py test_developer_multifile.py test_developer_trace.py test_visual_routing.py
+        run: python -m compileall -q app developer_setup.py test_developer_projects.py test_developer_guidance.py test_developer_multifile.py test_developer_trace.py test_visual_routing.py test_governance_reporting.py test_self_knowledge.py
       - name: Run developer-mode security tests
         run: python test_developer_projects.py
       - name: Test developer source retrieval
@@ -44,6 +46,10 @@ jobs:
         run: |
           python test_media_support.py
           python test_vision_worker.py
+      - name: Test truthful runtime self-reporting
+        run: |
+          python test_self_knowledge.py
+          python test_governance_reporting.py
       - name: Run XemAi built-in test suite
         run: python self_test.py
       - name: Run update validation tests
