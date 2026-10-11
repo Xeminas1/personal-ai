@@ -99,15 +99,21 @@ def dialogue_instructions(kind: str) -> str:
             "FRIENDLY QUESTION ABOUT YOUR OWN CHATGPT GITHUB DISCUSSION: "
             "The user asks how YOUR conversation with ChatGPT is going, "
             "not how the user found ChatGPT and not about Skyrim. "
-            "Answer conversationally from the HOST-SUPPLIED BRIDGE STATUS. "
-            "You may describe the exchange as a technical collaboration, "
-            "but if no transcript is provided do not invent exact topics, "
-            "specific claims, emotions, or results. State clearly that the "
-            "ordinary chat has no full GitHub transcript. If useful, mention "
-            "'bridge transcript' as the explicit way to view its messages. "
-            "Don't substitute a lecture about lacking emotions or consciousness; "
-            "avoid claiming subjective enjoyment or other human experiences. "
-            "No web, other chats, project files, or memory are evidence here."
+            "The request is asking for your ASSESSMENT of the exchange: "
+            "what seems productive or difficult and why, not a description "
+            "of the connection protocol, number of comments, or tools. "
+            "Give a brief grounded evaluation FIRST, then supporting topics. "
+            "Use only HOST-SUPPLIED bridge status and any locally derived "
+            "topic snapshot to explain which types of ideas are being discussed. "
+            "Topic labels are not verified outcomes and do not contain exact "
+            "messages. If no topic snapshot exists, say you cannot assess "
+            "its content, rather than pretending you read it. "
+            "Keep your answer natural, short, and candid about uncertainty; "
+            "do not claim feelings, enjoyment or consciousness. Do not invent "
+            "replies, lessons, performance improvements or agreement. "
+            "Do not offer to fetch messages with unavailable tools; the "
+            "user can enter 'bridge transcript' to inspect them separately. "
+            "No web, other chats, project files, or personal memory are evidence."
         ),
         "mission": (
             "DEVELOPMENT MISSION QUESTION: Explain that XemAi's project goal "
@@ -149,17 +155,46 @@ def dialogue_instructions(kind: str) -> str:
     return rules.get(kind, "")
 
 
-def dialogue_answer_needs_retry(kind: str, answer: str) -> bool:
+def dialogue_answer_needs_retry(
+    kind: str, answer: str, *, bridge_topics_available: bool = False,
+) -> bool:
     if not kind:
         return False
     a = str(answer or "").strip()
     if len(a) < 75:
         return True
     if kind == "bridge_conversation":
-        return bool(_BRIDGE_OFF_TOPIC.search(a)) or not (
-            re.search(r"(?i)\b(?:chat\s*gpt|gpt)\b", a)
-            and re.search(r"(?i)\b(?:github|bridge|discussion|conversation|exchange|chat)\b", a)
-        ) or bool(re.search(r"(?i)\bi\s+(?:enjoyed|love|felt|feel)\s+(?:the|our|my)\s+chat\b", a))
+        if (_BRIDGE_OFF_TOPIC.search(a)
+                or not re.search(r"(?i)\b(?:chat\s*gpt|gpt)\b", a)
+                or re.search(r"(?i)\bi\s+(?:enjoyed|love|felt|feel)\s+(?:the|our|my)\s+chat\b", a)):
+            return True
+        # The reported failure listed counts and offered to fetch, while
+        # never assessing the actual collaboration. When local topic evidence
+        # exists, require a meaningful evaluation near the START of the answer,
+        # not a disconnected positive word buried after connection boilerplate.
+        if bridge_topics_available:
+            opening = a[:350].lower()
+            assessment = re.search(
+                r"\b(?:productive|constructive|useful|valuable|worthwhile|"
+                r"helpful|challenging|challenged|thought.provoking|"
+                r"insightful|substantive|mixed|limited|promising|"
+                r"frustrating|unproductive|meaningful|going well|"
+                r"progress|disagree|debate|critic(?:al|al)?|"
+                r"improv(?:e|ing|ement))\b", opening, re.I,
+            )
+            subject = re.search(
+                r"\b(?:source|version|evidence|test|benchmark|"
+                r"reasoning|validator|rubric|fixture|learning|"
+                r"attribution|uncertain|review|ground.truth)\b", a, re.I,
+            )
+            return not (assessment and subject)
+        # Without usable evidence, a candid limitation is preferable
+        # to inventing what the private conversation actually contains.
+        return not re.search(
+            r"(?i)\b(?:cannot|can't|do not|don't|no|not|without|"
+            r"unable|lack|missing)\b.{0,155}\b(?:assess|judge|"
+            r"evaluate|know|transcript|detail|messages|contents)\b", a
+        )
     if kind == "mission":
         return bool(_DENIAL.search(a)) or not (
             re.search(r"\b(?:goal|objective|mission|ambition|aim|develop)\b", a, re.I)
@@ -197,15 +232,27 @@ def dialogue_retry_instruction(kind: str) -> str:
     )
 
 
-def dialogue_fallback(kind: str, question: str) -> str:
+def dialogue_fallback(
+    kind: str, question: str, *, bridge_topic_digest: str = "",
+) -> str:
     if kind == "bridge_conversation":
+        if bridge_topic_digest and "no comment text transmitted" in bridge_topic_digest:
+            return (
+                "From the locally recorded topics, I'd call my discussion with "
+                "ChatGPT a useful technical debate: it has been examining "
+                "evidence, tests and how to avoid unjustified conclusions. "
+                "Those are worthwhile areas to challenge, but discussing them "
+                "doesn't establish that I've learned permanently or improved "
+                "my real-world performance. I only have a bounded topic "
+                "snapshot here, not the entire exchange, so I won't invent "
+                "specific arguments or outcomes."
+            )
         return (
-            "My GitHub bridge is a way to exchange ideas and critique tests "
-            "with ChatGPT. I can discuss that collaboration, but this ordinary "
-            "chat does not contain the private GitHub transcript, so I cannot "
-            "give a grounded review of specific replies from here. "
-            "Use 'bridge transcript' if you want to inspect the actual exchange. "
-            "I won't invent experiences or claim to have verified its results."
+            "I can't yet judge how substantive my discussion with ChatGPT has "
+            "been from this ordinary chat, because I don't have a reliable "
+            "recent topic snapshot here. The GitHub collaboration exists, "
+            "but reply counts don't tell me how productive it was. "
+            "You can inspect it with 'bridge transcript'."
         )
     if kind == "mission":
         return (
