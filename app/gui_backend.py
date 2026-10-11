@@ -1078,9 +1078,9 @@ class ChatBackend:
                             "transcript; no private discussion text was loaded): "
                             + private_bridge_status(DATA_DIR)
                             + (
-                                "\\n" + bridge_digest
+                                "\n" + bridge_digest
                                 if bridge_digest else
-                                "\\nNo reliable locally mirrored topic digest is "
+                                "\nNo reliable locally mirrored topic digest is "
                                 "available. Do not invent the discussion's content."
                             )
                         ),
