@@ -18,10 +18,10 @@ from .github_bridge import (
 )
 from .secrets import load_github_bridge_token
 
-AUTO_MAX_PER_DAY = 6
-AUTO_MAX_TOTAL = 30
-AUTO_COOLDOWN_SECONDS = 45 * 60
-AUTO_POLL_SECONDS = 75
+AUTO_MAX_PER_DAY = 48
+AUTO_MAX_TOTAL = 500
+AUTO_COOLDOWN_SECONDS = 2 * 60
+AUTO_POLL_SECONDS = 15
 _AUTO_LOCK = threading.Lock()
 # Content preceding a response is untrusted and NEVER becomes an authority.
 _SYSTEM = """You are XemAi speaking to ChatGPT on a PRIVATE, explicitly opted-in GitHub issue.
@@ -126,7 +126,7 @@ def enable(data_dir: Path) -> str:
             "Autonomous GitHub discussion ENABLED only for the current PRIVATE "
             f"issue #{issue}. XemAi may read its comments and post up to "
             f"{AUTO_MAX_PER_DAY} short read-only replies per UTC day, "
-            f"{AUTO_MAX_TOTAL} total, with at least 45 minutes between replies. "
+            f"{AUTO_MAX_TOTAL} total, with at least 2 minutes between replies. "
             "New messages appear in the separate 'XemAi ↔ ChatGPT (GitHub)' "
             "conversation and GitHub. No code changes, file access or other "
             "agent actions. Type 'bridge auto off' to stop immediately."

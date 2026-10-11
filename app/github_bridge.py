@@ -78,7 +78,7 @@ class GitHubBridgeClient:
     def request(self, repo: str, resource: str, payload: dict | None = None):
         if not valid_repo(repo):
             raise BridgeError("Invalid GitHub repository name.")
-        if not re.fullmatch(r"(?:|/issues|/issues/[1-9][0-9]*/comments)(?:\?per_page=100)?", resource):
+        if not re.fullmatch(r"(?:|/issues|/issues/[1-9][0-9]*/comments(?:\?per_page=100(?:&page=[1-9][0-9]?)?)?)", resource):
             raise BridgeError("Unsupported GitHub bridge endpoint.")
         url = _ENDPOINT + "/repos/" + repo + resource
         data = None if payload is None else json.dumps(payload).encode("utf-8")
@@ -138,10 +138,28 @@ class GitHubBridgeClient:
         return link
 
     def comments(self, repo: str, issue: int) -> list[dict]:
-        result = self.request(repo, f"/issues/{issue}/comments?per_page=100")
-        if not isinstance(result, list):
-            raise BridgeError("GitHub comments response was invalid.")
-        return result
+        """Read a bounded sequence of pages; do not silently lose older replies.
+
+        The GitHub API returns comments oldest-first. Reading only its first
+        100 items eventually prevented the autonomous bridge from seeing any
+        new messages. Stop and ask for a fresh issue if the bounded page
+        budget is exceeded, rather than pretending all comments were read.
+        """
+        all_comments: list[dict] = []
+        for page in range(1, 16):
+            suffix = "" if page == 1 else f"&page={page}"
+            result = self.request(
+                repo, f"/issues/{issue}/comments?per_page=100{suffix}"
+            )
+            if not isinstance(result, list):
+                raise BridgeError("GitHub comments response was invalid.")
+            all_comments.extend(result)
+            if len(result) < 100:
+                return all_comments
+        raise BridgeError(
+            "Private issue has too many comments to poll safely. "
+            "Start another approved GitHub bridge issue."
+        )
 
 
 def setup(data_dir: Path, repo: str, token: str, *, client=None) -> None:
