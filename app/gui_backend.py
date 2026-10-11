@@ -18,6 +18,7 @@ from .agent_team import (
 )
 from .ai_watch import chat_command as ai_watch_chat_command
 from .github_bridge import chat_command as github_bridge_chat_command, is_command as is_bridge_command
+from .github_bridge_auto import status as private_bridge_status
 from .github_bridge_review import recall_context as reviewed_bridge_lessons
 from .ai_watch import current_report as ai_watch_report
 from .attachment_tasks import (
@@ -556,7 +557,7 @@ class ChatBackend:
             # The user retains all chat history and cross-chat memory. For a
             # strictly source-only assignment, however, unrelated memories and
             # feedback are not evidence and must not enter the model prompt.
-            if attached_code_task or inline_source_task:
+            if attached_code_task or inline_source_task or dialogue_kind == "bridge_conversation":
                 memories, feedback = [], []
             else:
                 memories = worker_db.relevant_memories(
@@ -567,7 +568,7 @@ class ChatBackend:
             tools = TurnEvidenceTools(
                 ToolRegistry(BASE_DIR, DATA_DIR, self.logger), query_text
             )
-            if ((inventory_kind or internal_audit) and not asks_for_external_research(query_text)) or attached_code_task or inline_source_task:
+            if ((inventory_kind or internal_audit) and not asks_for_external_research(query_text)) or attached_code_task or inline_source_task or dialogue_kind == "bridge_conversation":
                 # Source-only tasks and internal app facts do not require
                 # outside internet research or model-initiated web calls.
                 tools.web_allowed = False
@@ -575,7 +576,7 @@ class ChatBackend:
             # or model tool planning. Keep source-only requests within the
             # approved checkout, including the full agent tool list.
             developer_context = (
-                "" if visual_only or attached_code_task or inline_source_task
+                "" if visual_only or attached_code_task or inline_source_task or dialogue_kind == "bridge_conversation"
                 else source_context_for_request(query_text, tools)
             )
             if visual_only or prefer_local_project_sources(query_text, developer_context):
@@ -786,6 +787,13 @@ class ChatBackend:
                 messages.append(
                     {"role": row["role"], "content": row_content}
                 )
+
+            if dialogue_kind == "bridge_conversation":
+                # Friendly questions about XemAi's own GitHub discussion should
+                # not inherit irrelevant Skyrim/project history or external
+                # files. Bridge status is host-owned metadata, not transcript.
+                messages = [row for row in messages if row["role"] == "system"]
+                messages.append({"role": "user", "content": query_text})
 
             if inline_source_task:
                 # The current user supplied the only authorised code evidence.
@@ -1047,6 +1055,15 @@ class ChatBackend:
                     "role": "system",
                     "content": dialogue_instructions(dialogue_kind),
                 })
+                if dialogue_kind == "bridge_conversation":
+                    messages.append({
+                        "role": "system",
+                        "content": (
+                            "HOST-VERIFIED LOCAL BRIDGE METADATA (not a GitHub "
+                            "transcript; no private discussion text was loaded): "
+                            + private_bridge_status(DATA_DIR)
+                        ),
+                    })
             if attached_code_task:
                 messages.append({
                     "role": "system",
@@ -1095,7 +1112,7 @@ class ChatBackend:
             application_answer = False
             task_tools = (
                 SourceTaskReadOnlyTools() if attached_code_task or inline_source_task
-                else NoExternalOrSourceTools() if visual_only
+                else NoExternalOrSourceTools() if visual_only or dialogue_kind == "bridge_conversation"
                 else ReadOnlyTeamTools(tools, allow_web=tools.web_allowed)
                 if agent_mode else tools
             )
@@ -1111,7 +1128,7 @@ class ChatBackend:
                 answer = llm.agent_chat(
                     messages,
                     tool_registry=task_tools,
-                    max_tool_rounds=0 if attached_code_task or inline_source_task
+                    max_tool_rounds=0 if attached_code_task or inline_source_task or dialogue_kind == "bridge_conversation"
                     else int(self.config.get("max_tool_rounds", 6)),
                 )
             timing("answer", answer_started)
