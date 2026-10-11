@@ -97,6 +97,27 @@ def run():
         assert source_context_for_request("Do you think XemTV is a good name?", tools) == ""
         assert not logger.calls
 
+        # A generic pasted-code question is never permission to inspect the
+        # only configured checkout. This reproduced an unrelated XemTV answer
+        # to a brand-new Skyrim/Papyrus source question.
+        logger.calls.clear()
+        inline_question = (
+            "I'm testing your ability to read source code. "
+            "File: MWInterventionScopeAlias.psc\\n"
+            "Line 74: nativeControls = MWControls.IsReady() && "
+            "MWControls.GetVersion() == 615\\n"
+            "Lines 142-145: Return Input.IsKeyPressed(aimKeyA)"
+        )
+        assert source_context_for_request(inline_question, tools) == ""
+        assert source_context_for_request(
+            "Read this code and answer only the supplied excerpts.", tools
+        ) == ""
+        assert not logger.calls
+        # Explicit source requests to the configured local project still work.
+        assert source_context_for_request(
+            "Inspect my local project HomeFocusPolicy.kt", tools
+        ).startswith("VERIFIED READ-ONLY DEVELOPMENT FILE CONTENTS")
+
         # A secret filename is not a candidate or readable via this preflight.
         logger.calls.clear()
         assert source_context_for_request(
