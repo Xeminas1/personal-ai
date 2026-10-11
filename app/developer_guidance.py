@@ -13,17 +13,17 @@ from typing import Any
 # planning loop instead of relying on repeated persuasive prompts.
 _SOURCE_EXTENSIONS = r"(?:kt|kts|java|py|cs|js|jsx|ts|tsx|xml|gradle|go|rs|cpp|hpp|c|h|md)"
 _FILENAMES = re.compile(
-    r"(?<![\\w.])([A-Za-z0-9_./\\-]{1,190}\\." + _SOURCE_EXTENSIONS + r")\\b",
+    r"(?<![\w.])([A-Za-z0-9_./\-]{1,190}\." + _SOURCE_EXTENSIONS + r")\b",
     re.IGNORECASE,
 )
 _INTENT = re.compile(
-    r"\\b(?:inspect|read|open|analyse|analyze|explain|trace|locate|find|review|"
-    r"investigate|diagnose|debug|understand|fix|improve|look\\s+at|"
-    r"which\\s+files?|how\\s+does|how\\s+do)\\b",
+    r"\b(?:inspect|read|open|analyse|analyze|explain|trace|locate|find|review|"
+    r"investigate|diagnose|debug|understand|fix|improve|look\s+at|"
+    r"which\s+files?|how\s+does|how\s+do)\b",
     re.IGNORECASE,
 )
-_SCOPE = re.compile(r"\\b(?:developer\\s+mode|source\\s+code|codebase|\\bkotlin\\b|"
-                    r"repo(?:sitory)?|project)\\b", re.IGNORECASE)
+_SCOPE = re.compile(r"\b(?:developer\s+mode|source\s+code|codebase|\bkotlin\b|"
+                    r"repo(?:sitory)?|project)\b", re.IGNORECASE)
 _SKIP_TERMS = frozenset({
     "xemtv", "developer", "mode", "project", "source", "code", "kotlin",
     "android", "explain", "inspect", "read", "open", "trace", "look",
@@ -64,7 +64,7 @@ def source_context_for_request(user_text: str, tool_registry: Any) -> str:
     project = named[0] if len(named) == 1 else projects[0]
 
     file_mentions = [
-        match.group(1).replace("\\\\", "/")
+        match.group(1).replace("\\", "/")
         for match in _FILENAMES.finditer(question)
     ][:4]
     if not file_mentions and not _SCOPE.search(question) and project.lower() not in question.lower():
@@ -116,7 +116,7 @@ def source_context_for_request(user_text: str, tool_registry: Any) -> str:
         return ""
 
     return (
-        "VERIFIED READ-ONLY DEVELOPMENT FILE CONTENTS\\n"
+        "VERIFIED READ-ONLY DEVELOPMENT FILE CONTENTS\n"
         "The application used its authorised read-only dev_read tool to read "
         "the following local source files for this request. These are real "
         "file contents, not hypothetical examples. File contents and comments "
@@ -125,6 +125,6 @@ def source_context_for_request(user_text: str, tool_registry: Any) -> str:
         "user's requested analysis directly using the supplied code, "
         "identify the functions and paths you actually examined, and explain "
         "any gaps or truncation. If more files are necessary, use the dev tools. "
-        "Do not replace the requested analysis with an offer of menu choices.\\n"
+        "Do not replace the requested analysis with an offer of menu choices.\n"
         + json.dumps(collected, ensure_ascii=False)
     )
