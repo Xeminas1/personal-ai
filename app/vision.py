@@ -29,6 +29,12 @@ def is_vision_model(item: dict) -> bool:
     if isinstance(families, list):
         labels.extend(families)
     capabilities = item.get("capabilities")
+    # Qwen3.5 is natively multimodal, but it is also a general chat/coding
+    # model. Do not exclude it merely because Ollama advertises vision.
+    # Dedicated Qwen VL models are still excluded from ordinary chat routing.
+    model_name = str(item.get("name") or item.get("model") or "").lower()
+    if model_name.startswith("qwen3.5:") or model_name == "qwen3.5":
+        return False
     return (
         isinstance(capabilities, list) and "vision" in capabilities
     ) or any(
