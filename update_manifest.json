@@ -1,6 +1,6 @@
 {
-  "version": "0.9.33",
-  "notes": "Fixes a source-context leak where a new Skyrim/Papyrus question could cause XemAi to inspect an unrelated configured XemTV checkout. Requires explicit local project selection, isolates pasted source evidence from unrelated memory/context/tools without deleting stored chats or cross-chat memories, and rejects unsupported source filenames or fabricated literal code quotes with a bounded retry. Automated Windows/Linux regression tests passed; live Qwen/Skyrim behaviour was not tested. Existing configuration, worker pairing, and XemTV files remain unchanged.",
+  "version": "0.9.34",
+  "notes": "Switches XemAi's preferred hybrid everyday worker to Qwen3.5 9B Q8 (qwen3.5:9b-q8_0), only after the user installs the model with Ollama. Keeps Qwen3 8B installed and selected until Q8 is available. Supports Qwen3.5 multimodal vision-capable tags for ordinary chat and extends read-only specialist eligibility to 9B. Adds tests for model selection and fallback, does not automatically download models or alter Tailscale pairing, chat/memory, or XemTV and Skyrim files. Requires installing the model on the worker PC; version and packaging tests run on Windows/Linux.",
   "files": [
     {
       "path": "app/__init__.py",
@@ -164,13 +164,13 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.33/app/version.py",
-      "sha256": "7c75cf19e943e1bb2a3738963f832ecd66f09bf382b299b6b515b19f56c4b5ed"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.34/app/version.py",
+      "sha256": "9f3013729bcfceab6bedef491f7f00d6ab429e1a65f8088c2d3f945821982771"
     },
     {
       "path": "app/vision.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/app/vision.py",
-      "sha256": "b5c74e5c9fe59491e54256c55913c8a9f959f1f4b7eda6893b08ff671951914d"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.34/app/vision.py",
+      "sha256": "b6f85dc27e3feb1e3c852fda2864d67a36a4118d8722ef40ff7f12eb411dd05e"
     },
     {
       "path": "app/visual_guidance.py",
@@ -189,8 +189,8 @@
     },
     {
       "path": "app/worker_server.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/app/worker_server.py",
-      "sha256": "784d12ad0ceda6791b84dfd0446d336a68b8e5fa57e5199369de3faf13274b48"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.34/app/worker_server.py",
+      "sha256": "d0cbc158487883fbab02db53cd4795a91c29c56a9730372eb7666d6411fb5ad2"
     },
     {
       "path": "console.bat",
@@ -339,8 +339,8 @@
     },
     {
       "path": "test_capability_inventory.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.33/test_capability_inventory.py",
-      "sha256": "49ae77b9f275544c833f7bfd54806190a88827d3c56d15c27760825e5d7a7456"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.34/test_capability_inventory.py",
+      "sha256": "aeba91aba4362c15f705da386ecb160a1e1f72a44e08399045eb00e617243b9e"
     },
     {
       "path": "test_chat_delete.py",
@@ -564,8 +564,8 @@
     },
     {
       "path": "test_worker_latency.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/test_worker_latency.py",
-      "sha256": "a74d5092f907016ada82a11166e50c42e6c9cb14127bd6ffd5c7cbc7c0971ea4"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.34/test_worker_latency.py",
+      "sha256": "f85d13928d4187990070332028e2294f77468ad2a7c0b7c990ec21486f821008"
     },
     {
       "path": "test.bat",

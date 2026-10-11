@@ -5,10 +5,18 @@ import json
 import threading
 import unittest
 import urllib.error
+import logging
+import time
+from types import SimpleNamespace
+from unittest.mock import patch
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
-from app.worker_server import XemAiWorkerHandler, XemAiWorkerServer
+from app.worker_server import (
+    XemAiWorkerHandler, XemAiWorkerServer, _recommended_model,
+    _specialist_model, PREFERRED_EVERYDAY_MODEL,
+)
+from app.llm import OllamaClient
 
 
 class CapturingLogger:
@@ -192,6 +200,64 @@ class WorkerLatencyTests(unittest.TestCase):
         with caught.exception as response:
             self.assertEqual(response.status, 503)
             self.assertNotIn("private-connection-error", response.read().decode())
+
+
+
+class Qwen35UpgradeTests(unittest.TestCase):
+    """Installed 9B must become the everyday worker without losing old 8B."""
+
+    @staticmethod
+    def inventory(include_9b=True):
+        installed = [
+            {"name": "qwen3:8b", "details": {"parameter_size": "8.2B"}},
+            {"name": "qwen2.5vl:7b", "capabilities": ["vision"]},
+        ]
+        if include_9b:
+            installed.append({
+                "name": "qwen3.5:9b-q8_0",
+                "details": {"family": "qwen35", "parameter_size": "9B"},
+                "capabilities": ["completion", "vision", "tools", "thinking"],
+            })
+        return installed
+
+    def test_multimodal_qwen35_is_an_everyday_chat_model(self):
+        candidates = OllamaClient._qwen_models(self.inventory())
+        self.assertEqual(
+            {item["name"] for item in candidates},
+            {"qwen3:8b", PREFERRED_EVERYDAY_MODEL},
+        )
+
+    def test_prefer_installed_9b_even_with_configured_old_8b(self):
+        installed = self.inventory()
+        fake = SimpleNamespace(
+            model="qwen3:8b",
+            installed_models=lambda: installed,
+            running_models=lambda: [{"name": "qwen3:8b"}],
+        )
+        model, available, running = _recommended_model(fake)
+        self.assertEqual(model, PREFERRED_EVERYDAY_MODEL)
+        self.assertIn(PREFERRED_EVERYDAY_MODEL, available)
+        self.assertEqual(running, ["qwen3:8b"])
+
+    def test_keep_eight_b_until_nine_b_is_actually_installed(self):
+        fake = SimpleNamespace(
+            model="qwen3:8b",
+            installed_models=lambda: self.inventory(False),
+            running_models=lambda: [],
+        )
+        model, available, _ = _recommended_model(fake)
+        self.assertEqual(model, "qwen3:8b")
+        self.assertNotIn(PREFERRED_EVERYDAY_MODEL, available)
+
+    def test_nine_b_is_eligible_for_read_only_specialists(self):
+        fake = SimpleNamespace(ollama_client=SimpleNamespace(model="qwen3:8b"))
+        with patch("app.worker_server._deadline_inventory", return_value=self.inventory()):
+            selected = _specialist_model(
+                fake, "planner", PREFERRED_EVERYDAY_MODEL,
+                time.monotonic() + 3,
+            )
+        self.assertEqual(selected, PREFERRED_EVERYDAY_MODEL)
+
 
 
 if __name__ == "__main__":

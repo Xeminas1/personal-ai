@@ -74,6 +74,8 @@ jobs:
         run: python test_capability_inventory.py
       - name: Test attached Skyrim source challenges
         run: python test_attachment_challenges.py
+      - name: Test Qwen3.5 9B Q8 worker selection and fallback
+        run: python test_worker_latency.py
       - name: Validate browser JavaScript and drag-drop interactions
         run: |
           node --check mobile/app.js
