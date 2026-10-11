@@ -66,7 +66,7 @@ const dropped = drag(["Files"], [file]);
 handlers.drop(dropped.e);
 assert.equal(dropped.prevented, true, "files must never navigate browser");
 assert.ok(classes.has("hidden"));
-assert.deepEqual(events, [["Skyrim_Stage1_Trace.txt"]]);
+assert.equal(JSON.stringify(events), JSON.stringify([["Skyrim_Stage1_Trace.txt"]]));
 state.busy = true;
 handlers.dragenter(drag(["Files"], [file]).e);
 assert.ok(classes.has("hidden"), "not shown during active assistant reply");
