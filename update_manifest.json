@@ -1,6 +1,6 @@
 {
-  "version": "0.9.22",
-  "notes": "Developer Mode source tracing (read-only): new dev_trace tool and automatic cross-file identifier reference lookup with source paths, line numbers and bounded excerpts for deeper XemTV navigation/focus/glow investigations. Helps find MainActivity/Theme callers and prevents guessing file relationships; references do not prove runtime calls. Existing optional qwen2.5vl PC vision now better describes UI screenshots, concepts, glow, spacing and focus. No new model downloads or write/build/shell/ADB/Git permissions. Preserves memory, settings, chat and hybrid pairing. XemTV Build 114 and Codex Build 115 unchanged.",
+  "version": "0.9.23",
+  "notes": "Screenshot-only task routing and image evidence reliability: do not let negative 'do not inspect code' instructions trigger Developer Mode; block unrelated web/code tools and optional reviewers for image-only requests; require actual opt-in PC vision observations for every attachment rather than assuming vision status means it ran; retry off-topic code/website answers once, then disclose failure. Improve left-sidebar versus film-poster focus guidance. Normalize Windows short-path attachment aliases. No new model downloads or edits/builds/ADB/Git permissions; XemTV Builds 114 and unfinished 115 untouched; preserves XemAi chats, memories, settings and worker pairing.",
   "files": [
     {
       "path": "app/__init__.py",
@@ -39,8 +39,8 @@
     },
     {
       "path": "app/gui_backend.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.21/app/gui_backend.py",
-      "sha256": "c9db345e091a0ed92a2ab3a261fa1fb31ed714019150599fe54db121dd36b0ad"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.23/app/gui_backend.py",
+      "sha256": "99401d5114d2cb70c9a4d5281d308c7b233210d848e2c39237740b0c5dfd530b"
     },
     {
       "path": "app/hybrid_autosetup.py",
@@ -74,8 +74,8 @@
     },
     {
       "path": "app/media_support.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.22/app/media_support.py",
-      "sha256": "9aabf742fa71b2ce3eb059f4cbdf50445e017d16041e6259aae0445cb3de8c2f"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.23/app/media_support.py",
+      "sha256": "fd82fe63c49508f7f84eba85bb563f945d3e268b0c9a86568fdfccc1c72fce1d"
     },
     {
       "path": "app/mobile_runtime.py",
@@ -134,13 +134,18 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.22/app/version.py",
-      "sha256": "2d5b32e2158a229436335517a640b50ecdb36796ef04b4915df0ab6dec4ddae2"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.23/app/version.py",
+      "sha256": "f8f99f61864a9159bfba68da30755cb0683f12f263f2fabfd05d9998da1e64b9"
     },
     {
       "path": "app/vision.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/app/vision.py",
       "sha256": "b5c74e5c9fe59491e54256c55913c8a9f959f1f4b7eda6893b08ff671951914d"
+    },
+    {
+      "path": "app/visual_guidance.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.23/app/visual_guidance.py",
+      "sha256": "d86cbf31614febd002e66472161ec09a713039955e54fc851e3bb5d6cd52e573"
     },
     {
       "path": "app/worker_server.py",
@@ -254,8 +259,8 @@
     },
     {
       "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.22/README.md",
-      "sha256": "24dbd796779e0818fdb147030fdab68f74304e7a0b3a19224240559df71233cc"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.23/README.md",
+      "sha256": "39ab9da516f3c1351ed12592cea00e7b28af3b23305088b50fb546d986e0d4b8"
     },
     {
       "path": "restart_mobile_server.bat",
@@ -466,6 +471,11 @@
       "path": "test_vision_worker.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/test_vision_worker.py",
       "sha256": "af2728a9b2c13bb81484c346b00b713d80196b90ee643aab3f48840ed9322c9f"
+    },
+    {
+      "path": "test_visual_routing.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.23/test_visual_routing.py",
+      "sha256": "f8a257c8f0645f4da47db82de82a08d192d148a5c49ffc8ec9f94b12729da37a"
     },
     {
       "path": "test_worker_latency.py",
