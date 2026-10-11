@@ -211,7 +211,8 @@ def scan_due(data_dir: Path, config: dict, *, now: datetime | None = None) -> bo
         if then.tzinfo is None:
             return True
         elapsed = ((now or _now()) - then).total_seconds()
-        return elapsed >= interval_hours(config) * 3600 or elapsed < -600
+        retry_hours = 6 if state.get("source_successes", 0) == 0 else interval_hours(config)
+        return elapsed >= retry_hours * 3600 or elapsed < -600
     except ValueError:
         return True
 
@@ -250,7 +251,7 @@ def scan_once(
     try:
         instant = (now or _now()).isoformat()
         state = _load(data_dir)
-        baseline = not isinstance(state.get("last_attempt"), str)
+        baseline = not isinstance(state.get("last_success"), str)
         seen = state.get("seen", {})
         if not isinstance(seen, dict):
             seen = {}
