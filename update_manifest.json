@@ -190,7 +190,7 @@
     {
       "path": "app/worker_server.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.34/app/worker_server.py",
-      "sha256": "603634d22c829fc7768f4fd11363b4159d4b55abd31d752ad8822c47af688ff7"
+      "sha256": "d0cbc158487883fbab02db53cd4795a91c29c56a9730372eb7666d6411fb5ad2"
     },
     {
       "path": "console.bat",
