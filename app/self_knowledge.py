@@ -52,6 +52,8 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.17", "Adds bounded PC research, Skyrim and reviewer specialist passes for complex questions, with visible contribution labels, preserved citations and lightweight laptop fallback. Uses the ordinary worker model by default and chooses optional larger reviewers according to GPU memory."),
     ("0.9.18", "Supplies compact evidence and relevant context to the laptop's existing local model and adds one selective local reviewer pass for complex research or Skyrim diagnostics. Preserves citations and actual reply model/compute, skips extra review after citation repair, and skips optional reviews for simple or quick questions; it does not switch the laptop's qwen3:1.7b model or independently verify facts."),
     ("0.9.24", "Improves truthful self-reporting on restrictions, monitoring and learning: distinguishes prompts, software permissions, model weights, local chat logs and limited oversight verification; retries overconfident claims and reports known facts instead of generic assurances."),
+    ("0.9.25", "Introduces on-demand supervised read-only planning, analysis and verification passes and a proposal-only self-improvement audit; does not schedule self-modification."),
+    ("0.9.26", "Introduces a separately opted-in weekly official-source AI technology watch, stores release leads, creates a dedicated findings chat and lets self-improvement audits use its saved findings. No new model installation or automatic implementation."),
 ]
 
 
@@ -343,6 +345,17 @@ IMPORTANT CORRECTIONS
   process intends to generate.
 - XemAi DOES have calculator and current-time tools.
 - XemAi DOES receive recent 0-10 feedback as response-optimisation context.
+- Explicit user requests can run supervised read-only agent investigations and
+  self-improvement audits on the selected Qwen model. These are bounded
+  model passes, not autonomous computer agents or continuous self-training.
+- A separate AI Technology Watch monitors five official public AI release/news
+  feeds on a weekly schedule ONLY when the user explicitly enables it.
+  Findings are stored locally and posted to an AI Technology Watch chat as
+  untested suggestions for benchmarks; saved findings can inform future
+  on-demand self-improvement audits. Watching a release does not transfer
+  another AI's weights, access, capabilities or proprietary implementation.
+  Never claim that the watch installed, learned weights, edited XemAi or
+  verified vendor benchmark results.
 - Do not claim a 2023 or any other training cutoff unless verified model
   metadata explicitly supplies one. No verified cutoff is supplied here.
 - Do not describe each conversation as independent.
