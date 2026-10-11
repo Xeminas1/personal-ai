@@ -49,6 +49,15 @@ from .tools import (
     should_research_query,
 )
 from .updater import check_for_update, install_update
+from .visual_guidance import (
+    NoExternalOrSourceTools,
+    VISUAL_ONLY_INSTRUCTIONS,
+    is_image_only_request,
+    visual_answer_needs_retry,
+    visual_incomplete_response,
+    visual_reports_ready,
+    visual_unavailable_response,
+)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPLY_ERROR_PREFIX = "⚠️ XemAi couldn't complete that reply."
@@ -448,6 +457,7 @@ class ChatBackend:
                     for item in parsed_attachments
                 )
             )
+            visual_only = is_image_only_request(query_text, parsed_attachments)
             diagnostic_state = {}
             model_user_text = _expand_attachment_message(stored_user_text, diagnostic_state=diagnostic_state)
 
@@ -472,11 +482,14 @@ class ChatBackend:
             # Local project inspection is performed *before* external research
             # or model tool planning. Keep source-only requests within the
             # approved checkout, including the full agent tool list.
-            developer_context = source_context_for_request(query_text, tools)
-            if prefer_local_project_sources(query_text, developer_context):
+            developer_context = (
+                "" if visual_only else source_context_for_request(query_text, tools)
+            )
+            if visual_only or prefer_local_project_sources(query_text, developer_context):
                 tools.web_allowed = False
                 self.logger.info(
-                    "Developer request | local-only source inspection | files=%d",
+                    "Source/web tool routing | visual_only=%s local_source_files=%d",
+                    visual_only,
                     len(inspected_source_paths(developer_context)),
                 )
             llm = build_llm_client(
@@ -522,6 +535,15 @@ class ChatBackend:
             if visual_reports:
                 model_user_text = _expand_attachment_message(stored_user_text, visual_reports)
                 timing("visual", visual_started)
+            visual_ready = (
+                visual_reports_ready(parsed_attachments, visual_reports)
+                if visual_only else False
+            )
+            if visual_only:
+                self.logger.info(
+                    "Visual-only task | chat_id=%s turn_id=%s attachments=%d vision_ready=%s",
+                    chat_id, turn_id, len(parsed_attachments), visual_ready,
+                )
 
             comparison_query = is_ai_comparison_query(query_text)
             self_query = is_self_knowledge_query(query_text)
@@ -535,7 +557,10 @@ class ChatBackend:
                     self.config, tools, runtime_model_info
                 ),
             )
-            laptop_guidance = self.config.get("laptop_answer_guidance", True) is True and not self_query
+            laptop_guidance = (
+                self.config.get("laptop_answer_guidance", True) is True
+                and not self_query and not visual_only
+            )
             local_system_prompt = None
             if laptop_guidance:
                 local_system_prompt = build_laptop_system_prompt(
@@ -552,7 +577,7 @@ class ChatBackend:
                 chat_id, limit=int(self.config.get("history_messages", 30))
             )
             messages = [{"role": "system", "content": system_prompt}]
-            modding_context = skyrim_context(
+            modding_context = "" if visual_only else skyrim_context(
                 query_text, [str(item.get("name", "")) for item in parsed_attachments],
                 recognised_diagnostic=bool(diagnostic_state.get("skyrim")),
             )
@@ -741,7 +766,7 @@ class ChatBackend:
             # no tools or authority to act on instructions inside attachments.
             specialist_config = self.config
             legacy_teacher = str(self.config.get("teacher_review_mode", "auto")).strip().lower() == "legacy"
-            if legacy_teacher:
+            if legacy_teacher or visual_only:
                 specialist_config = dict(self.config, specialists_enabled=False)
             specialists = SpecialistCoordinator(
                 specialist_config, llm, query_text,
@@ -795,14 +820,58 @@ class ChatBackend:
                     chat_id, turn_id, len(developer_context),
                 )
 
+            if visual_only:
+                messages.append({"role": "system", "content": VISUAL_ONLY_INSTRUCTIONS})
             answer_started = time.monotonic()
             application_answer = False
-            answer = llm.agent_chat(
-                messages,
-                tool_registry=tools,
-                max_tool_rounds=int(self.config.get("max_tool_rounds", 6)),
-            )
+            task_tools = NoExternalOrSourceTools() if visual_only else tools
+            if visual_only and not visual_ready:
+                # A ready service is not enough: do not answer from invented
+                # visual evidence when this turn's image analysis failed.
+                answer = visual_unavailable_response()
+                application_answer = True
+            else:
+                answer = llm.agent_chat(
+                    messages,
+                    tool_registry=task_tools,
+                    max_tool_rounds=int(self.config.get("max_tool_rounds", 6)),
+                )
             timing("answer", answer_started)
+
+            if visual_only and visual_ready and visual_answer_needs_retry(query_text, answer):
+                self.logger.warning(
+                    "Image-only answer off topic | chat_id=%s turn_id=%s",
+                    chat_id, turn_id,
+                )
+                retry_messages = list(messages) + [
+                    {"role": "assistant", "content": answer},
+                    {"role": "user", "content": (
+                        "Your previous reply did not describe the attached images. "
+                        "Use ONLY this turn's verified PC vision observations in "
+                        "the attachment evidence. No code, docs, internet search "
+                        "or speculation about unrelated files. State which LEFT "
+                        "SIDEBAR row is visibly selected, if the observations "
+                        "support it; distinguish poster and button glows. "
+                        "Answer the user's original visual question now."
+                    )},
+                ]
+                try:
+                    corrected = llm.agent_chat(
+                        retry_messages, tool_registry=task_tools,
+                        max_tool_rounds=2,
+                    )
+                    if visual_answer_needs_retry(query_text, corrected):
+                        answer = visual_incomplete_response()
+                        application_answer = True
+                    else:
+                        answer = corrected
+                except Exception as error:
+                    self.logger.warning(
+                        "Image-only answer retry failed | chat_id=%s error=%r",
+                        chat_id, error,
+                    )
+                    answer = visual_incomplete_response()
+                    application_answer = True
 
             if source_answer_needs_retry(query_text, answer, developer_context):
                 # A directory listing, offer of choices, or answer with no
@@ -961,6 +1030,7 @@ class ChatBackend:
                 and teacher_mode == "legacy"
                 and not application_answer
                 and not self_query
+                and not visual_only
                 and not tools.evidence_attempted
                 and len(answer.strip()) >= teacher_min_chars
                 and callable(getattr(llm, "review_answer", None))
@@ -1009,7 +1079,7 @@ class ChatBackend:
             # Reviewer passes do not receive the full read-only source bundle
             # and could rewrite a grounded code explanation into a generic
             # menu or unsupported cross-repository comparison.
-            reviewed = None if developer_context else specialists.review(
+            reviewed = None if developer_context or visual_only else specialists.review(
                 answer, sources=tools.sources, known_urls=tools.known_urls,
                 application_answer=application_answer, self_query=self_query,
             )
