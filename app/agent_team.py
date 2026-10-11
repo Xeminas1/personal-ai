@@ -44,7 +44,7 @@ _REQUEST_EXCLUSION = re.compile(
     r"^\s*(?:can|could|would|should|are|what\s+if|how\s+would)\b",
     re.IGNORECASE,
 )
-_VISUAL_WORDS = re.compile(r"\b(?:screen(?:shot)?s?|image|images|design|concept|visual|glow|colours?|colors?)\b", re.IGNORECASE)
+_VISUAL_WORDS = re.compile(r"\b(?:screen(?:shot)?s?|image|images|ui|design|concept|visual|glows?|colours?|colors?)\b", re.IGNORECASE)
 _RESEARCH_WORDS = re.compile(r"\b(?:research|browse|internet|online|web|sources?)\b", re.IGNORECASE)
 _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
