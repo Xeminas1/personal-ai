@@ -59,6 +59,7 @@ def save_state(data_dir: Path, state: dict) -> None:
                 "auto_enabled", "auto_issue", "auto_last_seen_id",
                 "auto_seen_mirror_id", "auto_total", "auto_today", "auto_day",
                 "auto_last_post_at", "auto_paused", "auto_chat_id",
+                "learning_enabled",
             }}
     tmp.write_text(json.dumps(safe, indent=2, ensure_ascii=False), encoding="utf-8")
     try:
@@ -127,11 +128,28 @@ class GitHubBridgeClient:
             raise BridgeError("GitHub response was incomplete; check the issue before retrying.")
         return link
 
-    def post_auto_comment(self, repo: str, issue: int, text: str) -> str:
-        """Post only after the separately authorised background-loop checks."""
-        created = self.request(repo, f"/issues/{issue}/comments", {
-            "body": "XemAi autonomous response (opt-in, read-only):\n\n" + text,
-        })
+    def post_auto_comment(self, repo: str, issue: int, text: str,
+                          provenance: dict | None = None) -> str:
+        """Annotate actual generation model on the already-authorised reply."""
+        provenance = provenance if isinstance(provenance, dict) else {}
+        model = str(provenance.get("model") or "unknown")
+        compute = str(provenance.get("compute") or "unknown")
+        mode = str(provenance.get("mode") or "unknown")
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:/-]{0,80}", model):
+            model = "unknown"
+        if compute not in {"remote_worker", "local_host"}:
+            compute = "unknown"
+        if mode not in {"guided-small-model", "advanced-worker", "standard-local"}:
+            mode = "unknown"
+        body = (
+            "XemAi autonomous response (opt-in, read-only):\n"
+            f"Model: {model}\n"
+            f"Compute: {compute}\n"
+            f"Discussion mode: {mode}\n"
+            "Learning status: unverified discussion, NOT trained knowledge\n\n"
+            + text
+        )
+        created = self.request(repo, f"/issues/{issue}/comments", {"body": body})
         link = created.get("html_url") if isinstance(created, dict) else None
         if not isinstance(link, str):
             raise BridgeError("GitHub response was incomplete; check the issue before retrying.")
@@ -202,6 +220,7 @@ def chat_command(question: str, data_dir: Path, logger=None, *, client=None) -> 
                 "bridge replies (read the latest issue comments).\n"
                 "bridge transcript (review the latest messages).\n"
                 "bridge auto on | bridge auto off | bridge auto status.\n"
+                "bridge learning on | bridge learning off | bridge learning status.\n"
                 "Nothing is uploaded automatically. This GitHub bridge does not "
                 "make ChatGPT respond until this conversation is checked."
             )
@@ -216,6 +235,10 @@ def chat_command(question: str, data_dir: Path, logger=None, *, client=None) -> 
             if command == "bridge auto status":
                 return status(data_dir)
             return transcript(data_dir, client=client)
+        if q.lower() in {"bridge learning on", "bridge learning off",
+                         "bridge learning status"}:
+            from .github_bridge_learning import command
+            return command(data_dir, q.lower())
         if q.lower() == "bridge status":
             issue = state.get("issue_number")
             return (

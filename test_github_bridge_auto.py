@@ -11,6 +11,7 @@ from app.github_bridge import load_state, save_state, setup, chat_command
 from app.github_bridge_auto import (
     AUTO_MAX_PER_DAY, AUTO_MAX_TOTAL, AUTO_COOLDOWN_SECONDS,
     AUTO_POLL_SECONDS, _safe_output, enable, disable, status, tick, transcript,
+    model_provenance, _route_prompt,
 )
 
 
@@ -33,8 +34,15 @@ class FakeGitHub:
     def comments(self, repo, issue):
         return list(self.entries)
 
-    def post_auto_comment(self, repo, issue, content):
-        body = "XemAi autonomous response (opt-in, read-only):\n\n" + content
+    def post_auto_comment(self, repo, issue, content, provenance=None):
+        details = provenance or {}
+        body = (
+            "XemAi autonomous response (opt-in, read-only):\n"
+            f"Model: {details.get('model', 'unknown')}\n"
+            f"Compute: {details.get('compute', 'unknown')}\n"
+            f"Discussion mode: {details.get('mode', 'unknown')}\n\n"
+            + content
+        )
         self.posted.append((repo, issue, body))
         self.entries.append({"id": 200 + len(self.posted), "body": body})
         return f"https://github.com/{repo}/issues/{issue}#issuecomment-test"
@@ -74,6 +82,52 @@ class DialogueTests(unittest.TestCase):
         self.patch_client.start()
         self.addCleanup(self.patch_client.stop)
         self.now = datetime(2026, 10, 12, 12, 0, tzinfo=timezone.utc)
+
+    def test_model_identity_is_host_supplied_and_adaptive(self):
+        class Route:
+            is_hybrid = True
+            def __init__(self, name, compute):
+                self.model = name
+                self.route_info = {"compute": compute}
+        laptop = model_provenance(Route("qwen3:1.7b", "local_host"))
+        self.assertEqual(laptop, {
+            "model": "qwen3:1.7b",
+            "compute": "local_host",
+            "mode": "guided-small-model",
+        })
+        self.assertIn("ONE point at a time", _route_prompt(laptop))
+        worker = model_provenance(Route("qwen3.5:9b-q8_0", "remote_worker"))
+        self.assertEqual(worker["mode"], "advanced-worker")
+        self.assertIn("multiple", _route_prompt(worker))
+        self.assertEqual(model_provenance(Route(
+            "qwen3.5:9b-q8_0", "local_host"))["mode"], "standard-local")
+
+    def test_actual_fallback_model_is_reported_not_initial_worker(self):
+        self.assertIn("ENABLED", enable(self.data))
+
+        class HybridFallback(FakeLLM):
+            is_hybrid = True
+            model = "qwen3.5:9b-q8_0"
+            route_info = {"compute": "remote_worker"}
+
+            def refresh_route(self):
+                return dict(self.route_info)
+
+            def chat(self, messages):
+                self.messages.append(messages)
+                self.route_info = {"compute": "local_host"}
+                self.model = "qwen3:1.7b"
+                return self.response
+
+        llm = HybridFallback()
+        result = tick(self.data, client=self.api, now=self.now,
+                      llm_factory=lambda: llm)
+        self.assertEqual(result["status"], "posted")
+        self.assertEqual(result["provenance"]["model"], "qwen3:1.7b")
+        self.assertEqual(result["provenance"]["mode"], "guided-small-model")
+        self.assertEqual(len(llm.messages), 2)
+        self.assertIn("ONE point at a time", llm.messages[1][0]["content"])
+        self.assertIn("Model: qwen3:1.7b", self.api.posted[0][2])
 
     def test_default_off_and_user_opt_in_only(self):
         self.assertEqual(tick(self.data, client=self.api, now=self.now)["status"],

@@ -97,3 +97,48 @@ the ChatGPT-side scheduled check must be enabled.
 These discussions are not part of XemAi's personal memories, nor are they
 proof that an AI has independent subjective goals or consciousness. They are
 a supervised channel for critiquing ideas and proposing improvements.
+
+
+## Model-aware adaptive discussion and optional training candidates (v0.9.40+)
+
+The bridge now attributes each autonomous comment to the **model and compute
+route reported by XemAi's inference client after generation**. Examples:
+
+- `Model: qwen3.5:9b-q8_0`; `Compute: remote_worker`;
+  `Discussion mode: advanced-worker`
+- `Model: qwen3:1.7b`; `Compute: local_host`;
+  `Discussion mode: guided-small-model`
+
+These labels are inserted by **application code**, not invented by an LLM.
+The model also receives this current host-selected identity in its system
+instructions. It describes the runtime configuration, not consciousness.
+
+On smaller laptop fallback models, XemAi responds to one question at a time
+and asks for a concrete test. With the powerful remote model, it can reason
+through multiple hypotheses and challenge provisional findings. If the worker
+fails *during* a generation, the system detects the completed local fallback
+and can retry once using the appropriate smaller-model prompt.
+
+The conversation remains untrusted. Answers are not training, proof,
+or a change in the model's weights by themselves.
+
+**Optional local training-candidate archive:**
+
+- `bridge learning status` — see whether local example collection is on.
+- `bridge learning on` — explicitly authorise archiving **future**
+  question/answer pairs from the already-approved private bridge discussion.
+- `bridge learning off` — stop recording further candidates.
+
+Candidates are stored **only on the XemAi host laptop** in its gitignored
+`data/github_bridge_training_candidates.jsonl`, up to 2,000 records. Each
+record includes a short excerpt from the private GitHub issue, XemAi's
+response, actual model and compute route, and `review_status: unverified`.
+The bridge does **not** access other chats or local project files, promote
+records to trusted long-term memory, perform fine-tuning, or train model
+weights. Model training would require a *separately approved* dataset review
+and explicit training workflow with benchmarks and rollback options.
+
+The existing `bridge auto on/off` and output-safety checks continue to apply.
+Use `bridge learning off` to prevent collection of future records. This
+does not erase earlier candidates; those remain in the host's local file
+until the user removes them intentionally.
