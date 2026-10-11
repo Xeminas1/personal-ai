@@ -17,6 +17,7 @@ from .agent_team import (
     ReadOnlyTeamTools, requested_agent_mode, run_agent_team, agent_team_context,
 )
 from .ai_watch import chat_command as ai_watch_chat_command
+from .github_bridge import chat_command as github_bridge_chat_command, is_command as is_bridge_command
 from .ai_watch import current_report as ai_watch_report
 from .attachment_tasks import (
     SourceTaskReadOnlyTools, is_attached_code_assignment,
