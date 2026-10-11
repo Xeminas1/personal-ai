@@ -10,6 +10,7 @@ import json
 import re
 
 from .version import VERSION
+from .dialogue_intent import dialogue_intent
 
 _AGENT_QUERY = re.compile(
     r"\b(?:all|list|which|what|tell\s+me|name|describe|show)\b.{0,110}"
@@ -59,6 +60,9 @@ def local_question_type(question: str) -> str:
     if not isinstance(question, str) or len(question) > 5000:
         return ""
     q = " ".join(question.replace("’", "'").split())
+    if dialogue_intent(q) == "agent_idea":
+        # A proposal about future agents is not an inventory request.
+        return ""
     if _AGENT_QUERY.search(q):
         return "agent_inventory"
     if _SELF_ANALYSIS.search(q):
