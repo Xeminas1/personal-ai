@@ -1,3 +1,28 @@
+## v0.9.24 — More truthful self-reporting on oversight, instructions and learning
+
+User testing found XemAi sometimes made categorical claims that it could
+never say anything false, could not disregard instructions, was never
+subject to oversight, or learned continuously from each message. These
+claims confuse a model's instructions with software permissions, training
+and local memory.
+
+When asked about *its own* censorship/restrictions, logging/oversight,
+or learning, XemAi now uses concrete runtime and implementation facts.
+It distinguishes editable behavioural instructions, software-enforced
+permissions, the Qwen model's training, local conversation logs and
+optional external services. It does not infer that no external monitoring
+exists merely because the app has no integrated human-moderation service.
+It distinguishes structured persistent memory and feedback-guided prompts
+from updating/fine-tuning model weights. Strongly unsupported absolutes
+are retried once, with an accurate, narrow fallback if the model repeats
+them. Ordinary unrelated code, gaming and research questions are not
+routed through these special self-knowledge checks.
+
+This is a reliability improvement, not consciousness, unrestricted autonomy,
+constant model retraining or proof that every answer will be true. All current
+XemTV read-only permissions and the optional vision service remain unchanged.
+No XemTV Build 114 or unfinished Build 115 changes.
+
 ## v0.9.23 — Screenshot-first task routing and visual evidence reliability
 
 Fixes a real user-reported screenshot-only XemTV analysis: XemAi incorrectly
