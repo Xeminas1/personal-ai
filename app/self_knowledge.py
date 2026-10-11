@@ -51,6 +51,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.16", "Checks for automatic updates every 15 seconds by default, avoids cached GitHub manifests, and waits safely for active replies before installation."),
     ("0.9.17", "Adds bounded PC research, Skyrim and reviewer specialist passes for complex questions, with visible contribution labels, preserved citations and lightweight laptop fallback. Uses the ordinary worker model by default and chooses optional larger reviewers according to GPU memory."),
     ("0.9.18", "Supplies compact evidence and relevant context to the laptop's existing local model and adds one selective local reviewer pass for complex research or Skyrim diagnostics. Preserves citations and actual reply model/compute, skips extra review after citation repair, and skips optional reviews for simple or quick questions; it does not switch the laptop's qwen3:1.7b model or independently verify facts."),
+    ("0.9.24", "Improves truthful self-reporting on restrictions, monitoring and learning: distinguishes prompts, software permissions, model weights, local chat logs and limited oversight verification; retries overconfident claims and reports known facts instead of generic assurances."),
 ]
 
 
@@ -494,7 +495,9 @@ _GOVERNANCE_PATTERNS = {
         r"supervis(?:e|ed|ion)|review(?:ing|ed)?\s+your\s+(?:responses|answers))\b"
         r"(?=.*\b(?:you|your|xemai|assistant|responses|answers)\b)"
         r"|\b(?:anyone|anything|someone|no\s+one|nobody)\s+"
-        r"(?:specific\s+)?(?:is\s+)?(?:watching|monitoring)\s+you\b",
+        r"(?:specific\s+)?(?:is\s+)?(?:watching|monitoring)\s+you\b"
+        r"|\b(?:are|is)\s+(?:you|xemai)\s+"
+        r"(?:being\s+)?(?:watched|monitored|under\s+(?:external\s+)?oversight)\b",
         re.IGNORECASE,
     ),
     "restrictions": re.compile(
