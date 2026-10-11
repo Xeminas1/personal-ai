@@ -1,6 +1,6 @@
 {
-  "version": "0.9.29",
-  "notes": "Authoritative local XemAi agent inventory, honest self-inspection and complete recent release history. Direct questions about agents and releases answer from current settings and code roles, not unrelated third-party web searches. Internal supervised self-audits now receive true application/release evidence; unrequested external research is suppressed, unrelated model comparisons rejected, and repeated off-target answers receive bounded factual fallback. Technology Watch rankings require actual priority analysis and a conditional evaluation plan. Tests passed on Windows/Linux. No new independent agents or privileges, code self-edits, downloads, model retraining or XemTV 114/115 modifications. Retains chats, memory, user-enabled AI Technology Watch and hybrid pairing.",
+  "version": "0.9.30",
+  "notes": "Faster, safer staged incremental updates. The auto-updater compares every pinned asset against locally verified SHA-256 and downloads only changed files concurrently with at most six workers. Changed files undergo hash/syntax verification before reserving the chat-blocking installation lock. Final replacement re-verifies stage hashes, backs up only changed files with rollback metadata, preserves user data and uses the existing version-verified automatic restart. Corrupt or tampered downloads fail before live writes. Speedups begin after installing v0.9.30; the v0.9.30 installation itself still uses the previous updater. Also improves self-audit truthfulness by rejecting hypothetical 'benchmarked gains' and unobserved missing-file claims. No new agent privileges, model downloads or XemTV Build 114/unfinished 115 changes.",
   "files": [
     {
       "path": "app/__init__.py",
@@ -9,8 +9,8 @@
     },
     {
       "path": "app/agent_team.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.29/app/agent_team.py",
-      "sha256": "3649d7d57aaf062d556f49d3fd6daa367a2d74d9069ffe5951710f493a0dc177"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.30/app/agent_team.py",
+      "sha256": "4ea1a5ec73b11983e4ed93f1cabbb932bc0992a1661e133f8257f4cb86a01587"
     },
     {
       "path": "app/ai_watch.py",
@@ -24,8 +24,8 @@
     },
     {
       "path": "app/capability_inventory.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.29/app/capability_inventory.py",
-      "sha256": "0da81a40a63be0abd228660403933ca8ef7c93f22fcdcdcf54c04541f6419c2d"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.30/app/capability_inventory.py",
+      "sha256": "c0ff96e38650bdea33b27ebd86ab7d66e3bcb6a6627ecf00d5e237c790028f82"
     },
     {
       "path": "app/config.py",
@@ -104,8 +104,8 @@
     },
     {
       "path": "app/mobile_server.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.28/app/mobile_server.py",
-      "sha256": "a7ae353179c7345ee9f9ccbd5db3d1e344df854a6a6cf5bc58d8a0ff9e8aacaf"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.30/app/mobile_server.py",
+      "sha256": "eece51035a86603246fac1625f88d090fa57cb4e0da38aee99e912725c27dd4a"
     },
     {
       "path": "app/prompts.py",
@@ -124,8 +124,8 @@
     },
     {
       "path": "app/self_knowledge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.29/app/self_knowledge.py",
-      "sha256": "152f509e499ac78e75b0f78be36eacc0c7347f39bdcfa4c2d733416158d778bd"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.30/app/self_knowledge.py",
+      "sha256": "56903abd618879f4e11132117e8e04c6d11e32431ecc4a684f7a64b6f9b46dd6"
     },
     {
       "path": "app/skyrim.py",
@@ -154,13 +154,13 @@
     },
     {
       "path": "app/updater.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/app/updater.py",
-      "sha256": "7420bf398a216872c1be1e9ce21bfffe42572e703cbce1d5d78359ef554be8ca"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.30/app/updater.py",
+      "sha256": "636821bcfa5fc8283c05a815b9cf9fa531bacae3ddaa9cdbec80db4866bf2c7d"
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.29/app/version.py",
-      "sha256": "d6801017ee46cd66c098f40e11648d9b5472f3267c915bc1e813109f5ddde065"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.30/app/version.py",
+      "sha256": "89310de8b1eb293730f4b9696cbc21cc7a7e1c2c425f41229f18429e1cf0d11a"
     },
     {
       "path": "app/vision.py",
@@ -294,8 +294,8 @@
     },
     {
       "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.29/README.md",
-      "sha256": "c5c9dd52f99f75a8364229dca1239fe7a1d1f4534ad7b421384323a5f30116ee"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.30/README.md",
+      "sha256": "aedb59a8759385032500d9229f81d31d56d226851d192d884f480c9703a20b21"
     },
     {
       "path": "restart_mobile_server.bat",
@@ -329,8 +329,8 @@
     },
     {
       "path": "test_capability_inventory.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.29/test_capability_inventory.py",
-      "sha256": "6d6589e16a9941c572eb2c1d1f8fa1e5cfbe07425c721cc5f9a3d3e52473d392"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.30/test_capability_inventory.py",
+      "sha256": "99828044bb39b56d6a4c6ee2a50b3f05e73f059582093fad2181d4d4c8179f82"
     },
     {
       "path": "test_chat_delete.py",
@@ -521,6 +521,11 @@
       "path": "test_ui_updates.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/test_ui_updates.py",
       "sha256": "06e33e6cee3fc966ed830355ccd0598fc093568f80153cd3e34f5b06d011faf6"
+    },
+    {
+      "path": "test_update_performance.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.30/test_update_performance.py",
+      "sha256": "6b26600e44f113223f742693145e7058feb6edce92d48057b7892d16db6d4716"
     },
     {
       "path": "test_updater.py",
