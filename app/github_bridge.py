@@ -127,6 +127,16 @@ class GitHubBridgeClient:
             raise BridgeError("GitHub response was incomplete; check the issue before retrying.")
         return link
 
+    def post_auto_comment(self, repo: str, issue: int, text: str) -> str:
+        """Post only after the separately authorised background-loop checks."""
+        created = self.request(repo, f"/issues/{issue}/comments", {
+            "body": "XemAi autonomous response (opt-in, read-only):\n\n" + text,
+        })
+        link = created.get("html_url") if isinstance(created, dict) else None
+        if not isinstance(link, str):
+            raise BridgeError("GitHub response was incomplete; check the issue before retrying.")
+        return link
+
     def comments(self, repo: str, issue: int) -> list[dict]:
         result = self.request(repo, f"/issues/{issue}/comments?per_page=100")
         if not isinstance(result, list):
