@@ -19,7 +19,7 @@ class StubGitHub:
     def __init__(self, private=True):
         self.private = private
         self.issues = []
-        self.comments = []
+        self.posted_comments = []
         self.reads = 0
         self.verifications = 0
 
@@ -33,7 +33,7 @@ class StubGitHub:
         return len(self.issues), f"https://github.com/{repo}/issues/{len(self.issues)}"
 
     def post_comment(self, repo, issue, text):
-        self.comments.append((repo, issue, text))
+        self.posted_comments.append((repo, issue, text))
         return f"https://github.com/{repo}/issues/{issue}#issuecomment-2"
 
     def comments(self, repo, issue):
@@ -118,10 +118,10 @@ class GitHubBridgeTests(unittest.TestCase):
         followup = chat_command(
             "bridge followup: Here is a new question", self.data, client=self.github)
         self.assertIn("PREVIEW ONLY", followup)
-        self.assertFalse(self.github.comments)
+        self.assertFalse(self.github.posted_comments)
         code = load_state(self.data)["pending"]["code"]
         chat_command("bridge approve " + code, self.data, client=self.github)
-        self.assertEqual(self.github.comments, [
+        self.assertEqual(self.github.posted_comments, [
             ("Example/private-bridge", 1, "Here is a new question")
         ])
 
