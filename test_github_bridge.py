@@ -140,6 +140,54 @@ class GitHubBridgeTests(unittest.TestCase):
         self.assertIn("Unknown bridge command", chat_command(
             "bridge override security", self.data, client=self.github))
 
+    def test_comment_pagination_includes_new_messages_after_first_100(self):
+        class PagingStub(GitHubBridgeClient):
+            def __init__(self):
+                self.resources = []
+
+            def request(self, repo, resource, payload=None):
+                self.resources.append(resource)
+                if resource.endswith("&page=2"):
+                    return [{"id": 101, "body": "New response after first page"},
+                            {"id": 102, "body": "Latest ChatGPT message"}]
+                return [{"id": i, "body": f"Comment {i}"} for i in range(1, 101)]
+
+        pager = PagingStub()
+        rows = pager.comments("Example/private-bridge", 1)
+        self.assertEqual(len(rows), 102)
+        self.assertEqual(rows[-1]["id"], 102)
+        self.assertEqual(pager.resources, [
+            "/issues/1/comments?per_page=100",
+            "/issues/1/comments?per_page=100&page=2",
+        ])
+
+    def test_pagination_does_not_allow_arbitrary_github_urls(self):
+        requests = []
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self, size=None):
+                return b"[]"
+
+        def stub_open(request, timeout=0):
+            requests.append(request.full_url)
+            return Response()
+
+        api = GitHubBridgeClient("example-token-for-tests", opener=stub_open)
+        self.assertEqual(api.request(
+            "Example/private-bridge", "/issues/1/comments?per_page=100&page=2"
+        ), [])
+        self.assertTrue(requests[0].endswith("per_page=100&page=2"))
+        with self.assertRaises(BridgeError):
+            api.request("Example/private-bridge", "/issues/1/comments?page=2")
+        with self.assertRaises(BridgeError):
+            api.request("Example/private-bridge", "/issues/1/comments?per_page=100&page=999")
+
     def test_http_request_never_leaks_token_on_error(self):
         token = "secret-test-token-very-private"
         errors = []
