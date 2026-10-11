@@ -72,13 +72,13 @@ def source_context_for_request(user_text: str, tool_registry: Any) -> str:
 
     try:
         if file_mentions:
-            paths = registry.find_source_files(project, filenames=file_mentions, limit=3)
+            paths = registry.find_source_files(project, filenames=file_mentions, limit=4)
         else:
             terms = [
                 word.casefold() for word in re.findall(r"[A-Za-z]{3,}", question)
                 if word.casefold() not in _SKIP_TERMS
             ]
-            paths = registry.find_source_files(project, terms=terms[:20], limit=3)
+            paths = registry.find_source_files(project, terms=terms[:20], limit=4)
     except (ValueError, OSError, RuntimeError):
         return ""
 
@@ -88,7 +88,7 @@ def source_context_for_request(user_text: str, tool_registry: Any) -> str:
     collected = []
     total = 0
     for path in paths:
-        budget = min(10000 if file_mentions else 6500, 16500 - total)
+        budget = min(10000 if file_mentions else 4800, 18500 - total)
         if budget < 500:
             break
         try:
@@ -127,4 +127,90 @@ def source_context_for_request(user_text: str, tool_registry: Any) -> str:
         "any gaps or truncation. If more files are necessary, use the dev tools. "
         "Do not replace the requested analysis with an offer of menu choices.\n"
         + json.dumps(collected, ensure_ascii=False)
+    )
+
+
+# Broad source investigations should stay inside the approved checkout unless
+# the user independently requested external research. A conditional allowance
+# ("unless documentation is necessary") is not a request to search the web.
+_EXTERNAL_REQUEST = re.compile(
+    r"\b(?:search|browse|look\s+up|research)\s+(?:the\s+)?"
+    r"(?:web|internet|online|external\s+documentation)\b"
+    r"|\bcompare\s+(?:the\s+)?(?:code|implementation)\s+(?:with|against)\s+"
+    r"(?:official\s+)?(?:android|external)\s+(?:docs?|documentation)\b",
+    re.IGNORECASE,
+)
+_MULTIFILE_REQUEST = re.compile(
+    r"\b(?:files|components|classes|modules|interact|interaction|together|"
+    r"relationships|trace|navigation|focus|sidebar|architecture)\b",
+    re.IGNORECASE,
+)
+_GENERIC_ANSWER = re.compile(
+    r"(?:would you like me to|let me know if you(?:'d| would) like|"
+    r"i can also show you|which files? (?:should|would) i)\b",
+    re.IGNORECASE,
+)
+
+
+def prefer_local_project_sources(question: str, context: str) -> bool:
+    """Use local-source-only tools for a grounded code question by default."""
+    return bool(context) and not bool(_EXTERNAL_REQUEST.search(str(question or "")))
+
+
+def inspected_source_paths(context: str) -> list[str]:
+    """Extract filenames from application-provided evidence, never model text."""
+    if not isinstance(context, str) or not context.startswith(
+        "VERIFIED READ-ONLY DEVELOPMENT FILE CONTENTS\n"
+    ):
+        return []
+    try:
+        records = json.loads(context.split("\n", 2)[2])
+    except (IndexError, ValueError, TypeError):
+        return []
+    if not isinstance(records, list):
+        return []
+    return [
+        item["path"] for item in records
+        if isinstance(item, dict) and isinstance(item.get("path"), str)
+        and isinstance(item.get("content"), str)
+    ][:4]
+
+
+def source_answer_needs_retry(question: str, answer: str, context: str) -> bool:
+    """Reject directory menus or unsupported answers after real source reads.
+
+    Never treats a model's claim to have inspected code as verification. This
+    only catches obvious non-compliance; it cannot prove semantic correctness.
+    """
+    paths = inspected_source_paths(context)
+    if not paths:
+        return False
+    answer = str(answer or "")
+    if not answer.strip() or len(answer.strip()) < 170:
+        return True
+    # Asking the user to select files instead of completing the request is
+    # unacceptable even if the answer names one or more real source files.
+    if _GENERIC_ANSWER.search(answer):
+        return True
+    expected = 2 if len(paths) >= 2 and _MULTIFILE_REQUEST.search(str(question or "")) else 1
+    mentioned = sum(
+        1 for path in paths
+        if re.search(r"(?<![A-Za-z0-9_])" + re.escape(path.rsplit("/", 1)[-1])
+                     + r"(?![A-Za-z0-9_])", answer, re.IGNORECASE)
+    )
+    return mentioned < expected
+
+
+def source_failure_report(context: str) -> str:
+    """Transparent bounded fallback if two model attempts are not grounded."""
+    paths = inspected_source_paths(context)
+    if not paths:
+        return "I could not verify the requested project files."
+    lines = "\n".join("- " + path for path in paths)
+    return (
+        "I located and read the following approved local source files:\n\n"
+        + lines
+        + "\n\nI have not yet produced a reliable analysis of how they interact. "
+        "I won't substitute unrelated web results or unverified guesses for "
+        "the requested code investigation. No files were modified."
     )

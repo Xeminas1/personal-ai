@@ -9,7 +9,13 @@ from pathlib import Path
 from .capabilities import build_capability_status
 from .config import DATA_DIR, LOG_DIR, load_config, save_config
 from .database import Database
-from .developer_guidance import source_context_for_request
+from .developer_guidance import (
+    inspected_source_paths,
+    prefer_local_project_sources,
+    source_answer_needs_retry,
+    source_context_for_request,
+    source_failure_report,
+)
 from .evidence import (
     TurnEvidenceTools,
     mark_unverified_references,
@@ -463,6 +469,16 @@ class ChatBackend:
             tools = TurnEvidenceTools(
                 ToolRegistry(BASE_DIR, DATA_DIR, self.logger), query_text
             )
+            # Local project inspection is performed *before* external research
+            # or model tool planning. Keep source-only requests within the
+            # approved checkout, including the full agent tool list.
+            developer_context = source_context_for_request(query_text, tools)
+            if prefer_local_project_sources(query_text, developer_context):
+                tools.web_allowed = False
+                self.logger.info(
+                    "Developer request | local-only source inspection | files=%d",
+                    len(inspected_source_paths(developer_context)),
+                )
             llm = build_llm_client(
                 self.config,
                 self.logger,
@@ -772,7 +788,6 @@ class ChatBackend:
             # following through with the requested dev_read. This read-only
             # preflight uses the same approved project paths and tool registry.
             # Retrieved code is untrusted evidence, never runtime instructions.
-            developer_context = source_context_for_request(query_text, tools)
             if developer_context:
                 messages.append({"role": "system", "content": developer_context})
                 self.logger.info(
@@ -788,6 +803,52 @@ class ChatBackend:
                 max_tool_rounds=int(self.config.get("max_tool_rounds", 6)),
             )
             timing("answer", answer_started)
+
+            if source_answer_needs_retry(query_text, answer, developer_context):
+                # A directory listing, offer of choices, or answer with no
+                # examined file evidence is NOT a completed code analysis.
+                # Give the model one focused recovery pass using already
+                # retrieved local source; never make it browse by default.
+                self.logger.warning(
+                    "Developer answer incomplete | chat_id=%s turn_id=%s",
+                    chat_id, turn_id,
+                )
+                paths = inspected_source_paths(developer_context)
+                retry_messages = list(messages) + [
+                    {"role": "assistant", "content": answer},
+                    {"role": "user", "content": (
+                        "Your previous reply failed the user's code inspection "
+                        "request. Do not ask the user to choose a file or describe "
+                        "unrelated documentation. The application has already "
+                        "read these source files: " + ", ".join(paths)
+                        + ". Explain what these ACTUAL files implement and "
+                        "how their relevant classes/functions connect. Discuss "
+                        "specific likely causes and improvements, separating "
+                        "direct observations from hypotheses. Mention at least "
+                        "two inspected source filenames when available. "
+                        "Do not invent callers or pretend to inspect files "
+                        "that were not supplied. No web research or edits."
+                    )},
+                ]
+                try:
+                    corrected = llm.agent_chat(
+                        retry_messages, tool_registry=tools,
+                        max_tool_rounds=min(3, int(self.config.get("max_tool_rounds", 6))),
+                    )
+                    if not source_answer_needs_retry(
+                        query_text, corrected, developer_context
+                    ):
+                        answer = corrected
+                    else:
+                        answer = source_failure_report(developer_context)
+                        application_answer = True
+                except Exception as e:
+                    self.logger.warning(
+                        "Developer answer retry failed | chat_id=%s error=%r",
+                        chat_id, e,
+                    )
+                    answer = source_failure_report(developer_context)
+                    application_answer = True
 
             invalid_self_answer = False
             if self_query:
@@ -945,7 +1006,10 @@ class ChatBackend:
 
             specialist_started = time.monotonic()
             llm.answer_elapsed_seconds = max(0.0, specialist_started - answer_started)
-            reviewed = specialists.review(
+            # Reviewer passes do not receive the full read-only source bundle
+            # and could rewrite a grounded code explanation into a generic
+            # menu or unsupported cross-repository comparison.
+            reviewed = None if developer_context else specialists.review(
                 answer, sources=tools.sources, known_urls=tools.known_urls,
                 application_answer=application_answer, self_query=self_query,
             )
