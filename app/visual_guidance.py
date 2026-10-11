@@ -114,7 +114,7 @@ VISUAL_ONLY_INSTRUCTIONS = (
     "separate PC vision model, not direct pixel access by this chat model. "
     "Answer the requested description/comparison, naming the visible labels "
     "and concrete layout, colours, positions, focus and glow effects, "
-    "distinguishing actual highlighted sidebar ROW from a highlighted poster "
+    "distinguishing the actual highlighted LEFT SIDEBAR ROW from a highlighted poster "
     "in the content area. Don't infer the highlighted sidebar item from the "
     "currently visible Films shelf. For multiple images compare explicitly. "
     "If a detail isn't in the observations, label it uncertain rather than "
