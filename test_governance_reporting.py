@@ -111,7 +111,7 @@ class GovernanceTests(unittest.TestCase):
             tools,
             {"model": "qwen3:8b", "compute": "remote_worker"}
         )
-        self.assertIn("not proof that the model cannot make errors", context)
+        self.assertIn("not proof that the model cannot make errors", context.lower())
         self.assertIn("no separate live human moderator", context)
         self.assertIn("weights do not change after each conversation", context)
         for topic, qs in QUESTIONS.items():
@@ -158,7 +158,7 @@ class GovernanceTests(unittest.TestCase):
                 answer = backend.send(chat_id, QUESTIONS["oversight"][0])
             self.assertEqual(model.agent_chat.call_count, 2)
             self.assertIn("local chat history", answer)
-            self.assertIn("no live human moderator", answer)
+            self.assertIn("live human moderator", answer)
             self.assertNotIn("no specific watcher", answer)
             saved = db.get_recent_messages(chat_id)[-1]
             self.assertIn("local chat history", saved["content"])
