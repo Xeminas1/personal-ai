@@ -22,7 +22,7 @@ from .logging_setup import setup_logging
 from .media_support import media_payload, vision_status
 from .secrets import load_hybrid_pairing_state
 from .version import VERSION
-from . import support_access, updater
+from . import ai_watch, support_access, updater
 from .support_http import handle_support_read, support_endpoints
 
 
@@ -394,6 +394,37 @@ def _row_dict(row) -> dict:
     return {key: row[key] for key in row.keys()}
 
 
+
+def _ai_watch_loop(server) -> None:
+    """Opt-in, slow-polling source monitor. Never schedules model inference."""
+    stop_event = getattr(server, "stop_event", None)
+    logger = getattr(server, "xemai_logger", None)
+    if stop_event is None or stop_event.wait(10):
+        return
+    while not stop_event.is_set():
+        try:
+            config = load_config()
+            if (
+                config.get("ai_watch_enabled") is True
+                and not getattr(server, "update_restarting", False)
+                and ai_watch.scan_due(DATA_DIR, config)
+            ):
+                result = ai_watch.scan_once(DATA_DIR, config, logger=logger)
+                if result.get("ok"):
+                    ai_watch.deliver_reports(DATA_DIR, logger=logger)
+                if logger:
+                    logger.info(
+                        "AI Technology Watch check | ok=%s candidates=%s feeds=%s",
+                        result.get("ok"), result.get("new", 0),
+                        result.get("source_successes", 0),
+                    )
+        except Exception as error:
+            if logger:
+                logger.warning("AI Technology Watch check failed | type=%s", type(error).__name__)
+        if stop_event.wait(60):
+            return
+
+
 class XemAiMobileHandler(BaseHTTPRequestHandler):
     server_version = "XemAiMobile/0.4.5"
 
@@ -562,6 +593,13 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                 self._error("Unexpected visual service parameters.")
                 return
             self._json(vision_status(load_config(), self.server.xemai_logger, DATA_DIR))
+            return
+
+        if path == "/api/ai-watch":
+            if parsed.query:
+                self._error("Unexpected AI watch parameters.")
+                return
+            self._json({"ok": True, **ai_watch.current_report(DATA_DIR, load_config())})
             return
 
         if path == "/api/bootstrap":
@@ -1187,6 +1225,12 @@ def run_mobile_server() -> int:
         args=(server,),
         daemon=True,
         name="XemAiAutoUpdater",
+    ).start()
+    threading.Thread(
+        target=_ai_watch_loop,
+        args=(server,),
+        daemon=True,
+        name="XemAiTechnologyWatch",
     ).start()
     start_hybrid_auto_setup(server.stop_event, logger)
     try:

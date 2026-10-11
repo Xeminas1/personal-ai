@@ -61,6 +61,12 @@ def build_capability_status(
             if config.get("agent_team_enabled", True) is True
             else "Supervised agent team: disabled"
         ),
+        (
+            "AI Technology Watch: enabled; periodically checks five public official release feeds, "
+            "records vendor claims and suggests benchmarks in a dedicated chat; no automatic implementation"
+            if config.get("ai_watch_enabled") is True
+            else "AI Technology Watch: available but disabled until explicit user opt-in"
+        ),
         f"Underlying local model actually selected at runtime: {runtime_model}",
         f"Model selection source: {model_source}",
         (
