@@ -21,7 +21,7 @@ def classify_candidate(record: dict) -> tuple[str, str, str]:
             "specialised weather forecast system. No upgrade proposed.",
             "low",
         )
-    if re.search(r"\b(?:embedding|embeddings|retrieval|rag|semantic.search)\b", title):
+    if re.search(r"\b(?:embeddinggemma|embeddings?|retrieval|rag|semantic.search)\b", title):
         return (
             "semantic retrieval and long-term memory",
             "Measure precision/recall on fixed XemAi memory and Kotlin source "
@@ -62,7 +62,7 @@ def enrich(record: dict, evaluations: dict | None = None) -> dict:
         evaluation = {}
     item.update(
         proposal_id=id, area=area, proposal=test, priority=priority,
-        evaluation_status=evaluation.get("status", "proposed"),
+        evaluation_status=evaluation.get("status", item.get("evaluation_status", "proposed")),
     )
     if evaluation.get("benchmark_result"):
         item["benchmark_result"] = evaluation["benchmark_result"]
