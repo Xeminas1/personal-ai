@@ -44,12 +44,19 @@ def _inside(path: Path, root: Path) -> bool:
 
 
 def _blocked_name(name: str, is_dir: bool = False) -> bool:
+    original = name
     name = name.lower()
     if is_dir:
         return name in BLOCKED_DIRS
     if name in BLOCKED_FILES or name.startswith(".env.") or name.endswith(tuple(BLOCKED_EXTENSIONS)):
         return True
-    return bool(re.search(r"(?:^|[-_.])(secret|password|token|credential|private[-_]?key)(?:[-_.]|$)", name))
+    # Protect separator-based names (secret_token.kt) and CamelCase
+    # names (SecretToken.kt, AppSecrets.kt) from accidental model reads.
+    separated = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", original).lower()
+    return bool(re.search(
+        r"(?:^|[-_.])(secrets?|passwords?|tokens?|credentials?|private[-_]?keys?)(?:[-_.]|$)",
+        separated,
+    ))
 
 
 def _safe_relative(relative: str) -> Path:
