@@ -337,6 +337,44 @@ button { -webkit-tap-highlight-color: transparent; }
   font-size: 15px;
 }
 
+/* Desktop file drag/drop uses the same three-file upload queue as the + button. */
+.file-drop-overlay {
+  position: fixed;
+  top: calc(82px + env(safe-area-inset-top));
+  right: 10px;
+  bottom: calc(98px + env(safe-area-inset-bottom));
+  left: 10px;
+  z-index: 17;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed rgba(154, 208, 255, 0.88);
+  border-radius: 23px;
+  background: rgba(3, 16, 29, 0.91);
+  box-shadow: inset 0 0 52px rgba(71, 146, 220, .16), 0 0 42px rgba(42, 112, 194, .22);
+  pointer-events: none;
+}
+.file-drop-card {
+  max-width: 470px;
+  padding: 28px 22px;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+  border-radius: 20px;
+  background: rgba(17, 41, 65, .93);
+  border: 1px solid rgba(141, 196, 244, .30);
+  color: var(--text);
+  font-size: 17px;
+}
+.file-drop-card strong { font-size: 22px; }
+.file-drop-card span:not(.file-drop-symbol) { color: #bed5e9; }
+.file-drop-card small { color: var(--muted); font-size: 13px; }
+.file-drop-symbol { font-size: 44px; line-height: 1; color: var(--accent); }
+@media (min-width: 1000px) {
+  .file-drop-overlay { left: 332px; right: 24px; top: 90px; bottom: 114px; }
+}
+
 .attachment-tray {
   position: fixed;
   left: 14px;
