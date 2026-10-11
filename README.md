@@ -1,3 +1,18 @@
+## v0.9.21 — Developer Mode multi-file follow-through
+
+Addresses a reported case where Qwen3 8B listed markdown documentation,
+searched unrelated websites and asked the user to select files rather than
+examining how XemTV's Home sidebar, focus and glow code interact.
+
+Explicit local source investigations now preload up to four bounded
+source-code files, prefer source to markdown documentation, and default to
+local-only tools unless external web research is expressly requested.
+A generic directory menu or an answer that omits the examined filenames
+triggers one focused retry; if that too fails, XemAi reports the incomplete
+investigation without inventing conclusions. Reviewed code remains untrusted
+read-only data. No XemTV file writes, APK building, command execution,
+remote-shell access or Fire Stick deployment is enabled.
+
 ## v0.9.20 — Developer Mode source follow-through
 
 Explicit XemTV source-inspection requests now trigger an application-controlled
