@@ -107,7 +107,7 @@ class UpdaterTests(unittest.TestCase):
 
     @staticmethod
     def snapshot(root):
-        return {str(path.relative_to(root)): path.read_bytes() for path in root.rglob("*") if path.is_file()}
+        return {path.relative_to(root).as_posix(): path.read_bytes() for path in root.rglob("*") if path.is_file()}
 
     def test_install_keeps_pinned_asset_request_and_preserves_user_files(self):
         requests = []

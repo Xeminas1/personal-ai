@@ -1,3 +1,12 @@
+## XemTV Developer Mode (proposed Phase 1)
+
+A first, **opt-in, read-only** XemTV source inspector is available on the
+`feature/xemtv-developer-readonly` branch. This does **not** change XemTV,
+run builds or give XemAi autonomous command execution. See
+[`docs/DEVELOPER_MODE.md`](docs/DEVELOPER_MODE.md) and run
+`developer_setup.bat` **only after reviewing/merging** the draft upgrade.
+Build 115 in Codex may still have unpublished changes.
+
 # Personal AI v0.1
 
 ## v0.9.18 laptop answering and review

@@ -40,6 +40,7 @@ from app.self_knowledge import (
     is_self_knowledge_query,
     looks_like_stale_self_description,
 )
+from app.version import VERSION
 from app.updater import is_newer_version
 from app.tools import (
     ToolRegistry,
@@ -777,7 +778,7 @@ def run() -> None:
             runtime_info,
         )
         assert "I am XemAi" in safe_fallback
-        assert "v0.9.18" in safe_fallback
+        assert f"v{VERSION}" in safe_fallback
         assert "qwen3:1.7b" in safe_fallback
 
         hybrid_local = OllamaClient(
