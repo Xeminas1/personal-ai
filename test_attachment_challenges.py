@@ -11,6 +11,7 @@ from app import gui_backend
 from app.attachment_tasks import (
     is_attached_code_assignment, answer_incomplete,
     source_assignment_context, source_names, incomplete_fallback,
+    source_evidence_status, has_readable_source, refers_to_previously_attached_code,
 )
 from app.database import Database
 
@@ -52,17 +53,31 @@ GOOD = (
     "src/Controls.cpp lines 16 and 22 the native DLL exposes 615; "
     "scripts/Source/MWControls.psc lines 12–23 gates native API use on 615. "
     "The code establishes this requirement, but not which DLL is installed. "
-    "2. A stale DLL can leave the script gating to legacy aiming, so a right-click "
+    "\n2. A stale DLL can leave the script gating to legacy aiming, so a right-click "
     "might again act as the ordinary attack/melee. This is a hypothesis pending "
     "logs. The native CanProcessHook at src/Controls.cpp line 457 tests the button "
     "and only blocks it under the active rifle condition. "
-    "3. Check MWControls.log for the loaded module and readiness details; "
+    "\n3. Check MWControls.log for the loaded module and readiness details; "
     "inspect SKSE/Plugins/MWControls.dll metadata for its version; compare the "
     "installed MWControls.pex with the scripts/Source/MWControls.psc build output. "
-    "4. Preserve current files, record evidence, check which package supplies the "
+    "\n4. Preserve current files, record evidence, check which package supplies the "
     "DLL and script, make one compatible clean change only after explicit approval, "
-    "then retest. 5. Without the loaded DLL, full log and an actual Skyrim run "
+    "then retest. \n5. Without the loaded DLL, full log and an actual Skyrim run "
     "we cannot establish which hook executed or claim the regression is fixed."
+)
+
+
+MISSING_ACTUAL_CODE = (
+    "The provided text does not include the actual contents of the files "
+    "CMakeLists.txt, Controls.cpp, or MWInterventionScopeAlias.psc. Without "
+    "the code excerpts, it is impossible to identify or answer any numbered "
+    "tasks tied to these files. To proceed, the user must provide the exact "
+    "code content of these files (e.g. line numbers and text) to enable "
+    "analysis. For example, if Controls.cpp contains a function definition "
+    "its file and line number would be cited. "
+    "<error> Code content for required files is missing. Please provide "
+    "the exact text of CMakeLists.txt, Controls.cpp, and "
+    "MWInterventionScopeAlias.psc to proceed. </error>"
 )
 
 
@@ -104,6 +119,13 @@ class AttachmentTasksTests(unittest.TestCase):
         ])
         self.assertIn("answer ALL", source_assignment_context(QUESTION, payload))
         self.assertTrue(answer_incomplete(BAD, payload))
+        self.assertTrue(answer_incomplete(MISSING_ACTUAL_CODE, payload))
+        report = source_evidence_status(payload)
+        self.assertGreaterEqual(report["numbered_source_lines"], 5)
+        self.assertEqual(report["tasks_detected"], ["1", "2", "3", "4", "5"])
+        self.assertTrue(has_readable_source(payload))
+        self.assertTrue(refers_to_previously_attached_code(QUESTION))
+        self.assertFalse(refers_to_previously_attached_code("What is the weather?"))
         self.assertFalse(answer_incomplete(GOOD, payload))
         self.assertIn("file", incomplete_fallback(payload).lower())
         self.assertFalse(is_attached_code_assignment(
@@ -161,6 +183,89 @@ class AttachmentTasksTests(unittest.TestCase):
         self.assertFalse(is_attached_code_assignment(
             QUESTION, expanded, [self.attachment]
         ))
+
+
+    def test_reproduces_exact_missing_code_claim_and_corrects_it(self):
+        model = Mock()
+        model.model = "qwen3:8b"
+        model.route_info = {"compute": "remote_worker"}
+        model.agent_chat.side_effect = [MISSING_ACTUAL_CODE, GOOD]
+        runtime = {"model": "qwen3:8b", "compute": "remote_worker",
+                   "worker_available": True}
+        with patch.object(gui_backend, "DATA_DIR", self.data), \
+             patch.object(gui_backend, "build_llm_client", return_value=model), \
+             patch.object(self.backend, "refresh_runtime_model", return_value=runtime), \
+             patch.object(gui_backend, "source_context_for_request",
+                          side_effect=AssertionError("must not inspect unrelated repo")), \
+             patch.object(gui_backend, "should_research_query",
+                          side_effect=AssertionError("no live web")):
+            answer = self.backend.send(
+                self.chat["id"], QUESTION, attachments=[self.attachment]
+            )
+        self.assertIn("native DLL exposes 615", answer)
+        self.assertNotIn("Code content for required files is missing", answer)
+        self.assertEqual(model.agent_chat.call_count, 2)
+        first = model.agent_chat.call_args_list[0]
+        self.assertEqual(first.kwargs["max_tool_rounds"], 0)
+        self.assertEqual(first.kwargs["tool_registry"].definitions(), [])
+        self.assertEqual(sum(m["role"] == "user" for m in first.args[0]), 1)
+        self.assertTrue(any(
+            "line-numbered code excerpts" in m["content"]
+            for m in first.args[0] if m["role"] == "system"
+        ))
+
+    def test_repeated_missing_content_claim_reports_existing_source_truthfully(self):
+        model = Mock()
+        model.model = "qwen3:8b"
+        model.route_info = {"compute": "remote_worker"}
+        model.agent_chat.side_effect = [MISSING_ACTUAL_CODE, MISSING_ACTUAL_CODE]
+        runtime = {"model": "qwen3:8b", "compute": "remote_worker",
+                   "worker_available": True}
+        with patch.object(gui_backend, "DATA_DIR", self.data), \
+             patch.object(gui_backend, "build_llm_client", return_value=model), \
+             patch.object(self.backend, "refresh_runtime_model", return_value=runtime), \
+             patch.object(gui_backend, "source_context_for_request", return_value=""), \
+             patch.object(gui_backend, "should_research_query",
+                          side_effect=AssertionError("do not browse")):
+            answer = self.backend.send(
+                self.chat["id"], QUESTION, attachments=[self.attachment]
+            )
+        self.assertIn("source file was received and read", answer)
+        self.assertIn("line-numbered", answer)
+        self.assertIn("source excerpts", answer)
+        self.assertNotIn("Please provide the exact text", answer)
+        self.assertEqual(model.agent_chat.call_count, 2)
+
+    def test_source_can_be_reused_if_sent_separately_in_recent_chat(self):
+        db = Database(self.data / "personal_ai.db")
+        # Emulate the user uploading a file and THEN writing the test request.
+        db.add_message(
+            self.chat["id"], "user",
+            gui_backend._attachment_marker(self.attachment),
+        )
+        db.close()
+        model = Mock()
+        model.model = "qwen3:8b"
+        model.route_info = {"compute": "remote_worker"}
+        model.agent_chat.return_value = GOOD
+        runtime = {"model": "qwen3:8b", "compute": "remote_worker",
+                   "worker_available": True}
+        with patch.object(gui_backend, "DATA_DIR", self.data), \
+             patch.object(gui_backend, "build_llm_client", return_value=model), \
+             patch.object(self.backend, "refresh_runtime_model", return_value=runtime), \
+             patch.object(gui_backend, "source_context_for_request", return_value=""), \
+             patch.object(gui_backend, "should_research_query",
+                          side_effect=AssertionError("do not browse")):
+            answer = self.backend.send(self.chat["id"], QUESTION)
+        self.assertIn("CMakeLists.txt", answer)
+        first = model.agent_chat.call_args_list[0]
+        self.assertEqual(sum(m["role"] == "user" for m in first.args[0]), 1)
+        self.assertTrue(any(
+            "PREVIOUSLY UPLOADED SOURCE" in m["content"]
+            for m in first.args[0] if m["role"] == "user"
+        ))
+        self.assertFalse(first.kwargs["tool_registry"].web_allowed)
+
 
 
 if __name__ == "__main__":
