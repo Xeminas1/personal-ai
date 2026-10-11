@@ -125,7 +125,7 @@ def _normalise_attachments(chat_id: int, attachments) -> list[dict]:
             raise ValueError("Attached file could not be found.")
         normalised.append({
             "name": Path(str(item.get("name", target.name))).name[:160],
-            "path": str(target.relative_to(DATA_DIR)).replace("\\", "/"),
+            "path": str(target.relative_to(DATA_DIR.resolve())).replace("\\", "/"),
             "mime": str(item.get("mime", "application/octet-stream"))[:120],
             "size": int(target.stat().st_size),
         })
