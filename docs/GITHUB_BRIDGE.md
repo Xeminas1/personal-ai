@@ -142,3 +142,20 @@ The existing `bridge auto on/off` and output-safety checks continue to apply.
 Use `bridge learning off` to prevent collection of future records. This
 does not erase earlier candidates; those remain in the host's local file
 until the user removes them intentionally.
+
+
+## Reviewing learning examples (v0.9.41)
+
+The collected examples remain unverified until reviewed. In XemAi chat:
+`bridge learning review` lists the pending examples and
+`bridge learning show 1` displays the first in full.
+`bridge learning propose 1: LESSON || EVIDENCE` prepares a local review
+draft. Examine the evidence, then type `bridge learning approve 1` to
+approve that specific lesson. `bridge learning reject 1` declines the
+candidate, `bridge learning revoke 1` disables a previously approved
+lesson, and `bridge learning approved` lists active notes.
+
+These actions retain the original examples and store an audit history
+locally. Approved notes can provide context for related future questions,
+but they are explicitly described as owner-reviewed reference material,
+not independently verified facts. Use `bridge learning status` for counts.
