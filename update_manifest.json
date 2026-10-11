@@ -1,6 +1,6 @@
 {
-  "version": "0.9.34",
-  "notes": "Switches XemAi's preferred hybrid everyday worker to Qwen3.5 9B Q8 (qwen3.5:9b-q8_0), only after the user installs the model with Ollama. Keeps Qwen3 8B installed and selected until Q8 is available. Supports Qwen3.5 multimodal vision-capable tags for ordinary chat and extends read-only specialist eligibility to 9B. Adds tests for model selection and fallback, does not automatically download models or alter Tailscale pairing, chat/memory, or XemTV and Skyrim files. Requires installing the model on the worker PC; version and packaging tests run on Windows/Linux.",
+  "version": "0.9.35",
+  "notes": "Fixes Qwen3.5 9B Q8 turning normal chat requests into thinking-only responses, followed by slow Qwen3:1.7b laptop fallback. Explicitly sets Ollama /api/chat think=false at the top level only for Qwen3.5 models, so user-visible response text is returned. Keeps Qwen3 model behavior unchanged, model selection, Tailscale pairing, chat/memory, and all projects. Adds unit and real HTTP worker regression tests covering the user-reported failure mode. Worker and host must update to v0.9.35 and restart; live model inference will be verified after deployment.",
   "files": [
     {
       "path": "app/__init__.py",
@@ -89,8 +89,8 @@
     },
     {
       "path": "app/llm.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/app/llm.py",
-      "sha256": "448b2ac70403b7ff2cee75ac20e820a9625812046ebc57c7ce19357ff4d0a2e5"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.35/app/llm.py",
+      "sha256": "fc0f25421474719de7fb887375acd69fae2ab782a59371f27f616e7bc058673d"
     },
     {
       "path": "app/logging_setup.py",
@@ -164,8 +164,8 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.34/app/version.py",
-      "sha256": "9f3013729bcfceab6bedef491f7f00d6ab429e1a65f8088c2d3f945821982771"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.35/app/version.py",
+      "sha256": "47724fdfa2d2ff5face24da88e3c3a548daf1acfcbbfbce2be6aca628b69a2ed"
     },
     {
       "path": "app/vision.py",
@@ -339,8 +339,8 @@
     },
     {
       "path": "test_capability_inventory.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.34/test_capability_inventory.py",
-      "sha256": "aeba91aba4362c15f705da386ecb160a1e1f72a44e08399045eb00e617243b9e"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.35/test_capability_inventory.py",
+      "sha256": "1450edf2f76637c7f4b65ca710ed559075f918cedbf50305789262875263a56d"
     },
     {
       "path": "test_chat_delete.py",
@@ -564,8 +564,8 @@
     },
     {
       "path": "test_worker_latency.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.34/test_worker_latency.py",
-      "sha256": "f85d13928d4187990070332028e2294f77468ad2a7c0b7c990ec21486f821008"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.35/test_worker_latency.py",
+      "sha256": "693089119046cefe0726cfd199d8049655d3199bf224dad556226e574464b611"
     },
     {
       "path": "test.bat",

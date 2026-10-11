@@ -366,6 +366,15 @@ class OllamaClient:
             "messages": messages,
             "stream": False,
         }
+        # Qwen3.5 can return reasoning-only output (message.thinking with an
+        # empty message.content) in its default thinking mode. XemAi needs a
+        # user-facing answer; request non-thinking mode explicitly at the
+        # Ollama chat API TOP LEVEL, not inside "options". Without this the
+        # hybrid route discards a completed generation and falls back to the
+        # laptop, repeating the entire prompt at much greater latency.
+        # Leave other model families' reasoning behavior unchanged.
+        if str(self.model).lower().startswith("qwen3.5:"):
+            payload["think"] = False
         if json_mode:
             payload["format"] = "json"
         if tools:

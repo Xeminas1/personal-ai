@@ -17,6 +17,7 @@ from app.worker_server import (
     _specialist_model, PREFERRED_EVERYDAY_MODEL,
 )
 from app.llm import OllamaClient
+from app.hybrid import HybridWorkerClient
 
 
 class CapturingLogger:
@@ -187,6 +188,29 @@ class WorkerLatencyTests(unittest.TestCase):
         self.assertEqual(self.ollama.installed_calls, 1)
         self.assertEqual(self.ollama.running_calls, 1)
 
+    def test_qwen35_host_disables_thinking_through_real_worker_http(self):
+        # Regression: health selected the 9B model, yet a response containing
+        # only message.thinking caused HybridOllamaClient to fall back to 1.7B.
+        # Verify the *real host->worker HTTP payload* includes think=false.
+        prior_models = self.ollama.installed_models
+        self.ollama.installed_models = lambda: [
+            *prior_models(),
+            {"name": "qwen3.5:9b-q8_0", "details": {"parameter_size": "9B"}},
+        ]
+        client = HybridWorkerClient(
+            self.base, self.server.worker_token,
+            "qwen3.5:9b-q8_0", logging.getLogger("qwen35.http"),
+        )
+        response = client.chat_raw([
+            {"role": "user", "content": "Briefly explain aimKeyA."}
+        ])
+        self.assertEqual(response["message"]["content"], "ok")
+        path, forwarded, timeout = self.ollama.requests[-1]
+        self.assertEqual(path, "/api/chat")
+        self.assertEqual(forwarded["model"], "qwen3.5:9b-q8_0")
+        self.assertIs(forwarded["think"], False)
+        self.assertEqual(timeout, 600)
+
     def test_unreachable_ollama_health_keeps_service_unavailable_status(self):
         def unavailable():
             raise RuntimeError("private-connection-error")
@@ -248,6 +272,70 @@ class Qwen35UpgradeTests(unittest.TestCase):
         model, available, _ = _recommended_model(fake)
         self.assertEqual(model, "qwen3:8b")
         self.assertNotIn(PREFERRED_EVERYDAY_MODEL, available)
+
+    def test_qwen35_chat_avoids_empty_thinking_only_responses(self):
+        client = OllamaClient(
+            base_url="http://localhost.invalid:11434",
+            model=PREFERRED_EVERYDAY_MODEL,
+            logger=logging.getLogger("qwen35.thinking"),
+        )
+        captured = []
+
+        def fake_ollama(path, payload=None, timeout=600):
+            captured.append(payload)
+            if payload.get("think") is False:
+                return {"model": payload["model"],
+                        "message": {"role": "assistant", "content": "Use aimKeyA."}}
+            return {"model": payload["model"],
+                    "message": {"role": "assistant", "content": "",
+                                "thinking": "Reasoning with no final answer."}}
+
+        with patch.object(client, "_request", side_effect=fake_ollama):
+            answer = client.chat([{"role": "user", "content": "How does aimKeyA work?"}])
+        self.assertEqual(answer, "Use aimKeyA.")
+        self.assertEqual(len(captured), 1)
+        self.assertIs(captured[0]["think"], False)
+        self.assertNotIn("think", captured[0].get("options", {}))
+
+    def test_qwen35_json_mode_and_tool_call_also_disable_thinking(self):
+        client = OllamaClient(
+            base_url="http://localhost.invalid:11434",
+            model=PREFERRED_EVERYDAY_MODEL,
+            logger=logging.getLogger("qwen35.tools"),
+        )
+        captured = []
+
+        def fake_ollama(path, payload=None, timeout=600):
+            captured.append(payload)
+            return {"model": payload["model"],
+                    "message": {"role": "assistant", "content": "{}"}}
+
+        with patch.object(client, "_request", side_effect=fake_ollama):
+            client.chat_raw([], json_mode=True)
+            client.chat_raw([], tools=[{
+                "type": "function",
+                "function": {"name": "test", "parameters": {"type": "object"}},
+            }])
+        self.assertTrue(all(p.get("think") is False for p in captured))
+        self.assertEqual(captured[0]["format"], "json")
+        self.assertEqual(len(captured[1]["tools"]), 1)
+
+    def test_old_qwen3_keeps_existing_thinking_behavior(self):
+        client = OllamaClient(
+            base_url="http://localhost.invalid:11434",
+            model="qwen3:8b",
+            logger=logging.getLogger("qwen3.legacy"),
+        )
+        captured = []
+
+        def fake_ollama(path, payload=None, timeout=600):
+            captured.append(payload)
+            return {"model": payload["model"],
+                    "message": {"role": "assistant", "content": "Old Qwen is intact."}}
+
+        with patch.object(client, "_request", side_effect=fake_ollama):
+            self.assertEqual(client.chat([]), "Old Qwen is intact.")
+        self.assertNotIn("think", captured[0])
 
     def test_nine_b_is_eligible_for_read_only_specialists(self):
         fake = SimpleNamespace(ollama_client=SimpleNamespace(model="qwen3:8b"))
