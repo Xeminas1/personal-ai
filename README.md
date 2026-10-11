@@ -1,3 +1,23 @@
+## v0.9.22 — Read-only cross-file code tracing and UI screenshot guidance
+
+Developer Mode adds an explicit `dev_trace` tool to locate exact source-code
+identifier references with file paths, line numbers and short code excerpts in
+an authorised project. Multi-file developer questions automatically collect
+bounded cross-file references for class names in the real source files already
+examined. This helps identify actual callers such as `MainActivity.kt` and
+`Theme.kt`, rather than guessing relationships from class names. An identifier
+reference alone does not prove a runtime call path; XemAi must distinguish
+verified occurrences from hypothesised behaviour.
+
+The existing opt-in PC vision model now gets more relevant prompts for Android
+TV screenshots, navigation focus, spacing, colour/glow appearance and comparison
+with supplied concept images. The installed vision model remains
+`qwen2.5vl:7b`: using Qwen3-VL or Qwen3.5 requires a later model-selection
+update and explicit user action to download the replacement, not a silent pull.
+
+Still no code editing, APK compilation, arbitrary shell, device deployment or
+GitHub pushing. XemTV source, Build 114 and unfinished Build 115 are unchanged.
+
 ## v0.9.21 — Developer Mode multi-file follow-through
 
 Addresses a reported case where Qwen3 8B listed markdown documentation,
