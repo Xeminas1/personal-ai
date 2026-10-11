@@ -1,11 +1,19 @@
-## XemTV Developer Mode (proposed Phase 1)
+## v0.9.19 — XemTV Developer Mode, phase 1 (read-only)
 
-A first, **opt-in, read-only** XemTV source inspector is available on the
-`feature/xemtv-developer-readonly` branch. This does **not** change XemTV,
-run builds or give XemAi autonomous command execution. See
-[`docs/DEVELOPER_MODE.md`](docs/DEVELOPER_MODE.md) and run
-`developer_setup.bat` **only after reviewing/merging** the draft upgrade.
-Build 115 in Codex may still have unpublished changes.
+XemAi now supports **opt-in read-only inspection** of explicitly registered
+local development projects, starting with XemTV. Four tools let it list,
+read and search text source code, while preventing project changes, shell
+execution, Git pushes, APK builds and Fire Stick installation. Project paths
+must remain outside XemAi's existing writable workspace; protected folders,
+known secret-file patterns, symlinks and binary files are blocked.
+Run `developer_setup.bat` on the **always-on XemAi host** to register an
+existing XemTV checkout, or optionally clone the private repository through
+Git. Then restart XemAi. Its paired powerful PC still provides model inference
+only, not repository or terminal access. This release does not install a new
+coding model. Codex's unpublished Build 115 work is not included.
+
+See [developer-mode setup and limitations](docs/DEVELOPER_MODE.md).
+
 
 # Personal AI v0.1
 
