@@ -1,0 +1,20 @@
+name: Verify XemAi release manifest
+on:
+  pull_request:
+    paths:
+      - "update_manifest.json"
+      - "verify_release_manifest.py"
+      - ".github/workflows/verify-release-manifest.yml"
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m py_compile verify_release_manifest.py
+      - run: python verify_release_manifest.py
