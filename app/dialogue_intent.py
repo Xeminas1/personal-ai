@@ -157,9 +157,9 @@ def dialogue_answer_needs_retry(kind: str, answer: str) -> bool:
         return True
     if kind == "bridge_conversation":
         return bool(_BRIDGE_OFF_TOPIC.search(a)) or not (
-            re.search(r"(?i)\\b(?:chat\\s*gpt|gpt)\\b", a)
-            and re.search(r"(?i)\\b(?:github|bridge|discussion|conversation|exchange|chat)\\b", a)
-        ) or bool(re.search(r"(?i)\\bi\\s+(?:enjoyed|love|felt|feel)\\s+(?:the|our|my)\\s+chat\\b", a))
+            re.search(r"(?i)\b(?:chat\s*gpt|gpt)\b", a)
+            and re.search(r"(?i)\b(?:github|bridge|discussion|conversation|exchange|chat)\b", a)
+        ) or bool(re.search(r"(?i)\bi\s+(?:enjoyed|love|felt|feel)\s+(?:the|our|my)\s+chat\b", a))
     if kind == "mission":
         return bool(_DENIAL.search(a)) or not (
             re.search(r"\b(?:goal|objective|mission|ambition|aim|develop)\b", a, re.I)
