@@ -54,6 +54,13 @@ def build_capability_status(
         "Calculator: enabled",
         "Current date/time lookup: enabled",
         "Sandboxed local workspace file listing/reading/writing: enabled",
+        (
+            "Supervised agent team: explicit opt-in via chat; three sequential no-tool "
+            "planning/analysis/verification passes, read-only final tools and a "
+            "proposal-only self-improvement audit; never self-modifies or runs on a schedule"
+            if config.get("agent_team_enabled", True) is True
+            else "Supervised agent team: disabled"
+        ),
         f"Underlying local model actually selected at runtime: {runtime_model}",
         f"Model selection source: {model_source}",
         (
