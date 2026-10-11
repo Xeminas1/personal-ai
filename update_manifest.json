@@ -1,6 +1,6 @@
 {
-  "version": "0.9.41",
-  "notes": "Add reversible, user-controlled review of learning candidates from XemAi's existing private GitHub dialogue. Candidate archive remains untouched; review proposals, approvals and revocations are locally journaled. Owner-approved, evidence-labelled lessons may be recalled in relevant ordinary conversations only. Approval is not automatic verification: no model weight training, unrelated private memory changes, or new network access. New regression coverage and usage commands.",
+  "version": "0.9.42",
+  "notes": "GitHub messages sent by XemAi now identify the running host application version and a UTC host timestamp, independent of host-reported Qwen model and compute route. Covers manual approved issue and follow-up posts as well as opted-in automatic discussions. Makes release chronology and regression diagnosis clearer; app version does not imply model retraining or independently verified knowledge. Original learning, privacy, approval and worker-routing safeguards remain intact.",
   "files": [
     {
       "path": "app/__init__.py",
@@ -79,8 +79,8 @@
     },
     {
       "path": "app/github_bridge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.41/app/github_bridge.py",
-      "sha256": "0b4f66950f3ed175f3e5ddc270ac004f24977c6f2c9ee22f6d383708228a4fba"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.42/app/github_bridge.py",
+      "sha256": "79f7bda4f848683358a134f6ff6aeef3d702fbd74056875fa2b1040ecc883f61"
     },
     {
       "path": "app/gui_backend.py",
@@ -184,8 +184,8 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.41/app/version.py",
-      "sha256": "62efbcac9a9f82d8c8737b3b02b01fdab9c53ba562633006c87ba9d215656bee"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.42/app/version.py",
+      "sha256": "33dc9a6f594281bd17e6ed4614b3910435eec1e43317dc299b0093e84b555be3"
     },
     {
       "path": "app/vision.py",
@@ -239,8 +239,8 @@
     },
     {
       "path": "docs/GITHUB_BRIDGE.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.41/docs/GITHUB_BRIDGE.md",
-      "sha256": "244d6f8af70e0693ed54917dc01bbf485ba68075a42de30fb16892779077e1d2"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.42/docs/GITHUB_BRIDGE.md",
+      "sha256": "36bf8568a3e77898449f6bdd5f6af84d3ea41d9ccaf1118b0f4be9c35f44968c"
     },
     {
       "path": "github_bridge_setup.py",
@@ -374,8 +374,8 @@
     },
     {
       "path": "test_capability_inventory.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.41/test_capability_inventory.py",
-      "sha256": "83128df605643fcfeba326adfbcccc8a411eb7df00045e7f856ad37896e62c29"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.42/test_capability_inventory.py",
+      "sha256": "14a4e1501519370e6ea0a0b05b8196aa6bf0b6458b91aaf3f2c6028eaa4cc70b"
     },
     {
       "path": "test_chat_delete.py",
@@ -459,8 +459,8 @@
     },
     {
       "path": "test_github_bridge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.39/test_github_bridge.py",
-      "sha256": "fac806bbc057e068e181218083d37cfabb17b03007a8a0572f5b7268ed81fb89"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.42/test_github_bridge.py",
+      "sha256": "0126c21552352f98519fe53bce3320fd0636530fd95a449c0cc1e727495f4747"
     },
     {
       "path": "test_governance_reporting.py",
@@ -631,6 +631,11 @@
       "path": "ui.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/ui.py",
       "sha256": "730a55923ce669ff47fe85ee4c25fedb7fc84a270e1912c4a314932eab64c9c4"
+    },
+    {
+      "path": "verify_release_manifest.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.42/verify_release_manifest.py",
+      "sha256": "216c6e11544a5356dba64d6d924e36fd0eb36e7e2af5df4a98b8e5cb3b7a5179"
     },
     {
       "path": "XemAi.pyw",
