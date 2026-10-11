@@ -1,24 +1,30 @@
-name: XemAi Developer Mode smoke tests
+name: XemAi Developer Mode regression tests
 on:
   pull_request:
     paths:
-      - "app/developer_projects.py"
-      - "app/tools.py"
-      - "app/config.py"
-      - "app/capabilities.py"
+      - "app/**"
       - "developer_setup.py"
       - "test_developer_projects.py"
+      - "app/version.py"
       - ".github/workflows/developer-mode-tests.yml"
   workflow_dispatch:
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Compile updated Python modules
+      - name: Compile all Python modules
         run: python -m compileall -q app developer_setup.py test_developer_projects.py
-      - name: Run read-only developer tool tests
+      - name: Run developer-mode security tests
         run: python test_developer_projects.py
+      - name: Run XemAi built-in test suite
+        run: python self_test.py
+      - name: Run update validation tests
+        run: python test_updater.py
