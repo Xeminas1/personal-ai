@@ -617,7 +617,7 @@ class ChatBackend:
             )
             saved_watch = ai_watch_report(DATA_DIR, self.config)
             watch_linked = watch_focus(
-                query_text, history, str(chat.get("title", "")), saved_watch
+                query_text, history, str(chat["title"]), saved_watch
             )
             if watch_linked and not explicit_independent_research(query_text):
                 tools.web_allowed = False
