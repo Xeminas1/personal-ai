@@ -6,7 +6,7 @@ on:
       - "developer_setup.py"
       - "test_developer_projects.py"
       - "test_developer_guidance.py"
-      - "test_developer_multifile.py test_developer_trace.py"
+      - "test_developer_multifile.py"
       - "test_developer_trace.py"
       - "app/version.py"
       - "self_test.py"
@@ -32,7 +32,7 @@ jobs:
       - name: Test developer source retrieval
         run: python test_developer_guidance.py
       - name: Test multi-file read-only investigations
-        run: python test_developer_multifile.py test_developer_trace.py
+        run: python test_developer_multifile.py
       - name: Test read-only source tracing
         run: python test_developer_trace.py
       - name: Run XemAi built-in test suite
