@@ -210,7 +210,7 @@ def inspected_source_paths(context: str) -> list[str]:
     ):
         return []
     try:
-        records = json.loads(context.split("\n", 2)[2])
+        records = json.loads(context.split("\n", 2)[2].split("\nREAD-ONLY CROSS-FILE", 1)[0])
     except (IndexError, ValueError, TypeError):
         return []
     if not isinstance(records, list):
