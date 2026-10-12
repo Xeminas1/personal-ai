@@ -415,7 +415,7 @@
     {
       "path": "test_capability_inventory.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.47/test_capability_inventory.py",
-      "sha256": "f1b37d1209b4bdd56316ed6c3e6d782e9e04bcfa04ff732d294547aa06ebd602"
+      "sha256": "5a0d6a2de7f966bdc35f554917b541d4a930f257dbc2d0c8d13c1fd6d2c54322"
     },
     {
       "path": "test_chat_delete.py",
