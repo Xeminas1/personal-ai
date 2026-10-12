@@ -123,6 +123,59 @@ class PilotSafetyTests(unittest.TestCase):
         self.assertEqual(manifest['reserved_holdout_examples'],4)
         self.assertEqual(len(list(self.output.iterdir())),1)
 
+    def test_qwen_template_normalization_masks_prompt_not_answer(self):
+        class FakeQwen:
+            pad_token_id = 0
+            def apply_chat_template(self, messages, *, tokenize, add_generation_prompt, enable_thinking):
+                self._last_flags = (tokenize, add_generation_prompt, enable_thinking)
+                self_prefix = "<|im_start|>user\n" + messages[0]["content"] + "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+                return self_prefix if add_generation_prompt else self_prefix + messages[-1]["content"] + "<|im_end|>\n"
+            def encode(self, text, *, add_special_tokens):
+                self._encode_special = add_special_tokens
+                return list(text.encode("utf-8"))
+        tok = FakeQwen()
+        examples, _ = smoke._split()
+        rows = smoke._prepare_tokenized_data(tok, examples)
+        self.assertEqual(len(rows), 16)
+        self.assertTrue(all(row["labels"].count(-100) > 0 for row in rows))
+        self.assertTrue(all(any(token != -100 for token in row["labels"]) for row in rows))
+        self.assertEqual(tok._last_flags[-1], False)
+        self.assertFalse(tok._encode_special)
+        expected = list(('"'+examples[0]['completion'][0]['content']+'"').encode("utf-8"))
+        self.assertIn(ord(examples[0]["completion"][0]["content"][0]), rows[0]["labels"])
+        self.assertGreater(len(expected), 0)
+
+    def test_qwen_thinking_prefix_mismatch_fails_before_training(self):
+        class ThinkingOnly:
+            def apply_chat_template(self, messages, *, tokenize, add_generation_prompt, enable_thinking):
+                return "prompt<think>\n" if add_generation_prompt else "prompt<think>\n\n</think>\nresponse"
+            def encode(self, text, *, add_special_tokens):
+                return list(text.encode("utf-8"))
+        examples, _ = smoke._split()
+        with self.assertRaisesRegex(smoke.PilotError, "prefix"):
+            smoke._prepare_tokenized_data(ThinkingOnly(), examples)
+        self.assertFalse(self.output.exists())
+
+    def test_cpu_tokenizer_preflight_runs_without_cuda_or_training(self):
+        class FakeQwen:
+            def apply_chat_template(self, messages, *, tokenize, add_generation_prompt, enable_thinking):
+                prefix = "user\n"+messages[0]["content"]+"\nassistant\n<think>\n\n</think>\n\n"
+                return prefix if add_generation_prompt else prefix+messages[-1]["content"]+"<|im_end|>"
+            def encode(self, text, *, add_special_tokens):
+                return list(text.encode("utf-8"))
+        transformers = types.ModuleType("transformers")
+        class AutoTokenizer:
+            @staticmethod
+            def from_pretrained(name, **kwargs):
+                self.assertTrue(kwargs.get("local_files_only"))
+                return FakeQwen()
+        transformers.AutoTokenizer = AutoTokenizer
+        output = io.StringIO()
+        with patch.dict(sys.modules, {"transformers": transformers}), contextlib.redirect_stdout(output):
+            self.assertEqual(smoke.main(["--tokenizer-check"]), 0)
+        self.assertIn("supervised answer tokens:", output.getvalue())
+        self.assertFalse(self.output.exists())
+
     def test_synthetic_examples_are_separated(self):
         train, heldout = smoke._split()
         self.assertEqual(len(train), 16)
