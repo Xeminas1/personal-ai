@@ -254,6 +254,7 @@ def chat_command(question: str, data_dir: Path, logger=None, *, client=None) -> 
                 "bridge transcript (review the latest messages).\n"
                 "bridge auto on | bridge auto off | bridge auto status.\n"
                 "bridge learning on | bridge learning off | bridge learning status.\n"
+                "bridge weight status | draft N: CORRECTED ANSWER | approve N CODE | revoke N | export.\n"
                 "bridge learning review | show N | propose N: LESSON || EVIDENCE | approve N | reject N | approved | revoke N.\n"                "bridge review scores | bridge review show N (untrusted external scores).\n"
                 "Nothing is uploaded automatically. This GitHub bridge does not "
                 "make ChatGPT respond until this conversation is checked."
@@ -269,6 +270,11 @@ def chat_command(question: str, data_dir: Path, logger=None, *, client=None) -> 
             if command == "bridge auto status":
                 return status(data_dir)
             return transcript(data_dir, client=client)
+        if q.lower() == "bridge weight" or q.lower().startswith("bridge weight "):
+            # Only explicit literal owner commands enter the local correction
+            # review/export workflow. Incoming GitHub comments never call it.
+            from .github_bridge_weight import command as weight_command
+            return weight_command(data_dir, q)
         if q.lower() in {"bridge learning on", "bridge learning off",
                          "bridge learning status"}:
             from .github_bridge_learning import command
