@@ -1142,7 +1142,7 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                     backend.close()
             return
 
-        match = re.fullmatch(r"/api/chats/(\\d+)/ratings", path)
+        match = re.fullmatch(r"/api/chats/(\d+)/ratings", path)
         if match:
             backend = None
             try:
