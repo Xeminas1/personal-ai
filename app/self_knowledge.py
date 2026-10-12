@@ -200,9 +200,9 @@ def followup_self_topic(text: str, history: list[dict]) -> str:
     from .capability_inventory import local_question_type
     q = " ".join(str(text or "").lower().replace("’", "'").split()).strip(" .!?")
     if len(q) > 115 or not re.search(
-        r"\\b(?:sure|certain|actually|wrong|mistaken|incorrect|"
+        r"\b(?:sure|certain|actually|wrong|mistaken|incorrect|"
         r"pretty sure|i thought|i think|you (?:can|could|do|have)|"
-        r"check again|that's not|that isn't|why not)\\b", q, re.I,
+        r"check again|that's not|that isn't|why not)\b", q, re.I,
     ):
         return ""
     rows = [r for r in history if r.get("role") in {"user", "assistant"}]
