@@ -223,12 +223,16 @@ def tokenizer_check() -> None:
     print("No training, model updates or downloads performed.")
 
 
-def train() -> dict:
+def train(*, compatibility_no_compile: bool = False) -> dict:
     snapshot = _local_checkpoint()
     training, heldout = _split()
     if len(training) < 10 or len(heldout) < 2:
         raise PilotError("Synthetic training split is not valid.")
     # Set all network/telemetry safeguards BEFORE model-library imports.
+    # Official Unsloth support flag: disable the auto-compiler when explicitly requested.
+    if compatibility_no_compile:
+        os.environ["UNSLOTH_COMPILE_DISABLE"] = "1"
+        print("Compatibility mode: Unsloth auto-compiler disabled for this one process.")
     os.environ.update({
         "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1",
         "HF_HUB_DISABLE_TELEMETRY": "1", "HF_HUB_DISABLE_IMPLICIT_TOKEN": "1",
@@ -339,6 +343,8 @@ def main(argv: list[str] | None = None) -> int:
     modes.add_argument("--check", action="store_true", help="Inspect local checkpoint without training.")
     modes.add_argument("--tokenizer-check", action="store_true", help="CPU-only live-tokenizer validation; no GPU model load.")
     modes.add_argument("--train", action="store_true", help="Train exactly two gradient-update steps on synthetic data.")
+    parser.add_argument("--compat-no-compile", action="store_true",
+                        help="Owner-selected diagnostic workaround: disable Unsloth compilation for this one run.")
     parser.add_argument("--confirm", default="", help="Required explicit consent phrase for --train.")
     args = parser.parse_args(argv)
     try:
@@ -349,14 +355,17 @@ def main(argv: list[str] | None = None) -> int:
         elif args.confirm != CONFIRMATION:
             raise PilotError("Training was not authorised. Explicit confirmation is required.")
         else:
-            train()
+            train(compatibility_no_compile=args.compat_no_compile)
         return 0
     except PilotError as exc:
         print("PILOT STOPPED SAFELY:", str(exc))
         return 2
     except Exception as exc:
-        # Do not echo exception details: they may contain private file paths.
+        # Preserve privacy by printing only sanitised error details / module basenames,
+        # not the full library traceback with machine-specific absolute paths.
+        from training.failure_diagnostics import print_diagnostics
         print("PILOT STOPPED:", type(exc).__name__, "(no existing XemAi model was modified).")
+        print_diagnostics(exc)
         return 2
 
 
