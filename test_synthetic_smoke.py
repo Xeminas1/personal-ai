@@ -65,8 +65,18 @@ class PilotSafetyTests(unittest.TestCase):
                 (d/'adapter_config.json').write_text('{}')
                 (d/'adapter_model.safetensors').write_bytes(b'fake synthetic gradient test only')
         class FakeTokenizer:
-            def apply_chat_template(self, messages, tokenize, add_generation_prompt):
-                return list(range(10*len(messages)))
+            pad_token_id = 0
+            def apply_chat_template(self, messages, *, tokenize, add_generation_prompt, enable_thinking):
+                testcase.assertFalse(enable_thinking)
+                testcase.assertFalse(tokenize)
+                prefix = ('<|im_start|>user\\n' + messages[0]['content']
+                          + '<|im_end|>\\n<|im_start|>assistant\\n<think>\\n\\n</think>\\n\\n')
+                if add_generation_prompt:
+                    return prefix
+                return prefix + messages[-1]['content'] + '<|im_end|>\\n'
+            def encode(self, rendered_text, *, add_special_tokens):
+                testcase.assertFalse(add_special_tokens)
+                return [ord(ch) for ch in rendered_text]
             def save_pretrained(self, directory):
                 (Path(directory)/'tokenizer.json').write_text('{}')
         class FakeFastModel:
@@ -80,10 +90,15 @@ class PilotSafetyTests(unittest.TestCase):
             @staticmethod
             def from_list(items):return items
         class FakeTrainer:
-            def __init__(self, *, train_dataset, args, **kwargs):
+            def __init__(self, *, train_dataset, args, data_collator, **kwargs):
                 testcase.assertEqual(len(train_dataset),16)
                 testcase.assertEqual(args.max_steps,2)
-                testcase.assertTrue(args.completion_only_loss)
+                testcase.assertFalse(args.remove_unused_columns)
+                batch=data_collator([train_dataset[0]])
+                masked=batch['labels'].values[0]
+                testcase.assertTrue(-100 in masked)
+                testcase.assertTrue(any(t>=0 for t in masked))
+                testcase.assertEqual(len(batch['input_ids'].values[0]),len(masked))
             def train(self):
                 weight.value = 1
                 return types.SimpleNamespace(training_loss=1.25)
@@ -92,12 +107,15 @@ class PilotSafetyTests(unittest.TestCase):
                                    mem_get_info=lambda n: (12*gib,16*gib))
         mock_torch=types.ModuleType('torch');mock_torch.cuda=cuda
         mock_torch.any=lambda b:types.SimpleNamespace(item=lambda: b)
+        mock_torch.long=object()
+        mock_torch.tensor=lambda values, dtype: types.SimpleNamespace(values=values)
         mock_unsloth=types.ModuleType('unsloth');mock_unsloth.FastLanguageModel=FakeFastModel
         mock_datasets=types.ModuleType('datasets');mock_datasets.Dataset=FakeDataset
-        mock_trl=types.ModuleType('trl');mock_trl.SFTTrainer=FakeTrainer
-        mock_trl.SFTConfig=lambda **kwargs:types.SimpleNamespace(**kwargs)
+        mock_transformers=types.ModuleType('transformers')
+        mock_transformers.Trainer=FakeTrainer
+        mock_transformers.TrainingArguments=lambda **kwargs:types.SimpleNamespace(**kwargs)
         with patch.dict(sys.modules,{'unsloth':mock_unsloth,'torch':mock_torch,
-                  'trl':mock_trl,'datasets':mock_datasets}):
+                  'transformers':mock_transformers,'datasets':mock_datasets}):
             manifest=smoke.train()
         self.assertTrue(manifest['training_executed'])
         self.assertFalse(manifest['deployed'])
