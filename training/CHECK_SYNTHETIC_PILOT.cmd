@@ -7,7 +7,7 @@ if not exist "%PY%" (
   pause
   exit /b 2
 )
-"%PY%" -m training.synthetic_smoke --check
+"%PY%" -m training.synthetic_smoke --tokenizer-check
 set "RESULT=%ERRORLEVEL%"
 echo.
 echo Local pilot check finished with status %RESULT%.
