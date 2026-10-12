@@ -110,7 +110,7 @@ class TrainingIntegrationTests(unittest.TestCase):
                 prefix="".join(m["role"]+": "+m["content"]+"\n" for m in messages[:-1])
                 if add_generation_prompt:
                     return "".join(m["role"]+": "+m["content"]+"\n" for m in messages)+"assistant: "
-                return prefix + ("user: "+messages[0]["content"]+"\n" if len(messages)==2 else "") + "assistant: "+messages[-1]["content"]+"<end>"
+                return prefix + "assistant: "+messages[-1]["content"]+"<end>"
             def encode(self, text, *, add_special_tokens):
                 return list(text.encode("utf-8"))
             def save_pretrained(self, directory):
