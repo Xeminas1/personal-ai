@@ -402,6 +402,23 @@ The learning system still requires explicit owner review for any proposed
 general factual or reasoning rule. No new autonomous agents were enabled.
 
 
+
+## v0.9.58: Manually replace truncated excerpts with complete training questions
+
+The private dialogue archive intentionally limits each question to 1,800 characters, while the original weight-review gate only accepted 1,600 characters. Historic examples may also end mid-sentence and cannot be treated as intact questions. **Never infer or reconstruct the missing part of a private comment.** For a saved candidate you personally inspected, you may instead write an independent, complete supervised question-and-answer example:
+
+`bridge weight rewrite N: STANDALONE QUESTION || CORRECTED ANSWER`
+
+Both the question and corrected target must be **owner-authored**, between 15 and 1,600 characters each, and reviewed for accuracy, suitability and private data. The system prints the exact two fields with a fresh eight-character approval code. Approve only if the rewritten prompt and target are individually sound and you consent to local training-data preparation:
+
+`bridge weight approve N CODE`
+
+This does not restore the lost source text; it creates a **new, explicitly owner-written training pair**, auditable under the original candidate number/source hash. No preexisting approved pair is automatically rewritten or changed. Previewing a new draft for the same number supersedes its previous approval for **future** exports until the new draft is separately approved. Existing exports, if any, remain immutable and must be retired manually if no longer consented.
+
+For future archived candidates, XemAi records an `input_was_truncated` boolean when source text exceeds the existing 1,800-character cap; it records **no additional original question text**. Those candidates cannot pass the old `bridge weight draft` path and must be rewritten or skipped. Previously archived snippets may lack that flag; if any saved excerpt visibly ends abruptly, use the rewrite command rather than the old draft command.
+
+No GPU action, data transfer, Ollama model switch, automatic training or private GitHub read is added by this patch. Human approval is not independent verification.
+
 ## Manual, reviewable bridge corrections for later model training (v0.9.57)
 
 This optional app feature turns **only** previously collected local bridge candidates into manually corrected supervised examples. It does not train any neural weights, read old chats that were never opted in, call a paid API, upload data, or switch the Ollama model. Enable *future* candidate archiving separately with `bridge learning on`, if desired. It is OFF by default.
