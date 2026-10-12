@@ -75,6 +75,9 @@ from .laptop_context import build_laptop_context
 from .secrets import save_ollama_api_key
 from .skyrim import skyrim_attachment_report, skyrim_context
 from .specialists import SpecialistCoordinator
+from .rating_adaptation import (
+    derive_style_preferences, prompt_context as rating_strategy_prompt,
+)
 from .self_knowledge import (
     build_ai_comparison_fallback,
     build_authoritative_self_context,
@@ -86,6 +89,7 @@ from .self_knowledge import (
     comparison_answer_needs_retry,
     is_ai_comparison_query,
     is_self_knowledge_query,
+    followup_self_topic,
     RELEASE_HISTORY,
     looks_like_stale_self_description,
 )
@@ -526,6 +530,15 @@ class ChatBackend:
             )
             bridge_topics_available = "no comment text transmitted" in bridge_digest
             inventory_kind = local_question_type(query_text)
+            self_followup = False
+            if not inventory_kind and not parsed_attachments and not agent_mode:
+                resolved = followup_self_topic(
+                    query_text,
+                    worker_db.get_recent_messages(chat_id, limit=5),
+                )
+                if resolved in {"latest_release", "update_reflection", "agent_inventory", "self_analysis"}:
+                    inventory_kind = resolved
+                    self_followup = True
             internal_audit = agent_mode == "self_audit" and not asks_for_external_research(query_text)
             diagnostic_state = {}
             model_user_text = _expand_attachment_message(stored_user_text, diagnostic_state=diagnostic_state)
@@ -590,6 +603,37 @@ class ChatBackend:
                     return watch_answer
 
             user = worker_db.get_user()
+            if (record_user and not parsed_attachments
+                    and query_text.strip().lower() == "rating learning status"):
+                examples = worker_db.rated_model_responses(user["id"])
+                preferences = derive_style_preferences(examples)
+                if preferences:
+                    summary = "; ".join(
+                        f"{p['trait']}: mean {p['average_with']}/10 on "
+                        f"{p['rated_with']} replies versus {p['average_without']}/10 "
+                        f"on {p['rated_without']} other replies"
+                        for p in preferences
+                    )
+                else:
+                    summary = (
+                        "No reliable style contrast yet. At least 10 model "
+                        "responses rated by the owner are needed, including "
+                        "at least four with and four without a candidate style. "
+                        "No lesson has been automatically approved."
+                    )
+                answer = (
+                    f"Local rating adaptation: {len(examples)} eligible owner-rated "
+                    f"model replies. {summary}. "
+                    "These are tentative style correlations, not factual truth, "
+                    "measured general reasoning improvement, or model weight training."
+                )
+                worker_db.add_assistant_message(
+                    chat_id, answer, compute_source="application",
+                )
+                assistant_recorded = True
+                if status_callback:
+                    status_callback(None)
+                return answer
             # The user retains all chat history and cross-chat memory. For a
             # strictly source-only assignment, however, unrelated memories and
             # feedback are not evidence and must not enter the model prompt.
@@ -682,7 +726,7 @@ class ChatBackend:
                 and dialogue_kind != "bridge_conversation"
             )
             self_query = (
-                is_self_knowledge_query(query_text)
+                (bool(inventory_kind) or is_self_knowledge_query(query_text))
                 and dialogue_kind != "bridge_conversation"
             )
             inventory_data = (
@@ -784,6 +828,12 @@ class ChatBackend:
                 # Only fixed aggregates from actual model outputs are shared,
                 # never raw notes or whole rated replies.
                 patterns = worker_db.rating_patterns(user["id"])
+                strategy_preferences = derive_style_preferences(
+                    worker_db.rated_model_responses(user["id"])
+                )
+                strategy_context = rating_strategy_prompt(strategy_preferences)
+                if strategy_context:
+                    messages.append({"role": "system", "content": strategy_context})
                 if patterns:
                     summary = "; ".join(
                         f"{p['aspect']}: {p['count']} rated, mean {p['average']}/10, "
@@ -1191,6 +1241,13 @@ class ChatBackend:
             )
             if inventory_kind and inventory_data is not None and not agent_mode:
                 answer = local_inventory_answer(inventory_data, inventory_kind)
+                if self_followup:
+                    answer = (
+                        "You're right to challenge my earlier response. "
+                        "I should consult my application's own facts rather "
+                        "than repeat an unsupported model limitation.\n\n"
+                        + answer
+                    )
                 application_answer = True
             elif visual_only and not visual_ready:
                 # A ready service is not enough: do not answer from invented

@@ -347,3 +347,56 @@ A rating is an *evaluation signal*, not an authority to override truth,
 safety, source evidence, user consent or the benchmark baseline. Improvement
 still needs comparison on independent new examples. No additional
 agents, self-modification or autonomous review worker has been enabled.
+
+
+## Host-grounded self-awareness and rated-pattern adaptation (v0.9.47)
+
+XemAi now treats questions about its *own* most recent update as requests for
+local application facts, not generic model introspection or an external web
+search. The authoritative version is `app/version.py` in the running
+installation, paired with the bundled `RELEASE_HISTORY` entry for that exact
+version. When no matching release description exists, it reports the
+installed version and honestly says the description is unavailable.
+The automated regression suite now requires the installed version to have
+a corresponding bundled release entry, preventing unnoticed stale
+self-knowledge on future version bumps.
+
+Short corrections in the same chat (e.g. "I'm pretty sure you do") can
+inherit the immediately preceding self-knowledge subject after a reply;
+old assistant claims are *not* evidence. They are corrected from local
+application facts. Unrelated Skyrim, Vortex and external software versions
+are deliberately kept outside this internal self-knowledge route.
+XemAi cannot use this to inspect model weights, arbitrary local files
+or installations on other computers. This does not verify that the
+owner's laptop has already installed the update.
+
+### What automatic rating adaptation actually does
+
+The local feedback database already contains per-assistant-message 0-10
+owner scores. This update adds a small, deterministic analysis that checks
+actual model-generated responses for broad *formatting* characteristics,
+currently concision, more detailed answers and step/bullet structure.
+It compares owner satisfaction scores among answers with versus without
+each characteristic. At least **10** eligible ratings overall and
+**four** on each side of a candidate comparison are required, and mean
+scores must differ by at least 2/10, with several positive examples,
+before the application adds a *tentative and conditional* style preference
+to an ordinary chat prompt.
+
+Only owner-given ratings on genuine Qwen responses are used. Factual
+accuracy category scores, application-generated fallbacks, untrusted GitHub
+mirror messages, GPT external reviews, and chat-wide ratings are excluded.
+No raw rated text, private note or entire conversation is inserted into
+the prompt by this mechanism. Replacing a message rating updates the
+observed sample. Type `rating learning status` in XemAi to view how
+many eligible examples exist and which tentative style comparisons are
+currently active. Any inferred preference must yield to actual user intent,
+factual accuracy, safety, relevant context and appropriate length.
+
+**Limitations:** This is a small *observational* adaptive preference layer,
+not an RL algorithm, automatic lesson approval, causal experiment or
+Qwen weight fine-tuning. People tend to give higher scores on easier tasks,
+so correlation with length/format may be spurious. The process may be
+repeatedly evaluated, revoked by rating edits, and compared on fresh tasks.
+The learning system still requires explicit owner review for any proposed
+general factual or reasoning rule. No new autonomous agents were enabled.

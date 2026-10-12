@@ -57,6 +57,19 @@ _ROLES = (
 )
 
 
+_SELF_RELEASE = re.compile(
+    r"\b(?:your|xemai(?:'s)?|this (?:ai|assistant|app))\s+"
+    r"(?:(?:most|very|latest|recent|last|newest|current|installed|own)\s+){0,4}"
+    r"(?:updates?|releases?|changelogs?|versions?)\b", re.I,
+)
+_SELF_RELEASE_REVERSE = re.compile(
+    r"\b(?:latest|last|newest|most\s+recent|current)\s+"
+    r"(?:updates?|releases?|changelogs?|versions?)\s+"
+    r"(?:to|of|for|in)\s+(?:xemai|this (?:app|assistant|ai))\b", re.I,
+)
+_LATEST = re.compile(r"\b(?:latest|last|newest|most\s+recent|current)\b", re.I)
+
+
 def local_question_type(question: str) -> str:
     if not isinstance(question, str) or len(question) > 5000:
         return ""
@@ -64,6 +77,12 @@ def local_question_type(question: str) -> str:
     if dialogue_intent(q) == "agent_idea":
         # A proposal about future agents is not an inventory request.
         return ""
+    # Reflective questions ask for an assessment of several updates,
+    # whereas "what was your latest release?" asks for the installed facts.
+    if _UPDATE_REFLECTION.search(q):
+        return "update_reflection"
+    if (_SELF_RELEASE.search(q) or _SELF_RELEASE_REVERSE.search(q)) and _LATEST.search(q):
+        return "latest_release"
     if _AGENT_QUERY.search(q):
         return "agent_inventory"
     if _SELF_ANALYSIS.search(q):
@@ -173,6 +192,26 @@ def direct_answer(data: dict, kind: str) -> str:
             "inspection of model thoughts or weights. It cannot independently "
             "edit its code or prove an improvement without comparative tests.\n\n"
             f"To run it, ask: **{data['user_invocation']}**."
+        )
+    if kind == "latest_release":
+        current = str(data["application_version"])
+        matching = next(
+            (r for r in data.get("release_history", [])
+             if r.get("version") == current), None
+        )
+        if matching is None:
+            return (
+                f"I can see my running application version: **XemAi v{current}**. "
+                "I don't have a verified description of what changed in this "
+                "particular release, so I won't guess. I can still report "
+                "the version from my own application."
+            )
+        return (
+            f"Yes. I'm running **XemAi v{current}**. My current release "
+            f"notes say: **{matching['description']}**\n\n"
+            "These are the application's bundled release notes, not "
+            "evidence that my underlying model weights changed or that "
+            "performance improved in independent tests."
         )
     if kind == "update_reflection":
         releases = data["release_history"][-5:]
