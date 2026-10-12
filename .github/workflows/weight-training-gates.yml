@@ -12,6 +12,7 @@ on:
       - "test_training_adapter_evaluation.py"
       - "test_training_9b_feasibility.py"
       - "test_github_bridge_weight.py"
+      - "test_training_reviewed_bridge.py"
       - ".github/workflows/weight-training-gates.yml"
   workflow_dispatch:
 permissions:
@@ -29,9 +30,9 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile offline training utilities
-        run: python -m compileall -q training test_weight_training.py test_training_pc_preflight.py test_training_windows_setup.py test_training_model_download.py test_synthetic_smoke.py test_training_failure_diagnostics.py test_training_adapter_evaluation.py test_training_9b_feasibility.py test_github_bridge_weight.py
+        run: python -m compileall -q training test_weight_training.py test_training_pc_preflight.py test_training_windows_setup.py test_training_model_download.py test_synthetic_smoke.py test_training_failure_diagnostics.py test_training_adapter_evaluation.py test_training_9b_feasibility.py test_github_bridge_weight.py test_training_reviewed_bridge.py
       - name: Test dataset consent, privacy and execution guards (no GPU or model downloads)
-        run: python -m unittest -v test_weight_training test_training_pc_preflight test_training_windows_setup test_training_model_download test_synthetic_smoke test_training_failure_diagnostics test_training_adapter_evaluation test_training_9b_feasibility test_github_bridge_weight
+        run: python -m unittest -v test_weight_training test_training_pc_preflight test_training_windows_setup test_training_model_download test_synthetic_smoke test_training_failure_diagnostics test_training_adapter_evaluation test_training_9b_feasibility test_github_bridge_weight test_training_reviewed_bridge
       - name: Run unchanged app self tests
         run: python self_test.py
       - name: Check pinned release manifest (Ubuntu only)
