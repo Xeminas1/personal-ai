@@ -9,7 +9,7 @@ if not exist "%PY%" (
   pause
   exit /b 2
 )
-"%PY%" -m training.assess_9b --check
+"%PY%" -B -m training.assess_9b --check
 set "RESULT=%ERRORLEVEL%"
 echo.
 echo Qwen3.5 9B read-only feasibility check finished with status %RESULT%.
