@@ -254,7 +254,7 @@ def chat_command(question: str, data_dir: Path, logger=None, *, client=None) -> 
                 "bridge transcript (review the latest messages).\n"
                 "bridge auto on | bridge auto off | bridge auto status.\n"
                 "bridge learning on | bridge learning off | bridge learning status.\n"
-                "bridge weight status | draft N: CORRECTED ANSWER | approve N CODE | revoke N | export.\n"
+                "bridge weight status | draft N: ANSWER | rewrite N: STANDALONE QUESTION || ANSWER | approve N CODE | revoke N | export.\n"
                 "bridge learning review | show N | propose N: LESSON || EVIDENCE | approve N | reject N | approved | revoke N.\n"                "bridge review scores | bridge review show N (untrusted external scores).\n"
                 "Nothing is uploaded automatically. This GitHub bridge does not "
                 "make ChatGPT respond until this conversation is checked."
