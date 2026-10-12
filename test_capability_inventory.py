@@ -77,11 +77,11 @@ class LocalInventoryTests(unittest.TestCase):
         self.assertFalse(self.data["autonomous_self_editing"])
         self.assertFalse(self.data["agents_are_distinct_models"])
         self.assertFalse(self.data["hardware_benchmark_executed"])
-        self.assertTrue(any(x["version"] == "0.9.28" for x in self.data["release_history"]))
-        self.assertTrue(any(x["version"] == "0.9.29" for x in self.data["release_history"]))
+        self.assertTrue(any(x["version"] == "0.9.46" for x in self.data["release_history"]))
+        self.assertTrue(any(x["version"] == "0.9.47" for x in self.data["release_history"]))
         raw = str(self.data)
         self.assertNotIn("hybrid_worker_token", raw)
-        self.assertNotIn("https://reece-pc", raw)
+        self.assertNotIn("https://example-private-worker", raw)
         self.assertIn("AUTHORITATIVE XEMAI", inventory_context(self.data, "agent_inventory"))
 
     def test_fallbacks_are_grounded_and_do_not_claim_independent_abilities(self):
@@ -94,7 +94,7 @@ class LocalInventoryTests(unittest.TestCase):
         self.assertIn("self-improvement audit", analysis)
         self.assertIn("not direct", analysis)
         updates = direct_answer(self.data, "update_reflection")
-        self.assertIn("v0.9.47", updates)
+        self.assertIn("v0.9.46", updates)
         self.assertIn("v0.9.47", updates)
         self.assertIn("not the same as", updates.lower())
         disabled = inventory(
@@ -125,7 +125,7 @@ class LocalInventoryTests(unittest.TestCase):
         self.assertEqual(report["research_status"], "not_requested_for_internal_audit")
         self.assertEqual(model.chat.call_count, 3)
         args = str(model.chat.call_args_list)
-        self.assertIn("0.9.28", args)
+        self.assertIn("0.9.47", args)
         self.assertIn("Self-Improvement Agent", args)
         self.assertIn("no complete repo audit", args.lower().replace("repository", "repo"))
         bad = (
