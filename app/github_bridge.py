@@ -74,7 +74,8 @@ def save_state(data_dir: Path, state: dict) -> None:
                 "auto_enabled", "auto_issue", "auto_last_seen_id",
                 "auto_seen_mirror_id", "auto_total", "auto_today", "auto_day",
                 "auto_last_post_at", "auto_paused", "auto_chat_id",
-                "learning_enabled",
+                "auto_last_poll_at", "auto_last_poll_status",
+                "auto_last_github_read_at", "learning_enabled",
             }}
     tmp.write_text(json.dumps(safe, indent=2, ensure_ascii=False), encoding="utf-8")
     try:
