@@ -12,6 +12,7 @@ from app.database import Database
 from app.learning import extract_and_store_memories
 from app.llm import OllamaClient, OllamaError
 from app.logging_setup import setup_logging
+from app.conversation_skills import guidance_for_turn
 from app.prompts import build_system_prompt
 from app.secrets import save_ollama_api_key, clear_ollama_api_key
 from app.self_knowledge import (
@@ -590,6 +591,13 @@ def main() -> int:
                     ),
                 })
                 messages.append({"role": "user", "content": user_message})
+
+            # Keep CLI and mobile chat conversational behaviour aligned.
+            # System facts remain authoritative on self-knowledge turns.
+            if not self_query:
+                note = guidance_for_turn(messages)
+                if note:
+                    messages.append({"role": "system", "content": note})
 
             try:
                 logger.info(
