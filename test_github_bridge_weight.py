@@ -138,7 +138,7 @@ class BridgeToWeightTests(unittest.TestCase):
         bridge_collection(self.data, "bridge learning on")
         self.assertTrue(self.candidate(1))
         archive = self.data / "github_bridge_training_candidates.jsonl"
-        archive.write_text("null\\n", encoding="utf-8")
+        archive.write_text("null\n", encoding="utf-8")
         self.assertIn("malformed", self.call(
             "bridge weight draft 1: We must verify the underlying evidence first."))
         self.assertIn("Approval refused", self.call(
