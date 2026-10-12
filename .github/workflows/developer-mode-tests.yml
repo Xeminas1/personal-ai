@@ -15,6 +15,8 @@ on:
       - "test_watch_intelligence.py"
       - "test_capability_inventory.py"
       - "test_dialogue_mission.py"
+      - "test_conversation_learning.py"
+      - "conversation_learning_benchmark.py"
       - "test_bridge_conversation_context.py"
       - "test_self_knowledge.py"
       - "test_media_support.py"
@@ -79,6 +81,7 @@ jobs:
         run: |
           python test_dialogue_mission.py
           python test_bridge_conversation_context.py
+          python test_conversation_learning.py
       - name: Test authoritative inventory and self audit regression
         run: python test_capability_inventory.py
       - name: Test explicit-approval private GitHub bridge

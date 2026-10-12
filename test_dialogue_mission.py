@@ -142,10 +142,16 @@ class DialogueTests(unittest.TestCase):
             "challenging: debating source attribution and evidence standards "
             "is useful, although we have not demonstrated a benchmark gain."
         )
+        # v0.9.44 wrongly replaced free-form answers based on a mandatory
+        # vocabulary list. Status-only answers can be poor, but that judgement
+        # belongs to owner feedback and independent A/B evaluation rather
+        # than a brittle keyword filter.
         for case in (prior_actual_answer,
                      "The GitHub bridge to ChatGPT is enabled with 8 replies "
-                     "and you can use bridge transcript to read them."):
-            self.assertTrue(dialogue_answer_needs_retry(
+                     "and you can use bridge transcript to read them.",
+                     "I can see evidence claims being challenged, although "
+                     "I cannot tell yet who has the stronger argument."):
+            self.assertFalse(dialogue_answer_needs_retry(
                 "bridge_conversation", case, bridge_topics_available=True,
             ), case)
         self.assertFalse(dialogue_answer_needs_retry(

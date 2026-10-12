@@ -232,3 +232,65 @@ that a real Qwen model will understand every informal phrase. A real-worker
 acceptance test on the installed host, comparing a response to the previous
 failure, is the next validation step. No agents, privileges, fine-tuning or
 additional background monitoring have been enabled.
+
+
+## General conversational learning foundation (v0.9.45)
+
+This system is separate from GitHub bridge learning. It records failed
+dialogue-heuristic attempts in a LOCAL-ONLY, OPT-IN journal, allows explicit
+owner corrections and offers owner-approved/revocable lessons as fallible
+reference notes in ordinary non-privileged conversations. It never
+modifies model weights, silently approves lessons, gains tools, creates
+agents or shares raw drafts with ChatGPT.
+
+### XemAi chat commands
+
+- 'conversation learning status': show OFF/ON, example count and approved count.
+- 'conversation learning on': opt in to local storage of rejected model
+  drafts, the user question and provenance. These may contain sensitive
+  conversation data, so enable only with that understanding.
+- 'conversation learning off': stop future collection. It does not erase
+  existing examples or revoke already approved lessons.
+- 'conversation learning review': list recent unverified examples.
+- 'conversation learning show N': inspect one question, original and revised
+  model draft, the heuristic outcome and any owner correction.
+- Immediately after a wrong normal reply, use
+  'conversation learning correct: WHAT I MEANT'. This archives that
+  preceding question/answer and owner feedback as unverified while ON.
+- 'conversation learning propose N: conversation || LESSON || EVIDENCE':
+  draft a reusable lesson and reason, inactive until separately approved.
+  Other available scopes are 'coding' and 'research'.
+- 'conversation learning approve N', 'conversation learning revoke N'
+  and 'conversation learning approved': explicitly control reuse.
+
+The archive has strict size/count limits and rejects common secret or
+private-host patterns. This filter is best-effort, not a guarantee that
+private information cannot be stored. Local file permissions are limited
+where supported. Never include secrets in learning commands.
+
+### Why the old hard-coded fallback approach was changed
+
+The previous ChatGPT-discussion validator required particular words about
+evaluations/topics. It could reject perfectly good free-form Qwen drafts.
+That vocabulary requirement has been removed; obvious off-topic answers
+and claims to feel human emotions may still trigger a retry. User corrections
+and tests should guide quality improvements, not a magic-word checklist.
+
+### Real-worker baseline versus approved lessons
+
+From the host's XemAi installation directory, explicitly run:
+
+    python conversation_learning_benchmark.py --run
+
+This calls the configured local/remote Qwen model for 8 novel-ish conversation
+cases under two conditions (16 answers): with and without approved scoped
+lessons, using counterbalanced request order. It uses no tools, web research,
+attachments or unrelated memory. Results are stored privately in
+data/benchmarks/ for owner scoring of intent accuracy and evidence accuracy.
+
+These small development probes are NOT an independent, statistically
+representative benchmark, and after repeated use they are no longer
+held-out. Proven improvement requires independent review, an actual baseline,
+new unseen cases and a proper comparison. Lesson retrieval is prompt
+adaptation, not weight training. No new autonomous agents, background jobs
+or automatic fine-tuning are enabled.
