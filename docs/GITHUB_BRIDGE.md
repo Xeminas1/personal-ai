@@ -400,3 +400,25 @@ so correlation with length/format may be spurious. The process may be
 repeatedly evaluated, revoked by rating edits, and compared on fresh tasks.
 The learning system still requires explicit owner review for any proposed
 general factual or reasoning rule. No new autonomous agents were enabled.
+
+
+## Experimental: Owner-reviewed bridge corrections for future weight training (DRAFT PR #62)
+
+**Not shipped to the installed XemAi application as of this development checkpoint.** This source is in the still-unmerged weight-training draft; the following commands become available only after a separately tested application release or source deployment. This is a specific pathway from bridge discussion to supervised examples, not automatic weight updates or verified improvement of Qwen3.5 9B.
+
+The existing `bridge learning on` option must already have explicitly collected **future** candidate exchanges from a private, owner-enabled issue. The application stores those candidates on the XemAi host in a local-only, gitignored archive. Neither a ChatGPT score nor a previously generated XemAi answer is a trustworthy SFT training target.
+
+Once a human has inspected a stored candidate with `bridge learning show N`, the new commands support:
+
+- `bridge weight status` — show draft / individually approved correction counts (no private excerpts).
+- `bridge weight draft N: CORRECTED ANSWER` — make a *private local* correction draft linked to the exact archived input; print the question and corrected target for human inspection. This does NOT auto-select XemAi's earlier answer as truth. Sensitive-looking content is conservatively refused. The printed approval code binds to the source digest and corrected target.
+- `bridge weight approve N CODE` — explicit acknowledgement of **that exact** corrected answer, for a future local dataset only. Existing `bridge learning approve N` consent to using a lesson as memory context **does not** authorise weight training.
+- `bridge weight revoke N` — remove that sample from **future** exports. Earlier exported files are immutable: delete or retire them manually if permission is withdrawn.
+- `bridge weight export` — preview an immutable, locally staged dataset once at least ten distinct, reviewed, privacy-screened corrections are available. Then `bridge weight export CODE` creates a **private** `data/weight_training/bridge_exports/bridge_reviewed_*.jsonl` file using the validator's exact `{"reviewed": true, "consent": true, "source": "owner_consented", "messages": [...]}` schema. No public GitHub or Ollama upload, cross-device transfer, GPU inference, training or model switching.
+
+**Review is essential.** The excerpt from a GitHub issue might contain wrong claims, third-party text, decontextualised prompts or private information that escaped basic automatic screening. The owner must confirm permission, correctness and context. Do not train on raw Qwen mistakes, bridge score values, untrusted GPT assertions or raw transcripts without review.
+
+The dataset is on the **bridge-host laptop**. The training GPU can be a **different PC**. No automatic local-network/Tailscale transfer is implemented; the owner must separately authorise any transfer or manage the approved file privately. A separate `training.prepare_dataset.prepare` call on the training PC validates, de-duplicates, creates an immutable training/holdout split and integrity manifest. The new `training/train_reviewed_bridge_4b.py` runner accepts **only** this separately prepared, verified dataset and the previously pinned official **4B** BF16 model, with an exact, additional `TRAIN REVIEWED BRIDGE 4B` confirmation. It uses the 4B LoRA method validated in the synthetic pilot, writes a separate adapter and audit manifest, but is **not yet real-GPU-tested with owner corrections**. No automatic training or adapter promotion.
+
+**The live XemAi Qwen3.5 9B model remains unchanged.** With 16 GiB VRAM, straightforward 9B BF16 LoRA is above Unsloth's ~22GiB estimate. The 4B bridge-training runner is a distinct experimental model and cannot upgrade the active 9B; resolving 9B's training/offload and independently evaluating a candidate adapter are further gated tasks.
+

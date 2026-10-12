@@ -54,3 +54,15 @@ Open [GitHub PRs](https://github.com/Xeminas1/personal-ai/pulls?q=is%3Aopen) and
 ## Privacy note
 
 This page is intentionally free of personal chats, private bridge message IDs/content, credentials, local machine paths, host access details, private test datasets and unpublished XemTV state. Use private approved channels for sensitive evidence; use synthetic public fixtures in code and tests.
+
+
+## 2026-10-12 experimental bridge-supervised weight-training milestone (UNMERGED)
+
+Issue #61 and draft PR #62 track owner-controlled bridge-to-weight research. The owner has independently run a *separate Qwen3.5 4B* BF16 LoRA smoke test on their RTX 5080: two of two steps completed, eight sampled adapter tensors changed and a private adapter saved. The same adapter had lower NLL than the original 4B on four fictional holdout examples, 2.915653 versus 3.152394 (63 supervised answer tokens). This is a narrow result, **not** verified general intelligence or any 9B improvement.
+
+NEW DRAFT (not installed, merged or released): app/github_bridge_weight.py plus an exact user-command route in app/github_bridge.py. It allows inspecting a previously opted-in bridge learning candidate, writing a human-supplied corrected target, approving it with a source-bound code, revoking it, and exporting at least ten separate approved, privacy-screened training pairs as a **local-only** JSONL file. It never trusts the original XemAi answer or external scores as the target, never reads unrelated chats and never trains automatically. Training.prepare_dataset.prepare validates and splits an explicitly selected private export; training/train_reviewed_bridge_4b.py adds an experimental, new-consent-required, isolated 4B LoRA trainer (GPU reality unverified with these owner-reviewed examples; source/mock tests only). Export lives on the owner-enabled bridge laptop, which may not be the separate RTX 5080 training PC; no private cross-device transfer has been authorised or built.
+
+**9B block:** Unsloth estimates Qwen3.5 9B BF16 LoRA needs approximately 22GB VRAM, exceeding this PC's 16GB. Its installed quantized Ollama model is not a trainable BF16 base checkpoint. 8bit/offload feasibility remains under investigation, and no Qwen3.5 9B weight update, new inference model, autonomous training, private-bridge history export or installed XemAi app update has happened.
+
+Source of truth is the LIVE draft PR and issue checkpoint, not this static description. Do not treat the owner saying "implement training" as blanket consent to train arbitrary private conversations or replace model weights.
+
