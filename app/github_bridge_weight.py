@@ -262,9 +262,13 @@ def command(data_dir: Path, query: str) -> str:
                 if not isinstance(candidate, dict):
                     return "Local candidate is malformed; nothing was reviewed or approved."
                 question = candidate.get("input_excerpt")
-                if not _valid_text(question) or candidate.get("input_was_truncated") is True:
-                    return ("Archived question may be clipped or contain private data. "
+                if not _valid_text(question):
+                    return ("Candidate prompt contains private data or cannot be safely exported. "
                             "Use 'bridge weight rewrite N: STANDALONE QUESTION || CORRECTED ANSWER' "
+                            "to supply a complete reviewed training pair.")
+                if candidate.get("input_was_truncated") is True:
+                    return ("Archived question was clipped. Use "
+                            "'bridge weight rewrite N: STANDALONE QUESTION || CORRECTED ANSWER' "
                             "to supply a complete reviewed training pair.")
                 if not _valid_text(corrected):
                     return "Corrected answer must be 15-1600 characters and contain no apparent secrets or personal identifiers."
