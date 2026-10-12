@@ -1,11 +1,11 @@
 {
-  "version": "0.9.54",
-  "notes": "Adds bounded private GitHub bridge polling health indicators and accepts short natural replies while retaining existing privacy filters, two-minute cooldown and read-only scope. Preserves chats, memories, model weights, configured models and private worker pairing; does not train Qwen.",
+  "version": "0.9.55",
+  "notes": "Recognises explicit read-only XemAi project handoff queries, retrieves bounded public GitHub release and issue status without private credentials, avoids unrelated Qwen replies, and preserves model weights, user data, pairing and bridge permissions. Issue #54 private bridge transport remains under investigation.",
   "files": [
     {
       "path": ".github/workflows/developer-mode-tests.yml",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.53/.github/workflows/developer-mode-tests.yml",
-      "sha256": "50dac8de7ad5dfe63daf29e1bf5005a18add5519b1c9a7dd6735c77232307332"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.55/.github/workflows/developer-mode-tests.yml",
+      "sha256": "20badf6acd881956dd4e90a85bb8c73ded474f3977160bcd2ad0b272fc1dda85"
     },
     {
       "path": "LegacyDesktop.pyw",
@@ -14,8 +14,8 @@
     },
     {
       "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.54/README.md",
-      "sha256": "0f4e3e61b0232de1959030cc3d919721c4ec0a5a5600791429969b983744c2bf"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.55/README.md",
+      "sha256": "66bed423f3631130c7083e469a8e85f1456ddc4577662f327fa12aab0ca01b8d"
     },
     {
       "path": "XemAi.pyw",
@@ -159,8 +159,8 @@
     },
     {
       "path": "app/gui_backend.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.53/app/gui_backend.py",
-      "sha256": "76dfd3b0b9de5af498b455d4e53abbf23096ffc5e1b4d52cb13005195e29d715"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.55/app/gui_backend.py",
+      "sha256": "53903d9ef3dfa85bc6650d96d25a48400e05a9f7f5cbf10b80e11627f091f42e"
     },
     {
       "path": "app/hybrid.py",
@@ -229,8 +229,8 @@
     },
     {
       "path": "app/self_knowledge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.54/app/self_knowledge.py",
-      "sha256": "ca171622c560bcc5e2ba034969e25a76f9569ac101806d13e2c54f6d95c52e55"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.55/app/self_knowledge.py",
+      "sha256": "01bce0b0f9f1764f45bec39806bece4eefbb89140c15ec0b485f761525692193"
     },
     {
       "path": "app/skyrim.py",
@@ -264,8 +264,8 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.54/app/version.py",
-      "sha256": "de97a18c3d5d0062bba852b55ec1f5cbe18960312f8ff5c622d93133cb881281"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.55/app/version.py",
+      "sha256": "0de14c9e39fc46a26edd7be0535163853615d631e6f3ee22e4e361ad695b7b53"
     },
     {
       "path": "app/vision.py",
@@ -794,8 +794,23 @@
     },
     {
       "path": "verify_release_manifest.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.54/verify_release_manifest.py",
-      "sha256": "c3c28254ad1eb3a55bdef57a1ebc568759a5261524865dcf6c119ac3f3947dfe"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.55/verify_release_manifest.py",
+      "sha256": "1ae3a21b0fbd53b9f1a8512ba65b74fb9cb722187a07d3b740464edacd5d5451"
+    },
+    {
+      "path": "app/project_handoff.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.55/app/project_handoff.py",
+      "sha256": "bc800623585bf1648361ff61d667b1dd9216a725b21f43b8c780c5fda6fc7f85"
+    },
+    {
+      "path": "test_project_handoff.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.55/test_project_handoff.py",
+      "sha256": "7f1e2c9970fe7bb6c2c09375c4a6b02fa3d4d1add64f44e65d436222778d037e"
+    },
+    {
+      "path": "docs/PROJECT_STATE.md",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.55/docs/PROJECT_STATE.md",
+      "sha256": "c564aeab4c80b33cd725672a048f626204b2a9a6d88d61fef6ba2f1dedb9877b"
     }
   ]
 }

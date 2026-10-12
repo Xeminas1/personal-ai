@@ -30,6 +30,7 @@ on:
       - "test_message_ratings.py"
       - "test_rating_adaptation.py"
       - "test_runtime_self_updates.py"
+      - "test_project_handoff.py"
       - "test_bridge_response_feedback.py"
       - "test_message_rating_ui.js"
       - "conversation_learning_benchmark.py"
@@ -110,6 +111,7 @@ jobs:
           python test_message_ratings.py
           python test_rating_adaptation.py
           python test_runtime_self_updates.py
+          python test_project_handoff.py
       - name: Test authoritative inventory and self audit regression
         run: python test_capability_inventory.py
       - name: Test explicit-approval private GitHub bridge

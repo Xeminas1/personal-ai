@@ -75,6 +75,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.52", "Recognises direct questions about XemAi's goals and aspirations, distinguishing the absence of personal desires from its human-set development mission and unproven benchmark ambitions."),
     ("0.9.53", "Adds explicitly invoked background conversation tests in the shared app, with progress, cancellation, separate PC/laptop runs and downloadable unscored comparisons of prompts and approved lessons. Preserves chats, memories, pairing and weights; no automatic training or measured improvement claim."),
     ("0.9.54", "Improves private GitHub bridge diagnostics with last poll/read status and accepts short natural replies while retaining privacy checks. No learning or model-weight training changes."),
+    ("0.9.55", "Recognises explicit XemAi GitHub handoff requests and reports bounded read-only public repository status instead of irrelevant AI-rating analysis. No private repo reads, code editing, model or memory changes."),
 ]
 
 

@@ -19,6 +19,7 @@ from .agent_team import (
 from .ai_watch import chat_command as ai_watch_chat_command
 from .github_bridge import chat_command as github_bridge_chat_command, is_command as is_bridge_command
 from .github_bridge_auto import status as private_bridge_status
+from .project_handoff import is_command as is_project_handoff_command, project_status
 from .bridge_conversation_context import bridge_topic_digest
 from .conversation_skills import guidance_for_turn
 from .conversation_learning import (
@@ -559,6 +560,20 @@ class ChatBackend:
                         parsed_attachments[0].get("name", "file")
                     )
                 worker_db.rename_chat(chat_id, title_from_message(title_seed))
+
+            # Owner's explicit read-only PUBLIC GitHub handoff request.
+            # Do not route this to a model, interpret GitHub text as commands,
+            # or grant this application source editing privileges.
+            if (record_user and not parsed_attachments
+                    and is_project_handoff_command(query_text)):
+                response = project_status()
+                worker_db.add_assistant_message(
+                    chat_id, response, compute_source="application",
+                )
+                assistant_recorded = True
+                if status_callback:
+                    status_callback(None)
+                return response
 
             if record_user and not parsed_attachments and is_bridge_command(query_text):
                 bridge_answer = github_bridge_chat_command(
