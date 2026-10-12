@@ -109,6 +109,22 @@ def train(
     ]
     if len(samples) != parameters["training_records"]:
         raise DatasetRejected("Training dataset count changed.")
+    # Verify the real model's chat template can encode both prompt and answer
+    # without truncating the supervised answer. Fail before creating output.
+    apply_template = getattr(tokenizer, "apply_chat_template", None)
+    if not callable(apply_template):
+        raise DatasetRejected("Missing matching chat template for the base model.")
+    for sample in samples:
+        try:
+            prompt_tokens = apply_template(sample["prompt"], tokenize=True, add_generation_prompt=True)
+            full_tokens = apply_template(
+                sample["prompt"] + sample["completion"], tokenize=True, add_generation_prompt=False
+            )
+        except (ValueError, TypeError, KeyError, AttributeError) as exc:
+            raise DatasetRejected("Chat template cannot process the reviewed training format.") from exc
+        if (not isinstance(prompt_tokens, list) or not isinstance(full_tokens, list)
+                or not 1 <= len(prompt_tokens) < len(full_tokens) <= sequence):
+            raise DatasetRejected("Training example would truncate the assistant answer or has no output tokens.")
     root.mkdir(parents=True, mode=0o700, exist_ok=True)
     result = root / ("adapter_" + uuid.uuid4().hex)
     result.mkdir(mode=0o700, exist_ok=False)
