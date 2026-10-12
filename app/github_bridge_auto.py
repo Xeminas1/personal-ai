@@ -280,6 +280,15 @@ def _tick(data_dir, *, client=None, llm_factory=None, logger=None, now=None):
         if logger:
             logger.warning("GitHub bridge poll failed | error_type=%s", type(error).__name__)
         return {"status": "network_error"}
+    # External ratings are merely untrusted review candidates, never rewards.
+    # This only reads comments of the already-owner-enabled private issue.
+    try:
+        from .bridge_response_feedback import ingest_reviews
+        ingest_reviews(data_dir, issue=issue, comments=comments)
+    except (OSError, ValueError, TypeError):
+        if logger:
+            logger.warning("Private bridge external score ingestion skipped")
+
     eligible = sorted(
         [entry for entry in comments
          if isinstance(entry, dict) and isinstance(entry.get("id"), int)
