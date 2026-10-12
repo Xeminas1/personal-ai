@@ -29,3 +29,37 @@ Primary guidance: https://unsloth.ai/docs/models/qwen3.5/fine-tune
 Repository and CI checks can validate data gates, command guards and synthetic unit tests. They cannot prove CUDA compatibility, a successful owner-device fine-tuning session, improved model quality or an installed XemAi update. Record those only after real tests.
 
 Implementation will be added and iterated on an isolated draft PR. No app version bump or release manifest change is justified for documentation or independent offline tooling.
+
+
+## Prototype CLI (owner-invoked only)
+
+Run from the repository root with Python 3.12+. No new packages are needed to **prepare and verify** a dataset. The commands below describe capabilities of this branch; they do not install anything on the owner's computer.
+
+1. Manually create a private JSONL file inside the gitignored `data/` folder (or another owner-chosen local private folder). It needs **at least 10 distinct consented/reviewed examples**, one object per line. Example of a single fictional entry (this is deliberately not an actual bridge comment):
+
+   ```json
+   {"reviewed":true,"consent":true,"source":"synthetic","messages":[{"role":"user","content":"The second option, please."},{"role":"assistant","content":"Certainly. You chose the second option."}]}
+   ```
+
+   All messages must alternate user/assistant and end in the *desired corrected assistant answer*, not an incorrect historical answer. A field saying `reviewed=true` is **not** independent validation; the human must check the contents and permissions. Privacy filters catch some sensitive material but do not guarantee anonymity.
+
+2. Explicitly prepare and reserve an untouched holdout:
+
+   ```powershell
+   python -m training.prepare_dataset prepare --input "$PWD/data/weight_training/manual_examples.jsonl" --reviewed-and-consented --label pilot
+   python -m training.prepare_dataset verify --run "ABSOLUTE_PATH_PRINTED_BY_PREPARE"
+   ```
+
+   Preparation refuses unreviewed records, malformed dialogue, likely secrets/identifiers, duplicates, and output inside a tracked source-code directory. It does not open any old local archives or bridge data. Prepared files and their SHA-256 manifest stay private under `data/weight_training/` by default; their examples are never copied into GitHub CI.
+
+3. On the PC, after installing a separately reviewed CUDA/Unsloth environment and **explicitly** downloading an exact pinned upstream BF16 checkpoint, inspect the **dry-run** plan:
+
+   ```powershell
+   python -m training.train_adapter --run "PREPARED_RUN_DIRECTORY" --model "Qwen/Qwen3.5-4B" --revision "40_HEX_UPSTREAM_COMMIT"
+   ```
+
+   The command above requires no CUDA dependencies and does **not** train. A manual training attempt additionally requires `--checkpoint-dir "EXISTING_HF_SNAPSHOT_DIRECTORY"`, `--execute`, and `--confirm "TRAIN REVIEWED LOCAL ADAPTER"`. The selected local snapshot directory must be pinned to the exact revision and already present; the script sets Hugging Face offline mode, disables tracking, prohibits QLoRA, requires BF16 CUDA and available VRAM, and never calls an upload or live-model replacement API. It reserves the holdout untouched.
+
+4. If a real training run succeeds, it saves an **unpromoted** LoRA adapter and a local SHA-256 manifest. Run separate blinded, same-base/settings evaluations before even considering promotion. Training loss is not proof of real-world conversational improvement. No code in this PR activates an adapter in XemAi, merges weights into GGUF or changes the 9B worker.
+
+**Current blocking facts:** A Qwen3.5-4B pilot on a 16 GB GPU may be feasible at batch 1 and short sequence, but still needs a real GPU test. Genuine 9B BF16 LoRA training needs about 22 GB VRAM according to Unsloth, so the current 16 GB GPU is blocked by the conservative trainer's memory checks; 9B CPU-offload is not implemented or validated. The HF 4B and 9B checkpoints, pinned revisions, Unsloth/TRL environment and Windows CUDA behavior must all be validated on the owner-selected training PC. Do not assume 4B results improve Qwen3.5 9B.
