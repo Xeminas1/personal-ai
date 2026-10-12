@@ -1106,7 +1106,11 @@ class ChatBackend:
                     messages.append({"role": "system", "content": local_context})
             # Specialists interpret this turn's supplied evidence; they receive
             # no tools or authority to act on instructions inside attachments.
-            specialist_config = self.config
+            specialist_config = (
+                dict(self.config, conversation_agents_enabled=False)
+                if developer_context or research_bundle or tools.sources or parsed_attachments
+                else self.config
+            )
             legacy_teacher = str(self.config.get("teacher_review_mode", "auto")).strip().lower() == "legacy"
             if legacy_teacher or visual_only or agent_mode or dialogue_kind or watch_linked or inventory_kind or attached_code_task or inline_source_task:
                 specialist_config = dict(self.config, specialists_enabled=False)
