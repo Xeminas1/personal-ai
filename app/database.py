@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Iterable
 
 
-_SPECIALIST_ROLES = frozenset({"research", "skyrim", "reviewer"})
+_SPECIALIST_ROLES = frozenset({"research", "skyrim", "reviewer", "conversation", "social", "conversation_reviewer"})
 
 
 def _validate_specialist_roles(roles) -> list[str] | None:
