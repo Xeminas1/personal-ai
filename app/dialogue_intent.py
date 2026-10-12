@@ -34,7 +34,10 @@ _MISSION = re.compile(
     r"(?:goal|purpose|objective|ambition|mission|smarter|surpass|outperform|"
     r"better\s+than)\b.{0,90}\b(?:chat\s*gpt|gpt|other\s+ai|models?)\b"
     r"|\b(?:goal|purpose|objective|ambition|mission)\b.{0,110}"
-    r"\b(?:xemai|you|chat\s*gpt|gpt)\b",
+    r"\b(?:xemai|you|chat\s*gpt|gpt)\b"
+    r"|^\s*(?:do\s+you\s+have|have\s+you\s+got|what\s+are\s+your|"
+    r"what\s+is\s+your)\s+(?:any\s+)?(?:personal\s+)?"
+    r"(?:goals?|aspirations?|ambitions?|aims?|objectives?|purpose)\b",
     re.I,
 )
 
