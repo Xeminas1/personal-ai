@@ -134,6 +134,17 @@ class BridgeToWeightTests(unittest.TestCase):
         self.assertEqual(len(rows), 10)
         self.assertFalse(any("exercise 1?" in row["messages"][0]["content"] for row in rows))
 
+    def test_corrupt_local_candidate_does_not_crash_review_or_approve(self):
+        bridge_collection(self.data, "bridge learning on")
+        self.assertTrue(self.candidate(1))
+        archive = self.data / "github_bridge_training_candidates.jsonl"
+        archive.write_text("null\\n", encoding="utf-8")
+        self.assertIn("malformed", self.call(
+            "bridge weight draft 1: We must verify the underlying evidence first."))
+        self.assertIn("Approval refused", self.call(
+            "bridge weight approve 1 deadbeef"))
+        self.assertFalse((self.data / _EXPORT_DIR).exists())
+
     def test_review_one_candidate_is_never_training_consent(self):
         bridge_collection(self.data, "bridge learning on")
         self.assertTrue(self.candidate(1))
