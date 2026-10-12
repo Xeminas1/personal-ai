@@ -176,3 +176,22 @@ The trained adapter therefore has a **lower answer-token loss on this specific f
 
 **Next gating question: how to train the live 9B safely?** The [official Unsloth Qwen3.5 training guide](https://unsloth.ai/docs/models/qwen3.5/fine-tune) estimates approximately **22GB VRAM for Qwen3.5 9B BF16 LoRA** and specifically advises **against QLoRA (4-bit) for Qwen3.5** because of unusually high quantization differences. The owner's RTX 5080 has about 15.9 GiB physical GPU memory, so neither a 9B BF16 LoRA run using the current script nor an unsupported automatic 4-bit conversion should be presented as production-ready. Possible later paths require separately evaluated offloading/distributed compute/more VRAM or an explicitly acknowledged experimental 4-bit QLoRA tradeoff. Protect running 9B Ollama, conversation privacy, and require owner approval for any such pilot. Next quality checks should use representative owner-reviewed synthetic benchmarks and require measurable gains before any adapter deployment.
 
+
+
+## 2026-10-12: Dedicated 9B feasibility checkpoint (zero training)
+
+The successful separate 4B experiment and narrow four-example held-out comparison justify investigating XemAi's actual Qwen3.5 9B model, **not automatically switching the running model or treating 4B improvements as transferable to 9B**.
+
+The official Qwen3.5 9B Hugging Face safetensors index gives a base-weight total of **19,306,216,416 bytes (~19.31 GB)** (https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/model.safetensors.index.json). This BF16 training source is NOT identical to the already-installed quantized Ollama 9B inference artifact. The owner has not downloaded a separate pinned 9B training snapshot for this workflow.
+
+The new standalone training/assess_9b.py is a **no-network, standard-library-only, non-destructive** Windows/GPU feasibility reporter. It queries NVIDIA VRAM totals/free bytes, training-folder disk space, and locally present bitsandbytes/accelerate package metadata. It does NOT import torch/Unsloth, load model weights, download files, train or save data. training/CHECK_9B_FEASIBILITY.cmd is the double-click Windows entry point (uses python -B to avoid creating bytecode caches); source is also packaged as a root-folder ZIP. The synthetic test_training_9b_feasibility.py checks 16GB, no-GPU and larger-GPU cases. These are advisory tests, **not evidence of Windows GPU training compatibility**.
+
+Possible separately reviewed routes:
+
+- **BF16 9B LoRA**: published Unsloth estimate ~22GB VRAM (https://unsloth.ai/docs/models/qwen3.5/fine-tune), above the owner's 16GB RTX 5080; do not attempt to run the 4B BF16 script against 9B.
+- **8-bit base + LoRA adapters**: potentially lower weight VRAM; Hugging Face documents training extra adapter parameters over 8-bit weights (https://huggingface.co/docs/transformers/quantization/bitsandbytes), and Unsloth documents load_in_8bit=True generally (https://unsloth.ai/docs/get-started/fine-tuning-llms-guide). **Actual 9B Qwen3.5/Windows support, peak VRAM and training quality have NOT been validated.** A future model download or pilot requires separate owner approval.
+- **4-bit QLoRA**: not recommended as a default due to Unsloth's Qwen3.5-specific quantization-quality warning. Do not silently fall back.
+- **CPU offload**: requires concrete backward/gradient support on this particular Windows and model stack; inference-only CPU offload does not establish training feasibility.
+
+The ONLY next action here is to run the read-only 9B feasibility check and review the sanitized report. This is not authorization to download public 9B model files (~19.31 GB), use private bridge chats, train the active 9B model, or deploy any adapter.
+
