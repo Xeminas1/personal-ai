@@ -86,6 +86,7 @@ from .self_knowledge import (
     comparison_answer_needs_retry,
     is_ai_comparison_query,
     is_self_knowledge_query,
+    followup_self_topic,
     RELEASE_HISTORY,
     looks_like_stale_self_description,
 )
@@ -526,6 +527,15 @@ class ChatBackend:
             )
             bridge_topics_available = "no comment text transmitted" in bridge_digest
             inventory_kind = local_question_type(query_text)
+            self_followup = False
+            if not inventory_kind and not parsed_attachments and not agent_mode:
+                resolved = followup_self_topic(
+                    query_text,
+                    worker_db.get_recent_messages(chat_id, limit=5),
+                )
+                if resolved in {"latest_release", "update_reflection", "agent_inventory", "self_analysis"}:
+                    inventory_kind = resolved
+                    self_followup = True
             internal_audit = agent_mode == "self_audit" and not asks_for_external_research(query_text)
             diagnostic_state = {}
             model_user_text = _expand_attachment_message(stored_user_text, diagnostic_state=diagnostic_state)
@@ -682,7 +692,7 @@ class ChatBackend:
                 and dialogue_kind != "bridge_conversation"
             )
             self_query = (
-                is_self_knowledge_query(query_text)
+                (bool(inventory_kind) or is_self_knowledge_query(query_text))
                 and dialogue_kind != "bridge_conversation"
             )
             inventory_data = (
@@ -1191,6 +1201,13 @@ class ChatBackend:
             )
             if inventory_kind and inventory_data is not None and not agent_mode:
                 answer = local_inventory_answer(inventory_data, inventory_kind)
+                if self_followup:
+                    answer = (
+                        "You're right to challenge my earlier response. "
+                        "I should consult my application's own facts rather "
+                        "than repeat an unsupported model limitation.\n\n"
+                        + answer
+                    )
                 application_answer = True
             elif visual_only and not visual_ready:
                 # A ready service is not enough: do not answer from invented
