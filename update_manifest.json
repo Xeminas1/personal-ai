@@ -1,6 +1,6 @@
 {
-  "version": "0.9.53",
-  "notes": "Adds explicitly invoked background conversation tests in the shared XemAi app, with progress, cancellation, separate PC/host selection and downloadable unscored prompt/approved-lesson comparisons. Preserves chats, memories, pairing and model weights; no automatic training or verified improvement claim.",
+  "version": "0.9.54",
+  "notes": "Adds bounded private GitHub bridge polling health indicators and accepts short natural replies while retaining existing privacy filters, two-minute cooldown and read-only scope. Preserves chats, memories, model weights, configured models and private worker pairing; does not train Qwen.",
   "files": [
     {
       "path": ".github/workflows/developer-mode-tests.yml",
@@ -14,8 +14,8 @@
     },
     {
       "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.53/README.md",
-      "sha256": "c2e9075a3b03a408d8365d31fde36ff21307eb4324fd10b4edfa2cc6e52a4809"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.54/README.md",
+      "sha256": "0f4e3e61b0232de1959030cc3d919721c4ec0a5a5600791429969b983744c2bf"
     },
     {
       "path": "XemAi.pyw",
@@ -139,13 +139,13 @@
     },
     {
       "path": "app/github_bridge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.46/app/github_bridge.py",
-      "sha256": "a905d8abb72cb8f284d5ae3c374684b45c361bbc8403ad5708fbf73aa7b00098"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.54/app/github_bridge.py",
+      "sha256": "d17cb0d0db68e12e70513b7819aa5b50bb23cb0d4d42ffa0c6f7a7646816072d"
     },
     {
       "path": "app/github_bridge_auto.py",
-      "sha256": "346b22c6fc6ccf47f99b9e54cd43810e37710b9f9a2bf94e797c59e5f125872d",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.46/app/github_bridge_auto.py"
+      "sha256": "0333aa47db2b01c0679f2553a90fa55a42682510403bf9679a5bbd9030a0b47b",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.54/app/github_bridge_auto.py"
     },
     {
       "path": "app/github_bridge_learning.py",
@@ -229,8 +229,8 @@
     },
     {
       "path": "app/self_knowledge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.53/app/self_knowledge.py",
-      "sha256": "6ca74d7973376f98e05aee009d3a95b1a6fedc3f36d1f6a7ad091bfbd2c77f52"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.54/app/self_knowledge.py",
+      "sha256": "ca171622c560bcc5e2ba034969e25a76f9569ac101806d13e2c54f6d95c52e55"
     },
     {
       "path": "app/skyrim.py",
@@ -264,8 +264,8 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.53/app/version.py",
-      "sha256": "9aab1eb8f663dc3f6ea98d4a7ff5621f57b83d86c8a764f17a57d4da58d430f2"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.54/app/version.py",
+      "sha256": "de97a18c3d5d0062bba852b55ec1f5cbe18960312f8ff5c622d93133cb881281"
     },
     {
       "path": "app/vision.py",
@@ -594,8 +594,8 @@
     },
     {
       "path": "test_github_bridge_auto.py",
-      "sha256": "ab8841fef720570f3538f2a4883a8a8a97fde4be8f81e5c69611b7b5a090a310",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.40/test_github_bridge_auto.py"
+      "sha256": "6e486abf79f074dff1ab3462f0e377c35289e9c5138e511e3e8294411fcd5c12",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.54/test_github_bridge_auto.py"
     },
     {
       "path": "test_github_bridge_learning.py",
@@ -794,8 +794,8 @@
     },
     {
       "path": "verify_release_manifest.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.53/verify_release_manifest.py",
-      "sha256": "c73f732fa6827316ee65f444a5782331fcfaacd4b7b1deec72ddf8ce162cb0d7"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.54/verify_release_manifest.py",
+      "sha256": "c3c28254ad1eb3a55bdef57a1ebc568759a5261524865dcf6c119ac3f3947dfe"
     }
   ]
 }

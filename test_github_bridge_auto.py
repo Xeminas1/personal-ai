@@ -179,6 +179,41 @@ class DialogueTests(unittest.TestCase):
         self.assertEqual(r["status"], "output_rejected")
         self.assertFalse(self.api.posted)
 
+    def test_short_natural_replies_are_allowed_without_weakening_privacy(self):
+        self.assertTrue(_safe_output("Sounds good — let's choose option two."))
+        self.assertTrue(_safe_output("Sure!"))
+        self.assertFalse(_safe_output("NO_REPLY"))
+        self.assertFalse(_safe_output(""))
+        self.assertFalse(_safe_output("x"))
+        self.assertFalse(_safe_output("github_pat_SECRET12345678901234567890"))
+        enable(self.data)
+        result = tick(self.data, client=self.api, now=self.now,
+                      llm_factory=lambda: FakeLLM(
+                          response="Sounds good — let's choose option two."))
+        self.assertEqual(result["status"], "posted")
+        self.assertIn("Sounds good — let's choose option two.", self.api.posted[0][2])
+
+    def test_poll_diagnostics_report_attempts_and_safe_failure_codes(self):
+        self.assertIn("No polling attempt recorded", status(self.data))
+        enable(self.data)
+        result = tick(self.data, client=self.api, now=self.now,
+                      llm_factory=lambda: FakeLLM())
+        self.assertEqual(result["status"], "posted")
+        state = load_state(self.data)
+        self.assertEqual(state["auto_last_poll_status"], "posted")
+        self.assertEqual(state["auto_last_poll_at"], self.now.isoformat(timespec="seconds"))
+        self.assertEqual(state["auto_last_github_read_at"], self.now.isoformat(timespec="seconds"))
+        self.assertIn("Last polling attempt:", status(self.data))
+        self.assertIn("Last successful private GitHub read", status(self.data))
+        self.api.private = False
+        failed = tick(self.data, client=self.api,
+                      now=self.now + timedelta(minutes=1))
+        self.assertEqual(failed["status"], "network_error")
+        state = load_state(self.data)
+        self.assertEqual(state["auto_last_poll_status"], "network_error")
+        self.assertEqual(state["auto_last_github_read_at"], self.now.isoformat(timespec="seconds"))
+        self.assertIn("result=network_error", status(self.data))
+
     def test_daily_caps_and_total_limit(self):
         enable(self.data)
         state = load_state(self.data)

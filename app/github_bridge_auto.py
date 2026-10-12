@@ -118,7 +118,8 @@ def _safe_output(text: str) -> bool:
     if not isinstance(text, str):
         return False
     text = text.strip()
-    if not 40 <= len(text) <= _MAX_OUTPUT:
+    # Natural conversational replies can be brief; length alone is not unsafe.
+    if not 3 <= len(text) <= _MAX_OUTPUT:
         return False
     if text == "NO_REPLY" or _SECRET.search(text):
         return False
@@ -200,13 +201,34 @@ def status(data_dir: Path) -> str:
     state = load_state(data_dir)
     total = state.get("auto_total", 0)
     today = state.get("auto_today", 0)
+    last_poll = state.get("auto_last_poll_at")
+    last_result = str(state.get("auto_last_poll_status") or "unknown")
+    if isinstance(last_poll, str) and last_poll:
+        try:
+            last_time = datetime.fromisoformat(last_poll)
+            if last_time.tzinfo is None:
+                raise ValueError("Timestamp lacks timezone")
+            seconds = max(0, int((datetime.now(timezone.utc) - last_time).total_seconds()))
+            freshness = "stale" if seconds > 90 else "recent"
+            poll_note = f"Last polling attempt: {seconds}s ago ({freshness}; result={last_result}). "
+        except ValueError:
+            poll_note = "Last polling attempt: unknown. "
+    else:
+        poll_note = "No polling attempt recorded; check that the host mobile server is running. "
+    github_read = state.get("auto_last_github_read_at")
+    read_note = (
+        f"Last successful private GitHub read (UTC): {github_read}. "
+        if isinstance(github_read, str) and github_read else
+        "No successful private GitHub read recorded. "
+    )
     return (
         f"Autonomous bridge: {'ON' if state.get('auto_enabled') else 'OFF'}. "
         f"Issue: {state.get('auto_issue') or 'none'}. "
         f"Replies: {total}/{AUTO_MAX_TOTAL} total; "
         f"{today}/{AUTO_MAX_PER_DAY} for current accounting day. "
         f"Paused for review: {'yes' if state.get('auto_paused') else 'no'}. "
-        "The GitHub issue and XemAi's separate collaboration chat show the discussion."
+        + poll_note + read_note
+        + "The GitHub issue and XemAi's separate collaboration chat show the discussion."
     )
 
 
@@ -244,8 +266,21 @@ def tick(data_dir: Path, *, client=None, llm_factory=None, logger=None,
     if not _AUTO_LOCK.acquire(blocking=False):
         return {"status": "busy"}
     try:
-        return _tick(data_dir, client=client, llm_factory=llm_factory,
-                     logger=logger, now=now)
+        with _LOCK:
+            monitored_issue = load_state(data_dir).get("auto_issue")
+        outcome = _tick(data_dir, client=client, llm_factory=llm_factory,
+                        logger=logger, now=now)
+        # Only bounded result codes/timestamps are retained, never comment text.
+        with _LOCK:
+            state = load_state(data_dir)
+            if (state.get("auto_issue") == monitored_issue and
+                    (state.get("auto_enabled") or state.get("auto_paused"))):
+                state["auto_last_poll_at"] = (
+                    now or datetime.now(timezone.utc)
+                ).isoformat(timespec="seconds")
+                state["auto_last_poll_status"] = str(outcome.get("status") or "unknown")[:64]
+                save_state(data_dir, state)
+        return outcome
     finally:
         _AUTO_LOCK.release()
 
@@ -276,6 +311,11 @@ def _tick(data_dir, *, client=None, llm_factory=None, logger=None, now=None):
         api = _get_client(data_dir, client)
         api.verify_private(repo)
         comments = api.comments(repo, issue)
+        with _LOCK:
+            state = load_state(data_dir)
+            if state.get("auto_enabled") and state.get("auto_issue") == issue:
+                state["auto_last_github_read_at"] = instant.isoformat(timespec="seconds")
+                save_state(data_dir, state)
     except BridgeError as error:
         if logger:
             logger.warning("GitHub bridge poll failed | error_type=%s", type(error).__name__)
