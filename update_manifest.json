@@ -374,8 +374,8 @@
     },
     {
       "path": "self_test.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.31/self_test.py",
-      "sha256": "d73d30ded8544492622af9fd685619f9477fa83d89249960978ce40e5267757c"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.46/self_test.py",
+      "sha256": "3aeb4410d68138ef3030d873dab700cb5f7e1cedd89a46acf453d8552adf5bc3"
     },
     {
       "path": "test_agent_team.py",
