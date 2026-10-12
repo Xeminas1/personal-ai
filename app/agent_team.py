@@ -22,8 +22,9 @@ _ALLOWED_TEAM_TOOLS = frozenset({
     "web_search", "web_fetch", "research_evidence",
 })
 _NOT_AGENTS = re.compile(
-    r"\b(?:no|without|avoid|skip|"
-    r"(?:don't|do\s+not|never)\s+(?:(?:use|run|start|deploy|ask|have)\s+)?)\s+"
+    r"\b(?:no|without|avoid|skip)\s+(?:any\s+)?(?:agents|agent\s+team|specialists)\b"
+    r"|\b(?:don't|do\s+not|never)\s+"
+    r"(?:(?:use|run|start|deploy|ask|have)\s+)?"
     r"(?:any\s+)?(?:agents|agent\s+team|specialists)\b",
     re.IGNORECASE,
 )
