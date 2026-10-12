@@ -33,7 +33,7 @@ exit /b 0
 :INSTALL
 echo.
 echo This OPTIONAL command installs a separate Python 3.13 environment
-echo and CUDA training libraries into the gitignored XemAi data folder.
+echo and CUDA training libraries into a separate local data folder.
 echo It may download multiple gigabytes of packages from package services.
 echo It will NOT download model weights, alter the live Ollama model,
 echo touch XemAi memory, bridge, pairing, chats or deploy anything.
@@ -72,6 +72,8 @@ echo Installing standalone Python 3.13 without replacing Python 3.14...
 uv python install 3.13
 if errorlevel 1 exit /b 2
 echo Creating private, isolated training environment...
+if not exist "%~dp0..\data\weight_training" mkdir "%~dp0..\data\weight_training"
+if errorlevel 1 exit /b 2
 uv venv "%ENV_DIR%" --python 3.13
 if errorlevel 1 exit /b 2
 if not exist "%ENV_PY%" (
