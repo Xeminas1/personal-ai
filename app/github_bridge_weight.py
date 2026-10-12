@@ -214,7 +214,9 @@ def command(data_dir: Path, query: str) -> str:
                 if idx > len(archive):
                     return "Unknown candidate number; use 'bridge learning show N' first."
                 candidate = archive[idx - 1]
-                question = candidate.get("input_excerpt") if isinstance(candidate, dict) else None
+                if not isinstance(candidate, dict):
+                    return "Local candidate is malformed; nothing was reviewed or approved."
+                question = candidate.get("input_excerpt")
                 if not _valid_text(question):
                     return "Candidate prompt contains private data or cannot be safely exported. Select/redact another example."
                 if not _valid_text(corrected):
@@ -241,6 +243,7 @@ def command(data_dir: Path, query: str) -> str:
                 latest = events.get(idx)
                 if (not latest or latest.get("action") != "draft"
                         or latest.get("code") != code or idx > len(archive)
+                        or not isinstance(archive[idx - 1], dict)
                         or _source_hash(archive[idx - 1]) != latest.get("source_sha256")
                         or not _valid_text(latest.get("target"))):
                     return "Approval refused: missing/stale draft or mismatched confirmation code."
