@@ -1,3 +1,11 @@
+## v0.9.50 — Five supervised agent teams
+
+- Adds five on-demand, read-only three-pass teams: Memory & Continuity, Software Engineering, Research & Verification, Learning & Benchmarks, and Design & Accessibility.
+- Relevant current-user memory and chat evidence are supplied only to an explicitly invoked memory team; learning uses rating aggregates rather than claiming automatic weight training.
+- Teams reuse XemAi's existing local/hybrid model with no new model downloads, shell permissions, automated code edits or memory modification.
+- Fixes v0.9.49 conversation specialist provenance storage and improves "do not run agents" interpretation.
+- See `docs/AGENT_TEAMS.md` for exact invocation phrases and limitations. Real-model quality still requires evaluation.
+
 ## v0.9.49 — Selective Conversation Agent Team
 
 - Three new bounded specialist roles help interpret ambiguous follow-ups, social tone, and draft response quality, using the existing private worker/model.
