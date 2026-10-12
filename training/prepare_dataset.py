@@ -49,7 +49,12 @@ def _json(value: object) -> bytes:
 
 def _safe_path(path: Path, *, file: bool = False) -> Path:
     """Reject symlinks even at existing parent components."""
-    path = Path(path).absolute()
+    raw = Path(path).absolute()
+    for piece in (raw, *raw.parents):
+        if piece.is_symlink():
+            raise DatasetRejected("Symlink paths are not allowed.")
+    # Collapse '..' before checking whether output is inside the public tree.
+    path = Path(os.path.normpath(str(raw)))
     for piece in (path, *path.parents):
         if piece.is_symlink():
             raise DatasetRejected("Symlink paths are not allowed.")
@@ -98,8 +103,6 @@ def validate_example(raw: object) -> dict:
         if not isinstance(msg, dict) or set(msg) != {"role", "content"} or msg["role"] != required_role:
             raise DatasetRejected("Malformed or out-of-order conversation roles.")
         clean.append({"role": required_role, "content": _content(msg["content"])})
-    if _digest(_json(clean)) == _digest(_json(clean[:-1])):
-        raise DatasetRejected("Empty or invalid completion.")
     return {"messages": clean}
 
 
