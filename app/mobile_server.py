@@ -22,7 +22,7 @@ from .logging_setup import setup_logging
 from .media_support import media_payload, vision_status
 from .secrets import load_hybrid_pairing_state
 from .version import VERSION
-from . import ai_watch, support_access, updater
+from . import ai_watch, support_access, updater, conversation_evaluation
 from .support_http import handle_support_read, support_endpoints
 
 
@@ -263,7 +263,7 @@ def _reserve_update(server) -> str | None:
     with server.chat_operation_lock:
         if getattr(server, "update_restarting", False):
             return "updating"
-        if _active_chat_requests(server) > 0:
+        if _active_chat_requests(server) > 0 or conversation_evaluation.is_running(DATA_DIR):
             return "busy"
         lock = getattr(server, "update_lock", None)
         if lock is not None and not lock.acquire(blocking=False):
@@ -624,6 +624,30 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                 "pid": os.getpid(),
                 "server": "XemAiMobile",
             })
+            return
+
+        if path == "/api/conversation-test/results":
+            params = parse_qs(parsed.query, keep_blank_values=True)
+            if set(params) != {"run"} or len(params["run"]) != 1:
+                self._error("Specify one conversation test identifier.")
+                return
+            try:
+                data, filename = conversation_evaluation.export_results(DATA_DIR, params["run"][0])
+            except ValueError as error:
+                self._error(error)
+                return
+            except (OSError, json.JSONDecodeError):
+                self._error("Conversation test results are not available.", HTTPStatus.NOT_FOUND)
+                return
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/zip")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Content-Disposition", 'attachment; filename="' + filename + '"')
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Referrer-Policy", "no-referrer")
+            self.end_headers()
+            self.wfile.write(data)
             return
 
         if path == "/api/compute":

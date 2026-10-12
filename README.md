@@ -1,3 +1,10 @@
+## v0.9.53 — Conversation tests from the app
+
+- Type `conversation test` in normal XemAi chat to start a background pilot using the existing PC/host model; no separate test ZIP setup.
+- Adds progress, stop, PC/laptop selection, completion messages and downloadable unscored prompt/approved-lesson comparisons.
+- Keeps inference on one selected model, skips unavailable lessons, protects existing chats/memories/pairing and performs no model training.
+- See `docs/CONVERSATION_TESTS.md` for commands and evaluation limits.
+
 ## v0.9.52 — Direct questions about XemAi's goals
 
 - Answers plain questions such as “Do you have any goals or aspirations?” with an honest distinction between no personal desires and XemAi's human-set development mission.

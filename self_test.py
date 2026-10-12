@@ -5,6 +5,7 @@ import io
 import json
 import os
 import py_compile
+import re
 import threading
 import tempfile
 import urllib.request
@@ -392,10 +393,14 @@ def run() -> None:
     assert '"compute_name"' in mobile_server
     assert '"worker_available"' in mobile_server
     assert "/api/update" in mobile_server
-    assert 'FRONTEND_VERSION = "0.9.46"' in mobile_js
+    frontend_match = re.search(r'^const FRONTEND_VERSION = "(\d+\.\d+\.\d+)";', mobile_js, re.M)
+    assert frontend_match
+    frontend_version = frontend_match.group(1)
+    assert tuple(map(int, frontend_version.split("."))) <= tuple(map(int, VERSION.split(".")))
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.9.46" in mobile_html
-    assert "/styles.css?v=0.9.46" in mobile_html
+    assert "/app.js?v=" + frontend_version in mobile_html
+    assert "/styles.css?v=" + frontend_version in mobile_html
+    assert "xemai-mobile-v" + frontend_version in (project_root / "mobile" / "sw.js").read_text(encoding="utf-8")
     assert 'id="fileDropOverlay"' in mobile_html
     assert "XEMAI_DROP_SUPPORT_BEGIN" in (project_root / "mobile" / "app.js").read_text(encoding="utf-8")
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")

@@ -27,6 +27,7 @@ from .conversation_learning import (
     record_validation as record_conversation_validation,
     lesson_context as approved_conversation_lessons,
 )
+from . import conversation_evaluation
 from .github_bridge_review import recall_context as reviewed_bridge_lessons
 from .ai_watch import current_report as ai_watch_report
 from .attachment_tasks import (
@@ -570,6 +571,21 @@ class ChatBackend:
                 if status_callback:
                     status_callback(None)
                 return bridge_answer
+
+            if (record_user and not parsed_attachments
+                    and conversation_evaluation.is_command(query_text)):
+                response = conversation_evaluation.command(
+                    DATA_DIR, query_text, self.config, chat_id=chat_id,
+                    logger=self.logger, defer=True,
+                )
+                worker_db.add_assistant_message(
+                    chat_id, response, compute_source="application",
+                )
+                assistant_recorded = True
+                conversation_evaluation.begin(DATA_DIR, chat_id)
+                if status_callback:
+                    status_callback(None)
+                return response
 
             if (record_user and not parsed_attachments
                     and is_conversation_learning_command(query_text)):

@@ -24,6 +24,9 @@ on:
       - "conversation_intelligence_benchmark.py"
       - "main.py"
       - "test_conversation_learning.py"
+      - "test_conversation_evaluation.py"
+      - "test_conversation_test_http.py"
+      - "test_conversation_test_ui.js"
       - "test_message_ratings.py"
       - "test_rating_adaptation.py"
       - "test_runtime_self_updates.py"
@@ -102,6 +105,8 @@ jobs:
            python conversation_intelligence_benchmark.py --dry-run
           python test_bridge_conversation_context.py
           python test_conversation_learning.py
+          python test_conversation_evaluation.py
+          python test_conversation_test_http.py
           python test_message_ratings.py
           python test_rating_adaptation.py
           python test_runtime_self_updates.py
@@ -123,6 +128,7 @@ jobs:
           node --check mobile/app.js
           node test_drag_drop.js
           node test_message_rating_ui.js
+          node test_conversation_test_ui.js
       - name: Run XemAi built-in test suite
         run: python self_test.py
       - name: Test AI Watch follow-ups and restart health
