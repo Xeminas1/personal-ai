@@ -1,3 +1,11 @@
+## v0.9.48 — Conversational continuity and social judgement
+
+- Guides ordinary multi-turn replies to interpret the latest user message against recent conversation, including short confirmations, corrections, indirect references, changing constraints and requests for opinions.
+- Improves proportional responses to appreciation, sarcasm and frustration without abandoning independent judgement or making unsupported emotional claims.
+- Adds offline conversation regression tests and local A/B evaluation probes for actual model responses.
+- Keeps source, visual, agent, research and self-knowledge tasks isolated from the new continuity cue.
+- No new model, automatic fine-tuning, new agents, autonomous self-modification or permissions. GPT-level conversational parity is not established.
+
 ## v0.9.32 — Stop inventing missing source code in Skyrim benchmark answers
 
 Fixes the observed failure in which Qwen3:8b insisted CMakeLists.txt,
