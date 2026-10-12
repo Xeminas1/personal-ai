@@ -1,6 +1,6 @@
 {
-  "version": "0.9.51",
-  "notes": "Recognises normal phrasings such as 'how are you finding the gpt chat?' as questions about XemAi's existing owner-enabled GitHub dialogue rather than generic AI experience. Supplies only host-verified bridge status and privacy-safe bounded topic metadata, suppresses unrelated web search, and retries evasive no-feelings boilerplate. Adds targeted intent/validator/integration regressions, with no new models, permissions, agent teams or memory changes. Windows and Linux regression suite and SHA-256-pinned 153-file release verification.",
+  "version": "0.9.52",
+  "notes": "Routes direct questions about XemAi's goals and aspirations to a truthful explanation of its human-set development mission, without implying personal desires or proven superiority. Adds exact-phrase regression cases and updates the pinned release verifier. No model, permission or autonomy changes.",
   "files": [
     {
       "path": ".github/workflows/developer-mode-tests.yml",
@@ -89,8 +89,8 @@
     },
     {
       "path": "app/dialogue_intent.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.51/app/dialogue_intent.py",
-      "sha256": "95afa7fb522a20e2a827205b91bf3ab6a33088f5a74e22143b082f5191b316b9"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.52/app/dialogue_intent.py",
+      "sha256": "a6d552fdcf3e2e8976e181dad865bb42108aee3bee32c0508ae5d6f188b91713"
     },
     {
       "path": "app/evidence.py",
@@ -189,8 +189,8 @@
     },
     {
       "path": "app/self_knowledge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.51/app/self_knowledge.py",
-      "sha256": "c68de9d1c91b96feaa0d7dea4fc40c1b4aabc4dd2168fc5ea59c01242d5fb0ee"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.52/app/self_knowledge.py",
+      "sha256": "d1b6d1851143978e3664f7f9d6a5babeadd16c6a61918f975ab3a086a1bbd4e3"
     },
     {
       "path": "app/skyrim.py",
@@ -224,8 +224,8 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.51/app/version.py",
-      "sha256": "9c8de10a98a61594b25bcd6593f38a7d554e8aa618c9d353ace2b914058319a7"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.52/app/version.py",
+      "sha256": "6956f212045c64c3bd16acb72f0e89e4e63f64af2e607300230ed9d198b6139b"
     },
     {
       "path": "app/vision.py",
@@ -394,8 +394,8 @@
     },
     {
       "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.51/README.md",
-      "sha256": "4c4d9dca98a5da456979e6586ef880b8be13600c2ae1c594ae48f74de44e34ae"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.52/README.md",
+      "sha256": "afa678fba92f8b6940154d50fad9fdbafea088d6129b99c33faaf20241497bf4"
     },
     {
       "path": "restart_mobile_server.bat",
@@ -449,8 +449,8 @@
     },
     {
       "path": "test_capability_inventory.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.51/test_capability_inventory.py",
-      "sha256": "d9726e84ca9b33b4c8c1a54a9e5440d4f0c827512f486a8b40b62d3523762965"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.52/test_capability_inventory.py",
+      "sha256": "630e670dbf3375d9190a44706f0876d23284c46c8693611a453ac1d3e2c99cec"
     },
     {
       "path": "test_chat_delete.py",
@@ -514,8 +514,8 @@
     },
     {
       "path": "test_dialogue_mission.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.51/test_dialogue_mission.py",
-      "sha256": "f8640b64e5de6ea590dae8a133d94dfff8b3985a5040289fc904106c89466b9d"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.52/test_dialogue_mission.py",
+      "sha256": "d1c85a15ef8a33a3a86873e91b5ea0b029c76685cd243ac23e1b8d703a3f174b"
     },
     {
       "path": "test_drag_drop.js",
@@ -744,8 +744,8 @@
     },
     {
       "path": "verify_release_manifest.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.51/verify_release_manifest.py",
-      "sha256": "87dfbea1ca97c36669a1dd161de9a775aaa32d4f45cf8175dbcd6ba93b01d1de"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.52/verify_release_manifest.py",
+      "sha256": "2eb407beebbb2a342fcabfb1f04b674be6c4e961ef1c2969e29811dfb1d6b4f5"
     },
     {
       "path": "XemAi.pyw",

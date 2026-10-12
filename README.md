@@ -1,3 +1,9 @@
+## v0.9.52 — Direct questions about XemAi's goals
+
+- Answers plain questions such as “Do you have any goals or aspirations?” with an honest distinction between no personal desires and XemAi's human-set development mission.
+- Keeps benchmark superiority as an unproven objective, not an achieved capability.
+- Adds regression cases for common direct phrasings; no model, permissions, or autonomy changes.
+
 ## v0.9.51 — Natural GPT-chat conversation questions
 
 - Recognises conversational questions like `how are you finding the gpt chat?`, `what are your thoughts on the GPT chat?` and `how is your GPT chat going?` as questions about XemAi's owner-enabled GitHub dialogue.

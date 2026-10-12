@@ -68,7 +68,7 @@ class LocalInventoryTests(unittest.TestCase):
         ))
 
     def test_inventory_contains_exact_roles_release_history_and_no_secrets(self):
-        self.assertEqual(self.data["application_version"], "0.9.51")
+        self.assertEqual(self.data["application_version"], "0.9.52")
         self.assertEqual(len(self.data["agents"]), 17)
         names = {item["name"] for item in self.data["agents"]}
         self.assertIn("Self-Improvement Agent", names)
@@ -94,8 +94,8 @@ class LocalInventoryTests(unittest.TestCase):
         self.assertIn("self-improvement audit", analysis)
         self.assertIn("not direct", analysis)
         updates = direct_answer(self.data, "update_reflection")
-        self.assertIn("v0.9.50", updates)
         self.assertIn("v0.9.51", updates)
+        self.assertIn("v0.9.52", updates)
         self.assertIn("not the same as", updates.lower())
         disabled = inventory(
             {"agent_team_enabled": False, "ai_watch_enabled": False,
@@ -125,7 +125,7 @@ class LocalInventoryTests(unittest.TestCase):
         self.assertEqual(report["research_status"], "not_requested_for_internal_audit")
         self.assertEqual(model.chat.call_count, 3)
         args = str(model.chat.call_args_list)
-        self.assertIn("0.9.51", args)
+        self.assertIn("0.9.52", args)
         self.assertIn("Self-Improvement Agent", args)
         self.assertIn("no complete repo audit", args.lower().replace("repository", "repo"))
         bad = (
@@ -212,7 +212,7 @@ class LocalInventoryTests(unittest.TestCase):
                      side_effect=AssertionError("No web research expected")), \
                  patch.object(gui_backend, "source_context_for_request", return_value=""):
                 answer = backend.send(chat["id"], prompt)
-            self.assertIn("XemAi v0.9.51", answer)
+            self.assertIn("XemAi v0.9.52", answer)
             self.assertIn("Verifier caution", answer)
             self.assertNotIn("RTX 3090", answer)
             self.assertEqual(client.chat.call_count, 3)
