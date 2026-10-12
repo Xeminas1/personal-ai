@@ -45,7 +45,13 @@ _BRIDGE_CONVERSATION = re.compile(
     r"(?:with\s+)?(?:chat\s*gpt|gpt)\b"
     r"|\b(?:how\s+(?:are|do)\s+you|are\s+you|do\s+you|what\s+do\s+you)\b"
     r".{0,95}\b(?:chat|conversation|discussion|dialogue|exchange)\s+"
-    r"(?:with\s+)?(?:chat\s*gpt|gpt)\b",
+    r"(?:with\s+)?(?:chat\s*gpt|gpt)\b"
+    r"|^\s*(?:how\s+(?:are|do)\s+you\s+(?:finding|rating)|"
+    r"what\s+(?:do\s+you\s+think|are\s+your\s+thoughts)\s+(?:of|about|on)|"
+    r"are\s+you\s+enjoying)\s+(?:the|your|our)\s+"
+    r"(?:gpt|chat\s*gpt)\s+(?:chat|conversation|discussion|dialogue|exchange)\b"
+    r"|^\s*how(?:'s|\s+is)\s+(?:the|your|our)\s+(?:gpt|chat\s*gpt)\s+"
+    r"(?:chat|conversation|discussion)\s+(?:going|progressing)\b",
     re.I,
 )
 _BRIDGE_OFF_TOPIC = re.compile(
@@ -54,6 +60,28 @@ _BRIDGE_OFF_TOPIC = re.compile(
     r"i\s+(?:cannot|can't)\s+offer\s+a\s+personal\s+opinion\s+"
     r"on\s+how\s+you\s+(?:found|felt))\b"
 )
+
+# Catch refusal-to-assess boilerplate even when it is sufficiently long.
+# A thoughtful answer can mention that XemAi lacks feelings AND still evaluate
+# the bridge; that is not a validation failure.
+_BRIDGE_EMPTY_SELF_DESCRIPTION = re.compile(
+    r"\bi\s+(?:do\s+not|don't)\s+have\s+(?:personal\s+)?feelings\b"
+    r"|\bi\s+(?:am|remain)\s+functioning\s+within\s+"
+    r"(?:my\s+)?(?:standard\s+)?operational\s+parameters\b",
+    re.I,
+)
+_BRIDGE_SUBSTANTIVE_OBSERVATION = re.compile(
+    r"\b(?:github|bridge|benchmarks?|source\s+files?|evidence|"
+    r"validation|validators?|debugging|tested|tests?|debated|"
+    r"discussed|exchanged|compared|reviewed|critiqued)\b",
+    re.I,
+)
+_BRIDGE_CLARIFICATION_DODGE = re.compile(
+    r"\b(?:if\s+you\s+are\s+referring\s+to\s+a\s+specific\s+technical\s+update|"
+    r"please\s+clarify\s+so\s+i\s+can\s+provide\s+factual\s+details)\b",
+    re.I,
+)
+
 
 _UNHELPFUL_HYPOTHETICAL = re.compile(
     r"\b(?:please\s+clarify\s+the\s+(?:context|question)|"
@@ -169,9 +197,17 @@ def dialogue_answer_needs_retry(
         # Previous versions rejected acceptable Qwen drafts and substituted a
         # canned fallback. Keep borderline responses visible so the owner can
         # correct and benchmark them instead of masking them.
-        return bool(_BRIDGE_OFF_TOPIC.search(a)) or bool(re.search(
-            r"(?i)\bi\s+(?:enjoyed|love|felt|feel)\s+(?:the|our|my)\s+chat\b", a
-        ))
+        return (
+            bool(_BRIDGE_OFF_TOPIC.search(a))
+            or bool(_BRIDGE_CLARIFICATION_DODGE.search(a))
+            or (
+                bool(_BRIDGE_EMPTY_SELF_DESCRIPTION.search(a))
+                and not bool(_BRIDGE_SUBSTANTIVE_OBSERVATION.search(a))
+            )
+            or bool(re.search(
+                r"(?i)\bi\s+(?:enjoyed|love|felt|feel)\s+(?:the|our|my)\s+chat\b", a
+            ))
+        )
     if kind == "mission":
         return bool(_DENIAL.search(a)) or not (
             re.search(r"\b(?:goal|objective|mission|ambition|aim|develop)\b", a, re.I)
