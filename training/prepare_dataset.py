@@ -125,9 +125,16 @@ def _read_input(path: Path) -> tuple[list[dict], str]:
             item = validate_example(json.loads(line))
         except (ValueError, TypeError) as exc:
             raise DatasetRejected("Invalid or unreviewed training record.") from exc
-        fingerprint = _digest(_json(item))
+        # Same visible prompt must not appear in train and holdout with merely
+        # altered casing/punctuation or a different claimed correct answer.
+        prompt = item["messages"][:-1]
+        normalized = [
+            {"role": m["role"], "content": re.sub(r"\\W+", " ", m["content"].casefold()).strip()}
+            for m in prompt
+        ]
+        fingerprint = _digest(_json(normalized))
         if fingerprint in seen:
-            raise DatasetRejected("Duplicate example; fix train/evaluation leakage risk.")
+            raise DatasetRejected("Repeated training prompt; fix train/evaluation leakage risk.")
         seen.add(fingerprint)
         examples.append(item)
     return examples, _digest(source)
