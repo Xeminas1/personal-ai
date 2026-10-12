@@ -13,6 +13,12 @@
 
 A previous ChatGPT conversation, assistant reply, PR description or Codex transcript is not proof that a change was merged or installed. Verify commit SHA and CI. A private issue is neither public project state nor permission to copy its content here.
 
+## Current bridge/weight-training handoff
+
+For private XemAi–ChatGPT bridge work, Qwen LoRA training, archived correction quality, or owner-reviewed SFT dataset exports, read the public-safe **[BRIDGE_WEIGHT_TRAINING_HANDOFF.md](BRIDGE_WEIGHT_TRAINING_HANDOFF.md)** immediately after the standard checklist. Then compare it against live [issue #61](https://github.com/Xeminas1/personal-ai/issues/61) and unmerged **#62, #64 and #65**. Do not conflate an existing private conversation watch with an installed automatic training-data import. Do not treat an unmerged draft as released.
+
+The authoritative release-history write and separate private-proposal background polling/hardening were blocked by platform safety checks while preparing the next version. Treat those restrictions as binding; do not attempt alternate tooling or file paths to bypass them. Any replacement must be explicitly permitted and reviewed before release. Keep public checkpoints free of private GitHub issue text, actual dialogue IDs, credentials, device identity, personal file paths and unpublished data.
+
 ## First minute of a new session
 
 1. Connect to the authorised **public** XemAi repository. Read `AGENTS.md`, `docs/PROJECT_STATE.md`, `docs/AI_COLLABORATION_RULES.md` and this file.
