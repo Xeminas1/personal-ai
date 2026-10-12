@@ -164,37 +164,14 @@ def dialogue_answer_needs_retry(
     if len(a) < 75:
         return True
     if kind == "bridge_conversation":
-        if (_BRIDGE_OFF_TOPIC.search(a)
-                or not re.search(r"(?i)\b(?:chat\s*gpt|gpt)\b", a)
-                or re.search(r"(?i)\bi\s+(?:enjoyed|love|felt|feel)\s+(?:the|our|my)\s+chat\b", a)):
-            return True
-        # The reported failure listed counts and offered to fetch, while
-        # never assessing the actual collaboration. When local topic evidence
-        # exists, require a meaningful evaluation near the START of the answer,
-        # not a disconnected positive word buried after connection boilerplate.
-        if bridge_topics_available:
-            opening = a[:350].lower()
-            assessment = re.search(
-                r"\b(?:productive|constructive|useful|valuable|worthwhile|"
-                r"helpful|challenging|challenged|thought.provoking|"
-                r"insightful|substantive|mixed|limited|promising|"
-                r"frustrating|unproductive|meaningful|going well|"
-                r"progress|disagree|debate|critic(?:al|al)?|"
-                r"improv(?:e|ing|ement))\b", opening, re.I,
-            )
-            subject = re.search(
-                r"\b(?:source|version|evidence|test|benchmark|"
-                r"reasoning|validator|rubric|fixture|learning|"
-                r"attribution|uncertain|review|ground.truth)\b", a, re.I,
-            )
-            return not (assessment and subject)
-        # Without usable evidence, a candid limitation is preferable
-        # to inventing what the private conversation actually contains.
-        return not re.search(
-            r"(?i)\b(?:cannot|can't|do not|don't|no|not|without|"
-            r"unable|lack|missing)\b.{0,155}\b(?:assess|judge|"
-            r"evaluate|know|transcript|detail|messages|contents)\b", a
-        )
+        # Hard failures only. Free-form conversational assessments cannot be
+        # meaningfully validated by a list of mandatory "opinion" words.
+        # Previous versions rejected acceptable Qwen drafts and substituted a
+        # canned fallback. Keep borderline responses visible so the owner can
+        # correct and benchmark them instead of masking them.
+        return bool(_BRIDGE_OFF_TOPIC.search(a)) or bool(re.search(
+            r"(?i)\bi\s+(?:enjoyed|love|felt|feel)\s+(?:the|our|my)\s+chat\b", a
+        ))
     if kind == "mission":
         return bool(_DENIAL.search(a)) or not (
             re.search(r"\b(?:goal|objective|mission|ambition|aim|develop)\b", a, re.I)
