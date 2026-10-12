@@ -4,6 +4,13 @@
 
 ## Releases
 
+## v0.9.56 — Private bridge large-discussion reader repair
+
+- Fixes a confirmed response-size problem where long private GitHub issue comment lists exceeded the previous 160 KB read buffer, stopping `bridge replies` and the background discussion poll.
+- Fetches only the already-authorised private issue in bounded 25-comment pages, with per-response and cumulative read limits and a clear sanitised error for malformed or oversized JSON.
+- Adds synthetic tests for manual replies and autonomous polling through longer discussions. Preserves existing credentials, permissions, chats, memories, model weights and hybrid pairing.
+- Does not turn GitHub discussion or review scores into Qwen model-weight training. Learning archives and approval still follow their separate opt-in controls.
+
 ## v0.9.55 — Read-only public GitHub development handoff in XemAi chat
 
 - The exact command `Resume XemAi from GitHub` now retrieves bounded public repository status (release version, open issues/PRs and latest main commit) directly from fixed public HTTPS endpoints. It answers the user's actual question instead of drifting into unrelated Qwen chat or ratings.
