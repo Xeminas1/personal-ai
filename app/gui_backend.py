@@ -20,6 +20,7 @@ from .ai_watch import chat_command as ai_watch_chat_command
 from .github_bridge import chat_command as github_bridge_chat_command, is_command as is_bridge_command
 from .github_bridge_auto import status as private_bridge_status
 from .bridge_conversation_context import bridge_topic_digest
+from .conversation_skills import guidance_for_turn
 from .conversation_learning import (
     is_command as is_conversation_learning_command,
     chat_command as conversation_learning_command,
@@ -1231,6 +1232,18 @@ class ChatBackend:
                     chat_id, turn_id, agent_mode, len(agent_report["agents"]),
                 )
                 timing("agent_team", agent_started)
+            # Ordinary multi-turn dialogue benefits from last-turn attention.
+            # No chat content is promoted into system instructions, and
+            # isolated evidence/vision/developer and special-purpose tasks
+            # remain on their existing paths.
+            if not (
+                parsed_attachments or attached_code_task or inline_source_task
+                or visual_only or self_query or inventory_kind or agent_mode
+                or dialogue_kind or watch_linked or research_bundle
+            ):
+                conversational_note = guidance_for_turn(messages)
+                if conversational_note:
+                    messages.append({"role": "system", "content": conversational_note})
             answer_started = time.monotonic()
             application_answer = False
             task_tools = (
