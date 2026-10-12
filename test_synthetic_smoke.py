@@ -176,6 +176,17 @@ class PilotSafetyTests(unittest.TestCase):
         self.assertIn("supervised answer tokens:", output.getvalue())
         self.assertFalse(self.output.exists())
 
+    def test_cli_compat_retry_reports_real_failure_category_without_gpu(self):
+        captured = io.StringIO()
+        with patch.object(smoke, 'train', side_effect=RuntimeError('CUDA out of memory while allocating')):
+            with contextlib.redirect_stdout(captured):
+                code = smoke.main(['--train', '--compat-no-compile',
+                                   '--confirm', 'TRAIN SYNTHETIC 4B'])
+        self.assertEqual(code, 2)
+        self.assertIn('DIAGNOSTIC: type = RuntimeError', captured.getvalue())
+        self.assertIn('category = cuda_or_host_out_of_memory', captured.getvalue())
+        self.assertIn('no adapter was confirmed', captured.getvalue())
+
     def test_synthetic_examples_are_separated(self):
         train, heldout = smoke._split()
         self.assertEqual(len(train), 16)
