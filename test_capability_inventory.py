@@ -69,7 +69,7 @@ class LocalInventoryTests(unittest.TestCase):
 
     def test_inventory_contains_exact_roles_release_history_and_no_secrets(self):
         self.assertEqual(self.data["application_version"], "0.9.49")
-        self.assertEqual(len(self.data["agents"]), 12)
+        self.assertEqual(len(self.data["agents"]), 17)
         names = {item["name"] for item in self.data["agents"]}
         self.assertIn("Self-Improvement Agent", names)
         self.assertIn("AI Technology Watch", names)
