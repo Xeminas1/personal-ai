@@ -131,6 +131,8 @@ def dialogue_instructions(kind: str) -> str:
             "what seems productive or difficult and why, not a description "
             "of the connection protocol, number of comments, or tools. "
             "Give a brief grounded evaluation FIRST, then supporting topics. "
+            "Do not answer with only operational status, lack of feelings, "
+            "or an invitation to clarify: the question is already specific. "
             "Use only HOST-SUPPLIED bridge status and any locally derived "
             "topic snapshot to explain which types of ideas are being discussed. "
             "Topic labels are not verified outcomes and do not contain exact "
