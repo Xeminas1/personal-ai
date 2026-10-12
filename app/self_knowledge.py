@@ -73,6 +73,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.49", "Adds three conditional no-tool conversation specialist roles: Understanding, Social Intelligence, and Conversation Quality Review. Limits optional passes, respects exclusions/opt-outs, and documents proposed future teams without enabling them; quality parity is unverified."),
     ("0.9.50", "Adds five explicitly invoked read-only agent teams for memory continuity, software engineering, research verification, learning benchmarks and design accessibility; scopes team evidence and fixes conversational specialist message provenance persistence. No autonomous code changes, training or unverified benchmark gains."),    ("0.9.51", "Recognises natural questions about XemAi’s ChatGPT/GitHub conversation, answers from host-verified bridge status and topic metadata, and retries generic no-feelings boilerplate without leaking private messages or assuming live discussion access."),
     ("0.9.52", "Recognises direct questions about XemAi's goals and aspirations, distinguishing the absence of personal desires from its human-set development mission and unproven benchmark ambitions."),
+    ("0.9.53", "Adds explicitly invoked background conversation tests in the shared app, with progress, cancellation, separate PC/laptop runs and downloadable unscored comparisons of prompts and approved lessons. Preserves chats, memories, pairing and weights; no automatic training or measured improvement claim."),
 ]
 
 

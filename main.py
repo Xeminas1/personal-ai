@@ -13,6 +13,7 @@ from app.learning import extract_and_store_memories
 from app.llm import OllamaClient, OllamaError
 from app.logging_setup import setup_logging
 from app.conversation_skills import guidance_for_turn
+from app import conversation_evaluation
 from app.prompts import build_system_prompt
 from app.secrets import save_ollama_api_key, clear_ollama_api_key
 from app.self_knowledge import (
@@ -62,6 +63,7 @@ Commands
 /version              Show installed version
 /log                  Show log file location
 /quit                 Exit
+conversation test     Run the background conversation pilot
 """
     )
 
@@ -535,6 +537,16 @@ def main() -> int:
 
             user_message = raw
             db.add_message(current_chat["id"], "user", user_message)
+
+            if conversation_evaluation.is_command(user_message):
+                answer = conversation_evaluation.command(
+                    DATA_DIR, user_message, config, chat_id=current_chat["id"],
+                    logger=logger, defer=True,
+                )
+                db.add_assistant_message(current_chat["id"], answer, compute_source="application")
+                conversation_evaluation.begin(DATA_DIR, current_chat["id"])
+                print("\n" + config.get("assistant_name", "XemAi") + ": " + answer + "\n")
+                continue
 
             memories = db.relevant_memories(
                 user["id"],

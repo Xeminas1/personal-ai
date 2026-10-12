@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.9.46";
+const FRONTEND_VERSION = "0.9.53";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
@@ -675,15 +675,51 @@ function specialistHelpLabel(message) {
   return roles.length ? `Specialist help: ${roles.map((role) => SPECIALIST_LABELS[role]).join(" · ")}` : "";
 }
 
+function conversationTestResult(role, text, inference) {
+  const value = String(text || "");
+  if (role !== "assistant" || inference?.inference_compute !== "application" || !value.startsWith("Conversation test ")) {
+    return { text: value, runId: null };
+  }
+  const marker = /^\[\[XEMAI_CONVERSATION_RESULTS:([0-9a-f]{32})\]\]$/m;
+  const found = value.match(marker);
+  return { text: found ? value.replace(marker, "").trim() : value, runId: found?.[1] || null };
+}
+
+async function downloadConversationTest(runId) {
+  if (!/^[0-9a-f]{32}$/.test(String(runId))) return;
+  try {
+    const response = await fetch(`/api/conversation-test/results?run=${runId}`, { cache: "no-store" });
+    if (!response.ok) {
+      let message = "Conversation test results are not available.";
+      try { message = (await response.json()).error || message; } catch {}
+      throw new Error(message);
+    }
+    if (!(response.headers.get("content-type") || "").includes("application/zip")) {
+      throw new Error("The server did not return conversation test results.");
+    }
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `XemAi_conversation_test_${runId}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (error) {
+    setStatus(String(error?.message || "Could not download conversation test results."));
+  }
+}
+
 function appendMessage(role, text, createdAt = null, delivery = null, inference = null) {
   const wrap = document.createElement("article");
   wrap.className = `message ${role}`;
   const name = role === "user"
     ? state.bootstrap.user.name
     : state.bootstrap.assistant_name;
+  const testResult = conversationTestResult(role, text, inference);
   const parsed = role === "user"
     ? extractAttachmentDisplay(text)
-    : { attachments: [], text: String(text) };
+    : { attachments: [], text: testResult.text };
   const attachmentHtml = parsed.attachments.map((item) => `
     <div class="message-attachment">
       <span class="attachment-icon">📎</span>
@@ -711,6 +747,7 @@ function appendMessage(role, text, createdAt = null, delivery = null, inference 
         ${attachmentHtml}
         ${parsed.text ? `<div class="message-body">${renderBody(parsed.text)}</div>` : ""}
         ${retryable ? '<button type="button" class="retry-reply-btn">Retry</button>' : ''}
+        ${testResult.runId ? '<button type="button" class="conversation-test-download retry-reply-btn">Download test results</button>' : ''}
         <div class="message-meta">
           ${role === "user" ? `
             <span class="message-delivery">${escapeHtml(delivery || "Sent")}</span>
@@ -729,7 +766,9 @@ function appendMessage(role, text, createdAt = null, delivery = null, inference 
     </div>
   `;
   const retryBtn = wrap.querySelector(".retry-reply-btn");
-  if (retryBtn) retryBtn.addEventListener("click", retryLastMessage);
+  if (retryBtn && !testResult.runId) retryBtn.addEventListener("click", retryLastMessage);
+  const testDownload = wrap.querySelector(".conversation-test-download");
+  if (testDownload) testDownload.addEventListener("click", () => downloadConversationTest(testResult.runId));
   const ratingBtn = wrap.querySelector(".message-rating-trigger");
   if (ratingBtn) ratingBtn.addEventListener("click", () => {
     showMessageRating(inference.id, ratingScore, inference.rating_aspect || "overall");

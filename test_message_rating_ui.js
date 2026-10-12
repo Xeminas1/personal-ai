@@ -20,7 +20,7 @@ const ctx = {
   retryLastMessage: () => {},
 };
 vm.createContext(ctx);
-for (const name of ["supportedSpecialistRoles","specialistHelpLabel","appendMessage","messageSignature"]) {
+for (const name of ["supportedSpecialistRoles","specialistHelpLabel","conversationTestResult","appendMessage","messageSignature"]) {
   const match = code.match(new RegExp("function " + name + "\\([^]*?\\n\\}"));
   assert(match, "Function " + name + " missing");
   vm.runInContext(match[0],ctx);
