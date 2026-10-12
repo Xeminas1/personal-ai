@@ -15,6 +15,9 @@ on:
       - "test_watch_intelligence.py"
       - "test_capability_inventory.py"
       - "test_dialogue_mission.py"
+      - "test_conversation_skills.py"
+      - "conversation_intelligence_benchmark.py"
+      - "main.py"
       - "test_conversation_learning.py"
       - "test_message_ratings.py"
       - "test_rating_adaptation.py"
@@ -85,6 +88,8 @@ jobs:
       - name: Test development mission and hypothetical dialogue
         run: |
           python test_dialogue_mission.py
+           python test_conversation_skills.py
+           python conversation_intelligence_benchmark.py --dry-run
           python test_bridge_conversation_context.py
           python test_conversation_learning.py
           python test_message_ratings.py
