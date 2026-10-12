@@ -68,7 +68,8 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.44", "Adds bounded private bridge topic categories for conversational assessments, but its keyword validator could mistakenly reject valid free-form answers."),
     ("0.9.45", "Adds opt-in diagnostics of rejected drafts, owner corrections, approved/revocable scoped lessons and a read-only A/B benchmark; loosens the keyword validator."),
     ("0.9.46", "Adds individual editable 0–10 ratings to XemAi replies on phone/desktop and stores separate unverified GPT bridge review scores."),
-    ("0.9.47", "Grounds update-history replies in the running app's release facts, handles self-knowledge follow-up corrections, and tests guarded automatic style adaptation from repeated user ratings; no model weight training."),    ("0.9.48", "Improves everyday multi-turn conversation continuity and social response guidance for corrections, follow-ups, sarcasm, appreciation and independent judgement. Adds regression tests and conversation evaluation probes; model parity not established."),
+    ("0.9.47", "Grounds update-history replies in the running app's release facts, handles self-knowledge follow-up corrections, and tests guarded automatic style adaptation from repeated user ratings; no model weight training."),
+    ("0.9.48", "Improves everyday multi-turn conversation continuity and social response guidance for corrections, follow-ups, sarcasm, appreciation and independent judgement. Adds regression tests and conversation evaluation probes; model parity not established."),    ("0.9.49", "Adds three conditional no-tool conversation specialist roles: Understanding, Social Intelligence, and Conversation Quality Review. Limits optional passes, respects exclusions/opt-outs, and documents proposed future teams without enabling them; quality parity is unverified."),
 ]
 
 
