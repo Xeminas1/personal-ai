@@ -109,6 +109,11 @@ def train(
     ]
     if len(samples) != parameters["training_records"]:
         raise DatasetRejected("Training dataset count changed.")
+    # Unsloth Qwen3.5 BF16 LoRA recipe: do not use QLoRA 4-bit.
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name=str(snapshot), max_seq_length=sequence,
+        load_in_4bit=False, load_in_16bit=True, full_finetuning=False,
+    )
     # Verify the real model's chat template can encode both prompt and answer
     # without truncating the supervised answer. Fail before creating output.
     apply_template = getattr(tokenizer, "apply_chat_template", None)
@@ -125,16 +130,12 @@ def train(
         if (not isinstance(prompt_tokens, list) or not isinstance(full_tokens, list)
                 or not 1 <= len(prompt_tokens) < len(full_tokens) <= sequence):
             raise DatasetRejected("Training example would truncate the assistant answer or has no output tokens.")
+    # Only create output directories after model + chat-template checks succeed.
     root.mkdir(parents=True, mode=0o700, exist_ok=True)
     result = root / ("adapter_" + uuid.uuid4().hex)
     result.mkdir(mode=0o700, exist_ok=False)
     if os.name != "nt":
         result.chmod(0o700)
-    # Unsloth Qwen3.5 BF16 LoRA recipe: do not use QLoRA 4-bit.
-    model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=str(snapshot), max_seq_length=sequence,
-        load_in_4bit=False, load_in_16bit=True, full_finetuning=False,
-    )
     model = FastLanguageModel.get_peft_model(
         model, r=16,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
