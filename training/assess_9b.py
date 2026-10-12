@@ -8,8 +8,45 @@ from __future__ import annotations
 
 import argparse
 import importlib.metadata
+import re
+import shutil
+import subprocess
+from pathlib import Path
 
-from training.pc_preflight import snapshot
+_SAFE_GPU = re.compile(r"^[A-Za-z0-9 .()+/_-]{1,90}$")
+
+
+def snapshot() -> dict:
+    """Gather only bounded, non-identifying local resource totals."""
+    cards = []
+    try:
+        proc = subprocess.run(
+            ["nvidia-smi", "--query-gpu=name,memory.total,memory.free",
+             "--format=csv,noheader,nounits"],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            timeout=8, check=False, text=True,
+        )
+        if proc.returncode == 0 and len(proc.stdout) <= 2048:
+            for line in proc.stdout.splitlines()[:4]:
+                fields = [chunk.strip() for chunk in line.split(",")]
+                if len(fields) != 3 or not _SAFE_GPU.fullmatch(fields[0]):
+                    continue
+                try:
+                    total, free = int(fields[1]), int(fields[2])
+                except ValueError:
+                    continue
+                if 0 <= free <= total <= 2_000_000:
+                    cards.append({"total_gib": round(total / 1024, 2),
+                                  "free_gib": round(free / 1024, 2)})
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    try:
+        disk = round(shutil.disk_usage(Path.cwd()).free / 1024**3, 1)
+    except OSError:
+        disk = None
+    return {"gpus": cards, "disk_free_gib_at_working_directory": disk}
+
+
 
 BF16_LORA_GIB = 22.0  # Published Unsloth Qwen3.5 9B approximation.
 BASE_SAFETENSORS_BYTES = 19_306_216_416  # Official HF 9B shard index total_size.
