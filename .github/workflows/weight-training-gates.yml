@@ -25,3 +25,8 @@ jobs:
         run: python -m compileall -q training test_weight_training.py test_training_pc_preflight.py
       - name: Test dataset consent, privacy and execution guards (no GPU or model downloads)
         run: python -m unittest -v test_weight_training test_training_pc_preflight
+      - name: Run unchanged app self tests
+        run: python self_test.py
+      - name: Check pinned release manifest (Ubuntu only)
+        if: matrix.os == 'ubuntu-latest'
+        run: python verify_release_manifest.py
