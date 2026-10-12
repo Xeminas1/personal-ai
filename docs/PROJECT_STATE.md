@@ -6,13 +6,13 @@
 
 | Field | Verified snapshot |
 | --- | --- |
-| Published XemAi app version | **v0.9.55** |
-| `main` merge SHA at v0.9.55 release | `cdf1155f12cc4010e6ca82a7c82606408aa47038` |
-| Frozen release `release-v0.9.55` SHA | `cdda12bace92acdfaa8cfa811e9206fcf670ff67` |
-| Release/merge relationship | Matching repository **tree** verified for those commits after PR #57 merge |
-| Release PR | [#57 — Read-only GitHub resume request](https://github.com/Xeminas1/personal-ai/pull/57) |
-| Latest verified release manifest | v0.9.55, **162 SHA-256 pinned assets** |
-| Release CI at final tested source head | Windows/Linux regressions, manifest verification and handoff checks **passed** at frozen head |
+| Published XemAi app version | **v0.9.56** |
+| `main` merge SHA at v0.9.56 release | `3be4fc3fe1ec4bf3bc48f04b458e15fceff6cf50` |
+| Frozen release `release-v0.9.56` SHA | `b3e60ab06cdcc2004701a95d1da12881049e6ab5` |
+| Release/merge relationship | Matching repository **tree** verified for those commits after PR #59 merge |
+| Release PR | [#59 — Private GitHub dialogue pagination repair](https://github.com/Xeminas1/personal-ai/pull/59) |
+| Latest verified release manifest | v0.9.56, **162 SHA-256 pinned assets** |
+| Release CI at final tested source head | Windows/Linux regressions and full manifest verification **passed** at frozen head |
 | Installed version on an owner's computer | **Unknown from GitHub alone** |
 
 The code repository's newer **documentation-only** commits are not necessarily new app releases; the authoritative installed app version is the running host's report. GitHub merges cannot verify automatic installation on the laptop/PC.
@@ -21,9 +21,9 @@ The code repository's newer **documentation-only** commits are not necessarily n
 
 | ID | Item | State at snapshot | What remains |
 | --- | --- | --- | --- |
-| [Issue #54](https://github.com/Xeminas1/personal-ai/issues/54) | Investigate bounded GitHub bridge comments JSON read and synthetic reproduction | **Open; not shipped** | Reproduce size/transport failure, propose permitted minimal patch, verify privacy and tests, then publish **only if** required checks pass |
+| [Issue #54](https://github.com/Xeminas1/personal-ai/issues/54) | Repair private bridge response-size failure with safe comment pagination | **Closed; shipped v0.9.56** | Confirm installed host successfully polls and posts to the existing private issue |
 
-**Issue #54 is not fixed by v0.9.55.** The v0.9.54 patch made polling status observable and permitted short safe replies, but it did not fix any underlying GitHub API response-size/transport problem. The v0.9.55 change addresses an unrelated public project-handoff request. A previous tool restriction applied to an attempted fix; do not bypass a real platform block. Consult the live issue and available permissions for current status.
+**Issue #54 is fixed in published v0.9.56.** Frozen-source regression and manifest checks passed and match the merged release tree. A real host acceptance check is still needed to confirm XemAi's running version, private issue polling and whether it replies; installed-host state cannot be inferred from GitHub.
 
 ### Cross-session collaboration itself
 
