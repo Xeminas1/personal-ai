@@ -113,6 +113,8 @@ def inventory(config: dict, runtime: dict, release_history: list[tuple[str, str]
     for name, trigger, ability in _ROLES:
         if name == "AI Technology Watch":
             active = watch_enabled
+        elif name.endswith(" Team") and name != "AI Technology Watch":
+            active = enabled and config.get("agent_teams_enabled", True) is True
         elif name in {"Research Specialist", "Skyrim Specialist", "Reviewer",
                       "Conversation Understanding Agent", "Social Intelligence Agent",
                       "Conversation Quality Reviewer"}:
