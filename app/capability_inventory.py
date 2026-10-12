@@ -72,6 +72,10 @@ def local_question_type(question: str) -> str:
     if dialogue_intent(q) == "agent_idea":
         # A proposal about future agents is not an inventory request.
         return ""
+    # Reflective questions ask for an assessment of several updates,
+    # whereas "what was your latest release?" asks for the installed facts.
+    if _UPDATE_REFLECTION.search(q):
+        return "update_reflection"
     if _SELF_RELEASE.search(q) and _LATEST.search(q):
         return "latest_release"
     if _AGENT_QUERY.search(q):
