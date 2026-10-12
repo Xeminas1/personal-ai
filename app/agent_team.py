@@ -11,6 +11,7 @@ import re
 import time
 from typing import Any
 
+from .agent_team_catalog import TEAM_SPECS, TEAM_ROLE_RULES, requested_specialist_team
 from .version import VERSION
 from .capability_inventory import asks_for_external_research
 
@@ -21,7 +22,9 @@ _ALLOWED_TEAM_TOOLS = frozenset({
     "web_search", "web_fetch", "research_evidence",
 })
 _NOT_AGENTS = re.compile(
-    r"\b(?:no|without|avoid|skip|don't\s+use|do\s+not\s+use)\s+"
+    r"\b(?:no|without|avoid|skip)\s+(?:any\s+)?(?:agents|agent\s+team|specialists)\b"
+    r"|\b(?:don't|do\s+not|never)\s+"
+    r"(?:(?:use|run|start|deploy|ask|have)\s+)?"
     r"(?:any\s+)?(?:agents|agent\s+team|specialists)\b",
     re.IGNORECASE,
 )
@@ -57,6 +60,9 @@ def requested_agent_mode(question: str, enabled: bool = True) -> str:
     q = " ".join(question.split())
     if _NOT_AGENTS.search(q) or _REQUEST_EXCLUSION.search(q):
         return ""
+    named_team = requested_specialist_team(q)
+    if named_team:
+        return named_team
     if _SELF_AUDIT.search(q):
         return "self_audit"
     if _AGENT_TASK.search(q):
@@ -178,6 +184,8 @@ def run_agent_team(
     capabilities: list[str], runtime: dict, tools,
     source_context: str = "", visual_context: str = "",
     watch_context: str = "", local_inventory: str = "",
+    memory_context: str = "", history_context: str = "",
+    learning_context: str = "", research_context: str = "",
     status_callback=None, logger=None,
 ) -> dict:
     """Run at most three sequential, no-tool passes on the already selected model.
@@ -185,7 +193,9 @@ def run_agent_team(
     No scheduling/persistence/autonomous actions; optional source research is
     done through the existing current-turn evidence registry.
     """
-    if mode not in {"self_audit", "investigation"}:
+    if mode not in {"self_audit", "investigation", *TEAM_SPECS}:
+        raise ValueError("Unknown supervised agent task.")
+    if mode in TEAM_SPECS and config.get("agent_teams_enabled", True) is not True:
         raise ValueError("Unknown supervised agent task.")
     if len(str(question or "")) > 8000:
         raise ValueError("Agent task too long.")
@@ -227,6 +237,15 @@ def run_agent_team(
         "vision_report_excerpt": _bounded(visual_context, 5500),
         "saved_ai_technology_watch": _bounded(watch_context, 4500),
         "research": research,
+        # Scope user-specific context to its explicitly requested team.
+        "relevant_memory_excerpts": _bounded(memory_context, 2500)
+            if mode == "memory_continuity" else "",
+        "current_chat_excerpt": _bounded(history_context, 3500)
+            if mode == "memory_continuity" else "",
+        "reviewed_feedback_and_benchmark_context": _bounded(learning_context, 2600)
+            if mode == "learning_benchmarks" else "",
+        "known_checked_source_excerpts": _bounded(research_context, 5000)
+            if mode == "research_verification" else "",
         "evidence_limits": (
             "Inventory and release history describe implemented code, not measured gains. "
             "No complete repository audit, live process inspection, model introspection, "
@@ -235,7 +254,9 @@ def run_agent_team(
         ),
     }
     history = []
-    if mode == "self_audit":
+    if mode in TEAM_SPECS:
+        roles = list(TEAM_SPECS[mode]["roles"])
+    elif mode == "self_audit":
         roles = ["planner", "self_improvement", "verifier"]
     else:
         role = "vision" if visual_context and _VISUAL_WORDS.search(question) else "development"
@@ -256,7 +277,7 @@ def run_agent_team(
         started = time.monotonic()
         try:
             output = llm.chat([
-                {"role": "system", "content": _TEAM_SYSTEM + "\n" + _ROLE_RULES[role]},
+                {"role": "system", "content": _TEAM_SYSTEM + "\n" + (_ROLE_RULES.get(role) or TEAM_ROLE_RULES[role])},
                 {"role": "user", "content": prompt},
             ])
             output = _bounded(output, 2600)
@@ -272,6 +293,7 @@ def run_agent_team(
                 logger.warning("Read-only agent pass | role=%s outcome=unavailable", role)
     return {
         "mode": mode, "agents": history, "research_status": research["status"],
+        "team_name": TEAM_SPECS[mode]["title"] if mode in TEAM_SPECS else "",
         "source_evidence_provided": bool(source_context),
         "vision_evidence_provided": bool(visual_context),
     }

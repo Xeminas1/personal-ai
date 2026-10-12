@@ -11,6 +11,7 @@ on:
       - "test_visual_routing.py"
       - "test_governance_reporting.py"
       - "test_agent_team.py"
+      - "test_agent_teams_catalog.py"
       - "test_ai_watch.py"
       - "test_watch_intelligence.py"
       - "test_capability_inventory.py"
@@ -86,7 +87,9 @@ jobs:
           python test_self_knowledge.py
           python test_governance_reporting.py
       - name: Test supervised read-only agent team
-        run: python test_agent_team.py
+        run: |
+          python test_agent_team.py
+          python test_agent_teams_catalog.py
       - name: Test opt-in AI Technology Watch
         run: python test_ai_watch.py
       - name: Test development mission and hypothetical dialogue

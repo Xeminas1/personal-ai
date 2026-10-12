@@ -34,6 +34,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "teacher_auto_install": False,
     "teacher_min_answer_chars": 280,
     "agent_team_enabled": True,  # Opt-in per explicit user request, no autonomous runs.
+    "agent_teams_enabled": True,  # Five named teams, explicitly invoked and read-only.
     "ai_watch_enabled": False,  # Off until user explicitly enables the recurring watcher.
     "ai_watch_interval_hours": 168,  # Weekly; network activity only when enabled.
     "specialists_enabled": True,

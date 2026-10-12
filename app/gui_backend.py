@@ -1215,6 +1215,43 @@ class ChatBackend:
                     runtime=runtime_model_info, tools=tools,
                     source_context=developer_context,
                     visual_context=visual_evidence,
+                    memory_context=(
+                        json.dumps([{
+                            "kind": str(m["kind"])[:30],
+                            "content": str(m["content"])[:240],
+                            "confidence": m["confidence"],
+                        } for m in memories[:8]], ensure_ascii=False)
+                        if agent_mode == "memory_continuity" else ""
+                    ),
+                    history_context=(
+                        json.dumps([{
+                            "role": message["role"],
+                            "content": str(message["content"])[:500],
+                        } for message in messages
+                          if message["role"] in {"user", "assistant"}][-7:],
+                          ensure_ascii=False)
+                        if agent_mode == "memory_continuity" else ""
+                    ),
+                    learning_context=(
+                        json.dumps({
+                            "owner_rating_aggregates": [
+                                dict(p) for p in worker_db.rating_patterns(user["id"])[:8]
+                            ],
+                            "verified_before_after_benchmark": "not supplied",
+                            "rating_scope": "Style preferences, not factual proof",
+                        }, ensure_ascii=False)
+                        if agent_mode == "learning_benchmarks" else ""
+                    ),
+                    research_context=(
+                        json.dumps([{
+                            "id": source.get("id"),
+                            "title": str(source.get("title") or "")[:140],
+                            "url": str(source.get("url") or "")[:300],
+                            "excerpt": str(source.get("excerpt") or "")[:750],
+                            "page_fetched": source.get("page_fetched") is True,
+                        } for source in tools.sources[:4]], ensure_ascii=False)
+                        if agent_mode == "research_verification" else ""
+                    ),
                     local_inventory=(
                         json.dumps(inventory_data, ensure_ascii=False) if inventory_data else ""
                     ),

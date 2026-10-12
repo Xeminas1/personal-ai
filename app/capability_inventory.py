@@ -56,6 +56,11 @@ _ROLES = (
     ("Conversation Understanding Agent", "Conditional specialist pass", "Interprets ambiguous same-chat follow-ups and corrections; cannot grant new permissions."),
     ("Social Intelligence Agent", "Conditional specialist pass", "Interprets explicit social cues in context; does not diagnose emotions."),
     ("Conversation Quality Reviewer", "Conditional specialist pass", "Checks selected replies for intent and tone; may still make mistakes."),
+    ("Memory & Continuity Team", "User-invoked three-pass team", "Audits supplied relevant memories and same-chat chronology without altering stored memories."),
+    ("Software Engineering Team", "User-invoked three-pass team", "Maps inspected source, proposes reversible changes and test plans; no code modifications."),
+    ("Research & Verification Team", "User-invoked three-pass team", "Checks the provenance and limitations of supplied source evidence; no invented browsing."),
+    ("Learning & Benchmarks Team", "User-invoked three-pass team", "Analyses actual feedback aggregates and proposes comparative benchmarks; no autonomous training."),
+    ("Design & Accessibility Team", "User-invoked three-pass team", "Reviews supplied UI code or visual reports and proposes accessibility tests, without fabricated observations."),
     ("AI Technology Watch", "User-enabled scheduled feed monitor, not an LLM agent", "Checks bounded official release feeds, records unverified proposals, and never installs them."),
 )
 
@@ -108,6 +113,8 @@ def inventory(config: dict, runtime: dict, release_history: list[tuple[str, str]
     for name, trigger, ability in _ROLES:
         if name == "AI Technology Watch":
             active = watch_enabled
+        elif name.endswith(" Team") and name != "AI Technology Watch":
+            active = enabled and config.get("agent_teams_enabled", True) is True
         elif name in {"Research Specialist", "Skyrim Specialist", "Reviewer",
                       "Conversation Understanding Agent", "Social Intelligence Agent",
                       "Conversation Quality Reviewer"}:
