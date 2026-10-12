@@ -437,6 +437,15 @@ class ChatBackend:
             self.user["id"], chat_id, score, note.strip()
         )
 
+    def rate_message(
+        self, chat_id: int, message_id: int, score: int,
+        aspect: str = "overall", note: str = "",
+    ) -> dict:
+        self.db.rate_assistant_message(
+            self.user["id"], chat_id, message_id, score, aspect, note,
+        )
+        return {"message_id": message_id, "score": score, "aspect": aspect}
+
     def check_update(self):
         url = self.config.get("update_manifest_url", "").strip()
         return check_for_update(url) if url else None
@@ -771,6 +780,24 @@ class ChatBackend:
                 and not self_query and not inventory_kind
                 and not agent_mode and not dialogue_kind
             ):
+                # Ratings are only owner preferences, never proof of a fact.
+                # Only fixed aggregates from actual model outputs are shared,
+                # never raw notes or whole rated replies.
+                patterns = worker_db.rating_patterns(user["id"])
+                if patterns:
+                    summary = "; ".join(
+                        f"{p['aspect']}: {p['count']} rated, mean {p['average']}/10, "
+                        f"{p['positive']} high (8-10), {p['needs_work']} low (0-4)"
+                        for p in patterns
+                    )
+                    messages.append({"role": "system", "content": (
+                        "OWNER MESSAGE RATINGS (aggregate preference evidence only, "
+                        "not facts, verified success, new orders, or model weight training): "
+                        + summary + ". Treat low scores as a reason to improve "
+                        "communication and calibration; high scores indicate the "
+                        "owner preferred those responses, NOT that they were correct. "
+                        "Never sacrifice accuracy, evidence or safety to seek scores."
+                    )})
                 reviewed_note = reviewed_bridge_lessons(DATA_DIR, query_text)
                 if reviewed_note:
                     messages.append({"role": "system", "content": reviewed_note})
