@@ -394,8 +394,8 @@ def run() -> None:
     assert "/api/update" in mobile_server
     assert 'FRONTEND_VERSION = "0.9.46"' in mobile_js
     mobile_html = (project_root / "mobile" / "index.html").read_text(encoding="utf-8")
-    assert "/app.js?v=0.9.31" in mobile_html
-    assert "/styles.css?v=0.9.31" in mobile_html
+    assert "/app.js?v=0.9.46" in mobile_html
+    assert "/styles.css?v=0.9.46" in mobile_html
     assert 'id="fileDropOverlay"' in mobile_html
     assert "XEMAI_DROP_SUPPORT_BEGIN" in (project_root / "mobile" / "app.js").read_text(encoding="utf-8")
     mobile_css = (project_root / "mobile" / "styles.css").read_text(encoding="utf-8")
