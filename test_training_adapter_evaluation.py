@@ -61,7 +61,7 @@ class EvaluateSyntheticAdapterTests(unittest.TestCase):
             self.assertEqual(eval4b.main(["--check"]), 0)
         after = sorted(str(f) for f in self.root.rglob("*"))
         self.assertEqual(before, after)
-        self.assertIn("no GPU", output.getvalue().lower())
+        self.assertIn("no gpu", output.getvalue().lower())
         self.assertIn("Read-only check passed", output.getvalue())
 
     def test_cannot_run_gpu_without_explicit_owner_confirmation(self):
