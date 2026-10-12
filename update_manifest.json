@@ -745,7 +745,7 @@
     {
       "path": "verify_release_manifest.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.51/verify_release_manifest.py",
-      "sha256": "13cd3ef186452ea98e8e58e1d838c18d1bdc4f37bfaf1edf20676846e7466962"
+      "sha256": "87dfbea1ca97c36669a1dd161de9a775aaa32d4f45cf8175dbcd6ba93b01d1de"
     },
     {
       "path": "XemAi.pyw",
