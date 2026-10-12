@@ -150,10 +150,12 @@ def train() -> dict:
     if free_gib < MIN_FREE_GIB:
         raise PilotError("Less than 10 GiB of GPU memory is free. Stop other GPU work and retry later.")
 
+    print("Stage 1/4: Loading the pinned 4B base model into the local training process.")
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=str(snapshot), max_seq_length=MAX_LENGTH,
         load_in_4bit=False, load_in_16bit=True, full_finetuning=False,
     )
+    print("Stage 2/4: Validating model chat template and supervised examples.")
     apply = getattr(tokenizer, "apply_chat_template", None)
     if not callable(apply):
         raise PilotError("No compatible Qwen chat template found.")
@@ -169,6 +171,7 @@ def train() -> dict:
                 or not 0 < len(prompt_ids) < len(full_ids) <= MAX_LENGTH):
             raise PilotError("The assistant completion would be truncated or untrainable.")
 
+    print("Stage 3/4: Attaching a separate LoRA adapter.")
     model = FastLanguageModel.get_peft_model(
         model, r=16,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
@@ -201,6 +204,7 @@ def train() -> dict:
             dataloader_num_workers=0,
         ),
     )
+    print("Stage 4/4: Running two GPU optimiser updates on fictional examples.")
     summary = trainer.train()
     loss = float(getattr(summary, "training_loss", float("nan")))
     if not math.isfinite(loss):
@@ -253,7 +257,7 @@ def main(argv: list[str] | None = None) -> int:
     except PilotError as exc:
         print("PILOT STOPPED SAFELY:", str(exc))
         return 2
-    except (OSError, ValueError, RuntimeError) as exc:
+    except Exception as exc:
         # Do not echo exception details: they may contain private file paths.
         print("PILOT STOPPED:", type(exc).__name__, "(no existing XemAi model was modified).")
         return 2
