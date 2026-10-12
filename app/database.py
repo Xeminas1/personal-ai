@@ -198,8 +198,13 @@ class Database:
         # Older feedback records without an aspect remain overall ratings.
         feedback_columns = {row["name"] for row in self.conn.execute("PRAGMA table_info(feedback)")}
         if "aspect" not in feedback_columns:
+            # Concurrent mobile requests may open this existing SQLite DB.
+            # Recheck inside a write reservation before ALTER TABLE.
             with self.conn:
-                self.conn.execute("ALTER TABLE feedback ADD COLUMN aspect TEXT NOT NULL DEFAULT 'overall'")
+                self.conn.execute("BEGIN IMMEDIATE")
+                columns = {row["name"] for row in self.conn.execute("PRAGMA table_info(feedback)")}
+                if "aspect" not in columns:
+                    self.conn.execute("ALTER TABLE feedback ADD COLUMN aspect TEXT NOT NULL DEFAULT 'overall'")
         columns = {row["name"] for row in self.conn.execute("PRAGMA table_info(messages)")}
         if "specialist_roles" not in columns:
             # A second server request can open the same older database during
