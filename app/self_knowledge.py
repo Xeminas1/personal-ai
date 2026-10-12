@@ -77,6 +77,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.54", "Improves private GitHub bridge diagnostics with last poll/read status and accepts short natural replies while retaining privacy checks. No learning or model-weight training changes."),
     ("0.9.55", "Recognises explicit XemAi GitHub handoff requests and reports bounded read-only public repository status instead of irrelevant AI-rating analysis. No private repo reads, code editing, model or memory changes."),
     ("0.9.56", "Repairs long private GitHub issue reads using bounded 25-comment pages and sanitised oversized or invalid JSON errors. Preserves existing bridge permissions and local data."),
+    ("0.9.57", "Adds owner-controlled bridge training-candidate corrections, explicit per-example approval/revocation and private JSONL export. No automatic model training, chat upload, 9B weight changes or deployment."),
 ]
 
 
