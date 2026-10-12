@@ -68,7 +68,7 @@ class ConversationSkillsTests(unittest.TestCase):
         self.assertIn("not evidence", note)
         self.assertIn("high-impact actions", note)
         self.assertIn("do not invent unseen context", note)
-        self.assertIn("correction", note)
+        self.assertIn("correcting a misunderstanding", note)
         self.assertIn("humour", note)
         self.assertIn("reasoned judgement", note)
         self.assertIn("no canned sympathy", note)
