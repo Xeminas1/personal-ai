@@ -158,3 +158,21 @@ The run used **16 fictional training examples**, four separate fictional holdout
 - **Never confuse the holdout metric with an intelligence improvement**. Four synthetic examples cannot establish robust gains in dialogue, reasoning, coding, safety or truthfulness, even if the adapted holdout loss is lower. The held-out examples themselves may also be similar to training examples; additional real but owner-consented, independently evaluated benchmarks would be required for any promotion.
 
 This utility is currently validated only by **synthetic, CPU-only regression tests and GitHub Actions**. A real post-training 4B base+PEFT loading comparison on the owner's RTX 5080 remains to be run and could reveal additional Windows/Unsloth compatibility issues. No weight-training automation or automatic production model updates are implied.
+
+
+## 2026-10-12: Genuine held-out 4B base vs adapter comparison succeeded on owner's GPU
+
+**Owner-provided complete execution log, status 0.** Read-only, offline Qwen3.5 4B holdout evaluator verified the local adapter manifest/file checksums and loaded the originally pinned 4B model. It scored the same four fictional prompt/answer holdouts against the unchanged base (adapter disabled) and the trained adapter (enabled). The 4 examples contain **63 supervised answer tokens**. Results:
+
+| Same four synthetic held-outs | Mean supervised answer-token NLL |
+| --- | ---: |
+| Original Qwen3.5 4B base | 3.152394 |
+| Same base + trained LoRA | 2.915653 |
+| Adapter minus base (lower is better) | **-0.236741** |
+
+The trained adapter therefore has a **lower answer-token loss on this specific four-example synthetic holdout**. The successful two-step BF16 LoRA run also demonstrated changed saved weights (8 sampled LoRA-B tensors) and this held-out comparison demonstrates a measurable out-of-training-sample effect on this very narrow test. The 16 available training examples were not all processed: training stopped at epoch 0.25 (two optimizer steps, gradient accumulation 2, batch size 1; ~four example presentations).
+
+**Interpretation limits:** The holdouts are fictional and similar in style/subject to the training data. Four short examples and 63 answer tokens are not independent evidence that general reasoning, coding, truthfulness, conversations or XemAi application performance improved; the observed NLL could reflect narrow transfer or overlap. No blind human preference test, coding regression benchmark, confidence interval, or multi-seed run was completed. Nor has the saved adapter been merged into, or run as, XemAi's actual **9B** inference model. Evaluation did not train, modify, upload, promote, or deploy anything. Both actual GPU train/eval results are provided by the owner via console text; GitHub CI is CPU-only and cannot independently inspect private local adapter weights.
+
+**Next gating question: how to train the live 9B safely?** The [official Unsloth Qwen3.5 training guide](https://unsloth.ai/docs/models/qwen3.5/fine-tune) estimates approximately **22GB VRAM for Qwen3.5 9B BF16 LoRA** and specifically advises **against QLoRA (4-bit) for Qwen3.5** because of unusually high quantization differences. The owner's RTX 5080 has about 15.9 GiB physical GPU memory, so neither a 9B BF16 LoRA run using the current script nor an unsupported automatic 4-bit conversion should be presented as production-ready. Possible later paths require separately evaluated offloading/distributed compute/more VRAM or an explicitly acknowledged experimental 4-bit QLoRA tradeoff. Protect running 9B Ollama, conversation privacy, and require owner approval for any such pilot. Next quality checks should use representative owner-reviewed synthetic benchmarks and require measurable gains before any adapter deployment.
+
