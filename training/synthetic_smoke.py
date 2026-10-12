@@ -200,6 +200,29 @@ def _batch_collator(torch, pad_token_id: int):
     return collate
 
 
+def tokenizer_check() -> None:
+    """CPU-only test using the actual locally downloaded tokenizer and chat template."""
+    snapshot = _local_checkpoint()
+    os.environ.update({
+        "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1",
+        "HF_HUB_DISABLE_TELEMETRY": "1", "HF_HUB_DISABLE_IMPLICIT_TOKEN": "1",
+    })
+    try:
+        from transformers import AutoTokenizer
+        tokenizer = AutoTokenizer.from_pretrained(str(snapshot), local_files_only=True)
+        training, heldout = _split()
+        rows = _prepare_tokenized_data(tokenizer, training)
+    except PilotError:
+        raise
+    except Exception as exc:
+        raise PilotError("Local tokenizer template check did not complete.") from exc
+    supervised = sum(sum(v != -100 for v in row["labels"]) for row in rows)
+    print("Qwen3.5 4B real local tokenizer: validated without GPU model loading.")
+    print("Training prompts:", len(training), "held-out examples:", len(heldout),
+          "supervised answer tokens:", supervised)
+    print("No training, model updates or downloads performed.")
+
+
 def train() -> dict:
     snapshot = _local_checkpoint()
     training, heldout = _split()
@@ -314,12 +337,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument("--check", action="store_true", help="Inspect local checkpoint without training.")
+    modes.add_argument("--tokenizer-check", action="store_true", help="CPU-only live-tokenizer validation; no GPU model load.")
     modes.add_argument("--train", action="store_true", help="Train exactly two gradient-update steps on synthetic data.")
     parser.add_argument("--confirm", default="", help="Required explicit consent phrase for --train.")
     args = parser.parse_args(argv)
     try:
         if args.check:
             check()
+        elif args.tokenizer_check:
+            tokenizer_check()
         elif args.confirm != CONFIRMATION:
             raise PilotError("Training was not authorised. Explicit confirmation is required.")
         else:
