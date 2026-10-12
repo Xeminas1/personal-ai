@@ -201,7 +201,7 @@ class TrainingGateTests(unittest.TestCase):
         revision = "a" * 40
         snapshot = self.root / revision
         snapshot.mkdir()
-        (snapshot / "config.json").write_text("{}")
+        (snapshot / "config.json").write_text(json.dumps({"model_type": "qwen3_5", "text_config": {"hidden_size": 2560}}))
         (snapshot / "tokenizer_config.json").write_text("{}")
         observed = {}
 
@@ -278,12 +278,26 @@ class TrainingGateTests(unittest.TestCase):
         self.assertTrue((run / "heldout.jsonl").is_file())
         self.assertFalse((snapshot / "adapter_manifest.json").exists())
 
+    def test_refuses_checkpoint_with_incorrect_architecture_before_import(self):
+        run = self.prepare()
+        revision = "a" * 40
+        snapshot = self.root / revision
+        snapshot.mkdir()
+        (snapshot / "tokenizer_config.json").write_text("{}")
+        for wrong in ({"model_type": "qwen3_5", "text_config": {"hidden_size": 4096}},
+                      {"model_type": "not-qwen3_5", "text_config": {"hidden_size": 2560}},
+                      {"model_type": "qwen3_5", "text_config": {}}):
+            (snapshot / "config.json").write_text(json.dumps(wrong))
+            with self.assertRaises(data.DatasetRejected):
+                adapter._checkpoint(snapshot, revision, "Qwen/Qwen3.5-4B")
+
+
     def test_mock_gpu_9b_rejects_16gb_before_loading_model(self):
         run = self.prepare()
         revision = "a" * 40
         snapshot = self.root / revision
         snapshot.mkdir()
-        (snapshot / "config.json").write_text("{}")
+        (snapshot / "config.json").write_text(json.dumps({"model_type": "qwen3_5", "text_config": {"hidden_size": 2560}}))
         (snapshot / "tokenizer_config.json").write_text("{}")
         gib = 1024 ** 3
         torch_fake = types.ModuleType("torch")
