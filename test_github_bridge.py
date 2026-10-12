@@ -1,6 +1,7 @@
 """Private bridge: approval, privacy and no-prompt-injection regression tests."""
 from __future__ import annotations
 
+import io
 import json
 import re
 import tempfile
@@ -187,19 +188,18 @@ class GitHubBridgeTests(unittest.TestCase):
 
             def request(self, repo, resource, payload=None):
                 self.resources.append(resource)
-                if resource.endswith("&page=2"):
-                    return [{"id": 101, "body": "New response after first page"},
-                            {"id": 102, "body": "Latest ChatGPT message"}]
-                return [{"id": i, "body": f"Comment {i}"} for i in range(1, 101)]
+                page = int(resource.split("&page=")[-1]) if "&page=" in resource else 1
+                first = (page - 1) * 25 + 1
+                return [{"id": i, "body": f"Comment {i}"}
+                        for i in range(first, min(first + 25, 103))]
 
         pager = PagingStub()
         rows = pager.comments("Example/private-bridge", 1)
         self.assertEqual(len(rows), 102)
         self.assertEqual(rows[-1]["id"], 102)
-        self.assertEqual(pager.resources, [
-            "/issues/1/comments?per_page=100",
-            "/issues/1/comments?per_page=100&page=2",
-        ])
+        self.assertEqual(len(pager.resources), 5)
+        self.assertEqual(pager.resources[0], "/issues/1/comments?per_page=25")
+        self.assertEqual(pager.resources[-1], "/issues/1/comments?per_page=25&page=5")
 
     def test_pagination_does_not_allow_arbitrary_github_urls(self):
         requests = []
@@ -227,6 +227,76 @@ class GitHubBridgeTests(unittest.TestCase):
             api.request("Example/private-bridge", "/issues/1/comments?page=2")
         with self.assertRaises(BridgeError):
             api.request("Example/private-bridge", "/issues/1/comments?per_page=100&page=999")
+
+    def test_large_synthetic_private_discussion_read_and_auto_poll(self):
+        # Synthetic-only data simulates an issue that once broke the read cap.
+        from datetime import datetime, timezone
+        from unittest.mock import patch as mock_patch
+        from app.github_bridge_auto import enable, tick
+        example = "Synthetic fictional discussion; no personal details. " + "a" * 3900
+        comments = [
+            {"id": i, "body": example, "user": {"login": "sample-contributor"}}
+            for i in range(1, 43)
+        ]
+        self.assertGreater(len(json.dumps(comments).encode("utf-8")), 160_001)
+        calls = []
+
+        def opener(request, timeout=0):
+            url = request.full_url
+            calls.append(url)
+            if request.get_method() == "POST":
+                return io.BytesIO(json.dumps({
+                    "html_url": "https://github.com/Example/private-bridge/issues/1"
+                                "#issuecomment-999"
+                }).encode())
+            if url.endswith("/repos/Example/private-bridge"):
+                return io.BytesIO(b'{"private": true, "has_issues": true}')
+            if "/issues/1/comments?per_page=25" in url:
+                page = int(url.split("&page=")[-1]) if "&page=" in url else 1
+                subset = comments[(page - 1) * 25:page * 25]
+                return io.BytesIO(json.dumps(subset).encode("utf-8"))
+            raise AssertionError("Unexpected endpoint")
+
+        client = GitHubBridgeClient("fictional-test-token", opener=opener)
+        setup(self.data, "Example/private-bridge", "fictional-test-token",
+              client=client)
+        state = load_state(self.data)
+        state["issue_number"] = 1
+        from app.github_bridge import save_state
+        save_state(self.data, state)
+        answer = chat_command("bridge replies", self.data, client=client)
+        self.assertIn("New GitHub bridge comments", answer)
+        self.assertEqual(load_state(self.data)["last_comment_id"], 42)
+
+        class Model:
+            model = "synthetic-llm"
+            route_info = {"compute": "local_host"}
+            def chat(self, messages):
+                return "I see the example; let's examine the next step."
+
+        with mock_patch("app.github_bridge_auto._get_client", return_value=client):
+            self.assertIn("ENABLED", enable(self.data))
+            result = tick(self.data, client=client, llm_factory=Model,
+                          now=datetime(2026, 10, 12, 14, 0, tzinfo=timezone.utc))
+        self.assertEqual(result["status"], "posted")
+        self.assertTrue(any("per_page=25&page=2" in call for call in calls))
+        self.assertEqual(load_state(self.data)["auto_last_github_read_at"][:10],
+                         "2026-10-12")
+
+    def test_bounded_response_limit_and_json_errors_are_sanitized(self):
+        large_page = b"[" + b" " * 512_001 + b"]"
+        api = GitHubBridgeClient("fictional-test-token",
+                                 opener=lambda req, timeout=0: io.BytesIO(large_page))
+        with self.assertRaises(BridgeError) as too_large:
+            api.request("Example/private-bridge",
+                        "/issues/1/comments?per_page=25")
+        self.assertIn("bounded read limit", str(too_large.exception))
+        api = GitHubBridgeClient("fictional-test-token",
+                                 opener=lambda req, timeout=0: io.BytesIO(b'[{}'))
+        with self.assertRaises(BridgeError) as malformed:
+            api.request("Example/private-bridge",
+                        "/issues/1/comments?per_page=25")
+        self.assertIn("incomplete or invalid JSON", str(malformed.exception))
 
     def test_http_request_never_leaks_token_on_error(self):
         token = "secret-test-token-very-private"
