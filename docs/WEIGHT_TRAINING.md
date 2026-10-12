@@ -31,6 +31,20 @@ Repository and CI checks can validate data gates, command guards and synthetic u
 Implementation will be added and iterated on an isolated draft PR. No app version bump or release manifest change is justified for documentation or independent offline tooling.
 
 
+## First PC check — no installs, no model loading
+
+On your own Windows desktop, open a terminal in a checkout of this PR branch and run:
+
+```powershell
+py -m training.pc_preflight
+```
+
+The diagnostic only queries `nvidia-smi`, Python package metadata and free disk space. It does **not** request hostnames, user profiles, model contents, credentials, Ollama data, chat history or private bridge messages, and writes no report to disk. It never installs a package, starts training, changes settings, or uploads data. You can review its short JSON output before choosing to share the non-identifying GPU/OS/package information.
+
+Interpreting memory estimates: the RTX 5080 with 16 GB can potentially support a **distinct Qwen3.5 4B** BF16 LoRA smoke test, provided at least ~10 GiB VRAM is currently free. Qwen3.5 9B requires roughly 22 GiB *available* for the published single-GPU BF16 LoRA recipe and is **not executable on 16 GB in this trainer**. The preflight is a gate, not proof that the specific CUDA, Triton, Unsloth and TRL packages work on the PC. WSL/Windows setup must be validated before attempting any real run.
+
+Public Qwen3.5 guidance: https://unsloth.ai/docs/models/qwen3.5/fine-tune . Training examples and the holdout remain on the owner's device, not GitHub.
+
 ## Prototype CLI (owner-invoked only)
 
 Run from the repository root with Python 3.12+. No new packages are needed to **prepare and verify** a dataset. The commands below describe capabilities of this branch; they do not install anything on the owner's computer.
@@ -58,7 +72,7 @@ Run from the repository root with Python 3.12+. No new packages are needed to **
    python -m training.train_adapter --run "PREPARED_RUN_DIRECTORY" --model "Qwen/Qwen3.5-4B" --revision "40_HEX_UPSTREAM_COMMIT"
    ```
 
-   The command above requires no CUDA dependencies and does **not** train. A manual training attempt additionally requires `--checkpoint-dir "EXISTING_HF_SNAPSHOT_DIRECTORY"`, `--execute`, and `--confirm "TRAIN REVIEWED LOCAL ADAPTER"`. The selected local snapshot directory must be pinned to the exact revision and already present; the script sets Hugging Face offline mode, disables tracking, prohibits QLoRA, requires BF16 CUDA and available VRAM, and never calls an upload or live-model replacement API. It reserves the holdout untouched.
+   The command above requires no CUDA dependencies and does **not** train. A manual training attempt additionally requires `--checkpoint-dir "EXISTING_HF_SNAPSHOT_DIRECTORY"`, `--execute`, and `--confirm "TRAIN REVIEWED LOCAL ADAPTER"`. The selected local snapshot directory must be pinned to the exact revision, contain matching Qwen model metadata and already be present; the script sets Hugging Face offline mode, disables tracking, prohibits QLoRA, requires BF16 CUDA and available VRAM, and never calls an upload or live-model replacement API. It reserves the holdout untouched, checks the real tokenizer's chat template for answer truncation and refuses incompatible checkpoint dimensions.
 
 4. If a real training run succeeds, it saves an **unpromoted** LoRA adapter and a local SHA-256 manifest. Run separate blinded, same-base/settings evaluations before even considering promotion. Training loss is not proof of real-world conversational improvement. No code in this PR activates an adapter in XemAi, merges weights into GGUF or changes the 9B worker.
 
