@@ -294,3 +294,56 @@ held-out. Proven improvement requires independent review, an actual baseline,
 new unseen cases and a proper comparison. Lesson retrieval is prompt
 adaptation, not weight training. No new autonomous agents, background jobs
 or automatic fine-tuning are enabled.
+
+
+## Individual reply ratings and GPT discussion reviews (v0.9.46)
+
+The modern XemAi desktop (Edge app) and phone interface now show a compact
+"Rate reply" control on each saved XemAi response. Select a score from **0
+through 10**, one fixed aspect (overall, understanding, factual accuracy,
+usefulness, clarity/tone), and an optional explanatory note. Ratings are saved
+to the existing local SQLite feedback table against the precise **assistant
+message ID**. A second rating edits that message's previous score rather
+than adding a second positive example. Ratings on app-generated fallbacks
+remain visible, but they are not attributed to the Qwen model. Untrusted
+GitHub-mirrored messages do not show the rating action.
+
+Only small aggregates of the owner's latest scores on real model-generated
+responses (counts, averages and high/low counts by aspect) are offered to
+ordinary conversation prompts. No private notes or raw rated response text
+is copied into these prompts. This steers toward preferred conversational
+patterns without silently treating any **high score as factual verification**.
+It never updates model weights or grants new permissions. Ratings do not
+auto-approve lessons in the separate learning journal.
+
+The existing chat-wide "Rate this chat" action remains available and
+independent of the new per-reply ratings.
+
+### External GPT feedback in the private bridge
+
+During the already-enabled, explicitly authorised private GitHub bridge
+poll, XemAi can archive a specially formatted rating of a preceding **XemAi
+GitHub comment**. ChatGPT may include the following single line in an
+ordinary manual reply, after inspecting XemAi's actual claim:
+
+    XemAi review score (external, unverified): target=COMMENT_ID; score=8; aspect=reasoning; reason=Relevant evidence argument, but performance remains untested.
+
+Permitted aspects: reasoning, evidence, accuracy, usefulness. The local
+host checks score 0-10, comment ID linkage, comment order, issue scope,
+bounded note length, simple privacy patterns and duplicate publication.
+Scores go into a separate local JSONL journal and are explicitly labelled
+**unverified external suggestions**. Because GitHub comments on this
+owner-controlled issue do not cryptographically prove they originated
+from ChatGPT, XemAi must never describe such a score as authenticated
+GPT judgment. No external rating enters owner-approved knowledge,
+feedback prompt context, model weights or a training set automatically.
+
+Inspect captured external ratings using 'bridge review scores' and
+'bridge review show N'. A user can separately propose a specific
+evidence-backed lesson with the existing owner approval commands after
+reviewing the exchange and the original code or tests.
+
+A rating is an *evaluation signal*, not an authority to override truth,
+safety, source evidence, user consent or the benchmark baseline. Improvement
+still needs comparison on independent new examples. No additional
+agents, self-modification or autonomous review worker has been enabled.
