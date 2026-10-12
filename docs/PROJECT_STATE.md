@@ -6,16 +6,24 @@
 
 | Field | Verified snapshot |
 | --- | --- |
-| Published XemAi app version | **v0.9.56** |
-| `main` merge SHA at v0.9.56 release | `3be4fc3fe1ec4bf3bc48f04b458e15fceff6cf50` |
-| Frozen release `release-v0.9.56` SHA | `b3e60ab06cdcc2004701a95d1da12881049e6ab5` |
+| Published XemAi app version | **v0.9.57** |
+| `main` merge SHA at v0.9.57 release | `775863bea3a7eba8dac494d81e39a75c6b7ba9e1` |
+| Frozen release `release-v0.9.57` SHA | `621b7205df892833b311f3d833ade2a240565190` |
 | Release/merge relationship | Matching repository **tree** verified for those commits after PR #59 merge |
-| Release PR | [#59 — Private GitHub dialogue pagination repair](https://github.com/Xeminas1/personal-ai/pull/59) |
-| Latest verified release manifest | v0.9.56, **162 SHA-256 pinned assets** |
+| Release PR | [#63 — Owner-reviewed private bridge correction export](https://github.com/Xeminas1/personal-ai/pull/63) |
+| Latest verified release manifest | v0.9.57, **164 SHA-256 pinned assets** |
 | Release CI at final tested source head | Windows/Linux regressions and full manifest verification **passed** at frozen head |
 | Installed version on an owner's computer | **Unknown from GitHub alone** |
 
 The code repository's newer **documentation-only** commits are not necessarily new app releases; the authoritative installed app version is the running host's report. GitHub merges cannot verify automatic installation on the laptop/PC.
+
+## 2026-10-12 — v0.9.57 private bridge corrections released
+
+**Observed GitHub release:** Narrow PR #63 merged as `775863bea3a7eba8dac494d81e39a75c6b7ba9e1`. Frozen release ref `release-v0.9.57` points to `621b7205df892833b311f3d833ade2a240565190`, and the merge and release have **matching Git trees** (`9b3ffbc1a21c2039e0bbfaafe97d8727694eb9b9`). Exact release-head Windows/Linux app regression [passed](https://github.com/Xeminas1/personal-ai/actions/runs/38304215857), as did the full 164 HTTPS/SHA-256 asset [verification](https://github.com/Xeminas1/personal-ai/actions/runs/38304215866).
+
+Manual user commands `bridge weight status`, `bridge weight draft N: CORRECTED ANSWER`, `bridge weight approve N CODE`, `bridge weight revoke N` and `bridge weight export` allow the owner to review and export separately opted-in local bridge candidates. They do **not** automatically pull conversations, contact GitHub, access other chats, move files to the separate GPU PC, train models or deploy adapters. The feature's installed-host acceptance and whether `bridge learning on` has archived any candidate remain **unknown** to GitHub. Model-weight learning remains planned/experimentally proven only for a distinct fictional 4B smoke run. No live 9B model weights changed.
+
+Broader experimental training PR [#62](https://github.com/Xeminas1/personal-ai/pull/62) is **still draft/unmerged**, and based on the older main; reconcile the now-shipped manual bridge review commands before merging it, and separately validate a memory-compatible 9B training method.
 
 ## Pending / unfinished work
 
