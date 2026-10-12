@@ -123,6 +123,83 @@ def check() -> None:
     print("Read-only check complete. No model loaded and no training performed.")
 
 
+def _text_tokenizer(processor):
+    """Obtain the actual text tokeniser without assuming processor return types."""
+    tokenizer = getattr(processor, "tokenizer", processor)
+    if not callable(getattr(tokenizer, "encode", None)):
+        raise PilotError("The local Qwen text tokenizer does not implement encode().")
+    return tokenizer
+
+
+def _prepare_tokenized_data(processor, training: list[dict]) -> list[dict]:
+    """Build explicit supervised masks with Qwen3.5 non-thinking template.
+
+    Qwen3.5 has distinct unfinished thinking and completed-assistant prefixes.
+    Never compare default tokenized apply_chat_template outputs, which may be a
+    processor mapping or use non-matching thinking prefixes.
+    """
+    apply = getattr(processor, "apply_chat_template", None)
+    if not callable(apply):
+        raise PilotError("The model has no chat-template renderer.")
+    tokenizer = _text_tokenizer(processor)
+    rows = []
+    for sample in training:
+        try:
+            prompt = apply(sample["prompt"], tokenize=False, add_generation_prompt=True, enable_thinking=False)
+            full = apply(
+                sample["prompt"] + sample["completion"],
+                tokenize=False, add_generation_prompt=False, enable_thinking=False,
+            )
+            if not isinstance(prompt, str) or not isinstance(full, str):
+                raise PilotError("The Qwen chat renderer did not return text.")
+            answer = sample["completion"][-1]["content"]
+            if not full.startswith(prompt) or answer not in full[len(prompt):]:
+                raise PilotError("Qwen completion does not follow the expected non-thinking prompt prefix.")
+            prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
+            full_ids = tokenizer.encode(full, add_special_tokens=False)
+        except PilotError:
+            raise
+        except (ValueError, TypeError, KeyError, AttributeError, RuntimeError) as exc:
+            raise PilotError("Qwen chat-template encoding failed.") from exc
+        if (not isinstance(prompt_ids, list) or not isinstance(full_ids, list)
+                or not 0 < len(prompt_ids) < len(full_ids) <= MAX_LENGTH):
+            raise PilotError("Training tokens are malformed or exceed the length limit.")
+        if full_ids[:len(prompt_ids)] != prompt_ids:
+            raise PilotError("Qwen prompt token prefix differs from completed chat tokens.")
+        supervised = len(full_ids) - len(prompt_ids)
+        if supervised < 3:
+            raise PilotError("No meaningful answer tokens remain available for supervised loss.")
+        labels = [-100] * len(prompt_ids) + full_ids[len(prompt_ids):]
+        if not any(token != -100 for token in labels):
+            raise PilotError("Assistant completion loss mask is empty.")
+        rows.append({
+            "input_ids": full_ids, "attention_mask": [1] * len(full_ids),
+            "labels": labels,
+        })
+    return rows
+
+
+def _batch_collator(torch, pad_token_id: int):
+    """Pad tokenised examples; -100 masks the prompt and padded loss."""
+    if not isinstance(pad_token_id, int) or pad_token_id < 0:
+        raise PilotError("Missing valid tokenizer padding ID.")
+    def collate(features):
+        width = max(len(row["input_ids"]) for row in features)
+        def pad(items, value):
+            return [list(x) + [value] * (width - len(x)) for x in items]
+        ids = pad((r["input_ids"] for r in features), pad_token_id)
+        masks = pad((r["attention_mask"] for r in features), 0)
+        labels = pad((r["labels"] for r in features), -100)
+        if not any(v != -100 for row in labels for v in row):
+            raise PilotError("Batch contains no supervised assistant tokens.")
+        return {
+            "input_ids": torch.tensor(ids, dtype=torch.long),
+            "attention_mask": torch.tensor(masks, dtype=torch.long),
+            "labels": torch.tensor(labels, dtype=torch.long),
+        }
+    return collate
+
+
 def train() -> dict:
     snapshot = _local_checkpoint()
     training, heldout = _split()
@@ -139,7 +216,7 @@ def train() -> dict:
         from unsloth import FastLanguageModel  # patch before torch/trl imports
         import torch
         from datasets import Dataset
-        from trl import SFTConfig, SFTTrainer
+        from transformers import Trainer, TrainingArguments
     except (ImportError, RuntimeError) as exc:
         raise PilotError("CUDA training libraries failed to load; the live model is unchanged.") from exc
     if not torch.cuda.is_available() or not torch.cuda.is_bf16_supported():
@@ -155,21 +232,10 @@ def train() -> dict:
         model_name=str(snapshot), max_seq_length=MAX_LENGTH,
         load_in_4bit=False, load_in_16bit=True, full_finetuning=False,
     )
-    print("Stage 2/4: Validating model chat template and supervised examples.")
-    apply = getattr(tokenizer, "apply_chat_template", None)
-    if not callable(apply):
-        raise PilotError("No compatible Qwen chat template found.")
-    # Detect malformed / overlong examples before gradient updates.
-    for sample in training:
-        try:
-            prompt_ids = apply(sample["prompt"], tokenize=True, add_generation_prompt=True)
-            full_ids = apply(sample["prompt"] + sample["completion"], tokenize=True,
-                             add_generation_prompt=False)
-        except (TypeError, ValueError, KeyError, AttributeError) as exc:
-            raise PilotError("Chat-template encoding failed.") from exc
-        if (not isinstance(prompt_ids, list) or not isinstance(full_ids, list)
-                or not 0 < len(prompt_ids) < len(full_ids) <= MAX_LENGTH):
-            raise PilotError("The assistant completion would be truncated or untrainable.")
+    print("Stage 2/4: Preparing Qwen3.5 non-thinking tokens and completion-only loss masks.")
+    rows = _prepare_tokenized_data(tokenizer, training)
+    masked_tokens = sum(sum(value != -100 for value in row["labels"]) for row in rows)
+    print("Validated supervised answer tokens:", masked_tokens, "across", len(rows), "fictional examples.")
 
     print("Stage 3/4: Attaching a separate LoRA adapter.")
     model = FastLanguageModel.get_peft_model(
@@ -190,13 +256,18 @@ def train() -> dict:
         raise PilotError("No trainable LoRA-B adapter parameters found.")
 
     out = _safe_output()
-    trainer = SFTTrainer(
+    text_tokenizer = _text_tokenizer(tokenizer)
+    pad_id = getattr(text_tokenizer, "pad_token_id", None)
+    collate = _batch_collator(torch, pad_id)
+    # Use explicit token-level labels rather than TRL's conversational prefix
+    # inference, which is known to mismatch Qwen3.5 thinking-mode templates.
+    trainer = Trainer(
         model=model,
-        processing_class=tokenizer,
-        train_dataset=Dataset.from_list(training),
-        args=SFTConfig(
-            output_dir=str(out / "trainer_temp"), max_length=MAX_LENGTH,
-            completion_only_loss=True, packing=False,
+        train_dataset=Dataset.from_list(rows),
+        data_collator=collate,
+        args=TrainingArguments(
+            output_dir=str(out / "trainer_temp"),
+            remove_unused_columns=False,
             per_device_train_batch_size=1, gradient_accumulation_steps=2,
             max_steps=STEPS, warmup_steps=0, learning_rate=2e-4,
             bf16=True, optim="adamw_8bit", seed=3407,
