@@ -239,7 +239,7 @@ def chat_command(question: str, data_dir: Path, logger=None, *, client=None) -> 
                 "bridge transcript (review the latest messages).\n"
                 "bridge auto on | bridge auto off | bridge auto status.\n"
                 "bridge learning on | bridge learning off | bridge learning status.\n"
-                "bridge learning review | show N | propose N: LESSON || EVIDENCE | approve N | reject N | approved | revoke N.\n"
+                "bridge learning review | show N | propose N: LESSON || EVIDENCE | approve N | reject N | approved | revoke N.\n"                "bridge review scores | bridge review show N (untrusted external scores).\n"
                 "Nothing is uploaded automatically. This GitHub bridge does not "
                 "make ChatGPT respond until this conversation is checked."
             )
@@ -263,6 +263,13 @@ def chat_command(question: str, data_dir: Path, logger=None, *, client=None) -> 
             # No local model can propose or approve lessons via tool calls.
             from .github_bridge_review import command as review_command
             return review_command(data_dir, q)
+        if q.lower() == "bridge review scores" or re.fullmatch(r"(?i)bridge review show [1-9][0-9]{0,2}", q):
+            from .bridge_response_feedback import review_scores
+            issue = state.get("issue_number")
+            if type(issue) is not int or issue <= 0:
+                return "No configured private bridge issue."
+            show = int(q.split()[-1]) if q.lower().startswith("bridge review show ") else None
+            return review_scores(data_dir, issue=issue, show=show)
         if q.lower() == "bridge status":
             issue = state.get("issue_number")
             return (

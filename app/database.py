@@ -194,6 +194,17 @@ class Database:
                 ON feedback(user_id, id);
             """
         )
+        # Each assistant message can be rated on a consistent fixed aspect.
+        # Older feedback records without an aspect remain overall ratings.
+        feedback_columns = {row["name"] for row in self.conn.execute("PRAGMA table_info(feedback)")}
+        if "aspect" not in feedback_columns:
+            # Concurrent mobile requests may open this existing SQLite DB.
+            # Recheck inside a write reservation before ALTER TABLE.
+            with self.conn:
+                self.conn.execute("BEGIN IMMEDIATE")
+                columns = {row["name"] for row in self.conn.execute("PRAGMA table_info(feedback)")}
+                if "aspect" not in columns:
+                    self.conn.execute("ALTER TABLE feedback ADD COLUMN aspect TEXT NOT NULL DEFAULT 'overall'")
         columns = {row["name"] for row in self.conn.execute("PRAGMA table_info(messages)")}
         if "specialist_roles" not in columns:
             # A second server request can open the same older database during
@@ -365,7 +376,8 @@ class Database:
         rows = self.conn.execute(
             """
             SELECT recent.*, inference.model AS inference_model,
-                inference.compute_source AS inference_compute
+                inference.compute_source AS inference_compute,
+                rating.score AS rating_score, rating.aspect AS rating_aspect
             FROM (
                 SELECT * FROM messages
                 WHERE chat_id = ?
@@ -374,6 +386,11 @@ class Database:
             ) AS recent
             LEFT JOIN message_inference AS inference
                 ON inference.message_id = recent.id
+            LEFT JOIN feedback AS rating ON rating.id = (
+                SELECT MAX(f.id) FROM feedback f
+                WHERE f.assistant_message_id = recent.id
+                AND f.chat_id = recent.chat_id
+            )
             ORDER BY recent.id ASC
             """,
             (chat_id, limit),
@@ -564,6 +581,72 @@ class Database:
             """,
             (user_id, limit),
         ).fetchall()
+
+    def rate_assistant_message(
+        self, user_id: int, chat_id: int, message_id: int,
+        score: int, aspect: str = "overall", note: str = "",
+    ) -> None:
+        """One latest owner score per reply; no rewards from arbitrary chat rows."""
+        if type(score) is not int or not 0 <= score <= 10:
+            raise ValueError("Score must be a whole number from 0 to 10.")
+        if aspect not in {"overall", "understanding", "accuracy", "usefulness", "clarity"}:
+            raise ValueError("Invalid feedback aspect.")
+        if not isinstance(note, str) or len(note) > 350 or "\x00" in note:
+            raise ValueError("Feedback note must be at most 350 characters.")
+        with self.conn:
+            valid = self.conn.execute(
+                """
+                SELECT m.id FROM messages m
+                JOIN chats c ON c.id = m.chat_id
+                WHERE m.id = ? AND m.chat_id = ? AND m.role = 'assistant'
+                      AND c.user_id = ?
+                """,
+                (message_id, chat_id, user_id),
+            ).fetchone()
+            if valid is None:
+                raise ValueError("Assistant message not found in your chat.")
+            self.conn.execute(
+                "DELETE FROM feedback WHERE user_id=? AND chat_id=? AND assistant_message_id=?",
+                (user_id, chat_id, message_id),
+            )
+            self.conn.execute(
+                """
+                INSERT INTO feedback(user_id, chat_id, assistant_message_id,
+                                     score, note, created_at, aspect)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (user_id, chat_id, message_id, score, note.strip(), now_iso(), aspect),
+            )
+
+    def rating_patterns(self, user_id: int, limit: int = 40) -> list[dict]:
+        """Owner scores from actual model replies, never application/GitHub mirrors.
+
+        Returns fixed-vocabulary aggregates only. Notes and reply text are
+        deliberately excluded from the prompt guidance.
+        """
+        rows = self.conn.execute(
+            """
+            SELECT f.score, f.aspect
+            FROM feedback f JOIN chats c ON c.id=f.chat_id
+            JOIN messages m ON m.id=f.assistant_message_id
+            JOIN message_inference mi ON mi.message_id=m.id
+            WHERE f.user_id=? AND c.user_id=? AND m.role='assistant'
+              AND mi.compute_source IN ('local_host','remote_worker')
+            ORDER BY f.id DESC LIMIT ?
+            """, (user_id, user_id, min(max(int(limit), 1), 40)),
+        ).fetchall()
+        ordered = ["understanding", "accuracy", "usefulness", "clarity", "overall"]
+        return [
+            {
+                "aspect": aspect,
+                "count": len(scores),
+                "average": round(sum(scores) / len(scores), 1),
+                "positive": sum(score >= 8 for score in scores),
+                "needs_work": sum(score <= 4 for score in scores),
+            }
+            for aspect in ordered
+            if (scores := [int(r["score"]) for r in rows if r["aspect"] == aspect])
+        ]
 
     def add_chat_feedback(
         self,
