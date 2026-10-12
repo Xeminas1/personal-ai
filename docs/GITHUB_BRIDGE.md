@@ -400,3 +400,19 @@ so correlation with length/format may be spurious. The process may be
 repeatedly evaluated, revoked by rating edits, and compared on fresh tasks.
 The learning system still requires explicit owner review for any proposed
 general factual or reasoning rule. No new autonomous agents were enabled.
+
+
+## Manual, reviewable bridge corrections for later model training (v0.9.57)
+
+This optional app feature turns **only** previously collected local bridge candidates into manually corrected supervised examples. It does not train any neural weights, read old chats that were never opted in, call a paid API, upload data, or switch the Ollama model. Enable *future* candidate archiving separately with `bridge learning on`, if desired. It is OFF by default.
+
+1. Type `bridge learning status` to see whether opt-in candidate collection was enabled; `bridge learning review` lists candidates and `bridge learning show N` lets you inspect one.
+2. Type `bridge weight status` to see reviewed correction counts without showing private question text.
+3. Type `bridge weight draft N: CORRECTED ANSWER` to submit a **new, corrected answer** to a specific saved question. Review the displayed preview carefully: XemAi's prior (possibly wrong) answer is **never** the training target by default.
+4. If the corrected answer is genuinely accurate and you have the right to use the content, type the full `bridge weight approve N CODE` shown in the preview. Approval is for preparing a local training *dataset*, **not** authorisation to run weight training.
+5. Type `bridge weight revoke N` to exclude that candidate from **future exports**. Previously exported files remain and need manual deletion if you withdraw consent.
+6. When at least **ten distinct, owner-approved, privacy-screened corrections** are available, type `bridge weight export` to preview the dataset count, then `bridge weight export CODE` to write a new, isolated JSONL source to the current host's `data/weight_training/bridge_exports` directory. The export is not transmitted over GitHub or Tailscale.
+
+**Important boundaries:** All review events and exports are confined to the XemAi host's gitignored `data/` directory, with no external model or file access. The correction journal is append-only and the source data remains on the host, even after revocation; if you need an existing export withdrawn, remove it locally and retire any derived dataset. A simple secret/identifier scanner can miss sensitive content, so inspect previews before approval. Owner approval is not independent factual verification. External ChatGPT scores and raw conversational replies do not automatically become training labels.
+
+The private bridge may be on an always-on laptop while Qwen training is on a different PC. **No automatic cross-device movement, weight training, 9B adapter loading or model promotion is built into this release.** The separate experimental training work remains in draft PR #62 and requires further owner approval, compatibility tests and held-out evaluation.
