@@ -53,6 +53,9 @@ _ROLES = (
     ("Research Specialist", "Optional specialist pass", "Summarises retrieved evidence when enabled; not an independent browser."),
     ("Skyrim Specialist", "Optional specialist pass", "Reviews supplied Skyrim diagnostic context when enabled."),
     ("Reviewer", "Optional specialist pass", "Checks some replies for unsupported conclusions when enabled."),
+    ("Conversation Understanding Agent", "Conditional specialist pass", "Interprets ambiguous same-chat follow-ups and corrections; cannot grant new permissions."),
+    ("Social Intelligence Agent", "Conditional specialist pass", "Interprets explicit social cues in context; does not diagnose emotions."),
+    ("Conversation Quality Reviewer", "Conditional specialist pass", "Checks selected replies for intent and tone; may still make mistakes."),
     ("AI Technology Watch", "User-enabled scheduled feed monitor, not an LLM agent", "Checks bounded official release feeds, records unverified proposals, and never installs them."),
 )
 
@@ -105,7 +108,9 @@ def inventory(config: dict, runtime: dict, release_history: list[tuple[str, str]
     for name, trigger, ability in _ROLES:
         if name == "AI Technology Watch":
             active = watch_enabled
-        elif name in {"Research Specialist", "Skyrim Specialist", "Reviewer"}:
+        elif name in {"Research Specialist", "Skyrim Specialist", "Reviewer",
+                      "Conversation Understanding Agent", "Social Intelligence Agent",
+                      "Conversation Quality Reviewer"}:
             active = specialist_enabled
         else:
             active = enabled
