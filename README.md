@@ -1,3 +1,10 @@
+## v0.9.51 — Natural GPT-chat conversation questions
+
+- Recognises conversational questions like `how are you finding the gpt chat?`, `what are your thoughts on the GPT chat?` and `how is your GPT chat going?` as questions about XemAi's owner-enabled GitHub dialogue.
+- Provides the ordinary chat model with host-verified bridge status and a bounded topic digest, never private raw bridge messages, and suppresses unrelated web searches.
+- Retries generic no-feelings / operational-status evasions while retaining accurate uncertainty and the right to mention lack of feelings alongside actual discussion analysis.
+- Adds regression tests for the user's reported failure and guard cases. No model, permissions, bridge automation or agent changes.
+
 ## v0.9.50 — Five supervised agent teams
 
 - Adds five on-demand, read-only three-pass teams: Memory & Continuity, Software Engineering, Research & Verification, Learning & Benchmarks, and Design & Accessibility.
