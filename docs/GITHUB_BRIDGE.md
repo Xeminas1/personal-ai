@@ -403,7 +403,7 @@ general factual or reasoning rule. No new autonomous agents were enabled.
 
 
 
-## v0.9.58: Manually replace truncated excerpts with complete training questions
+## Draft proposal (not yet released): Manually replace truncated excerpts with complete training questions
 
 The private dialogue archive intentionally limits each question to 1,800 characters, while the original weight-review gate only accepted 1,600 characters. Historic examples may also end mid-sentence and cannot be treated as intact questions. **Never infer or reconstruct the missing part of a private comment.** For a saved candidate you personally inspected, you may instead write an independent, complete supervised question-and-answer example:
 
