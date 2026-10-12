@@ -19,7 +19,7 @@
     },
     {
       "path": "app/agent_team.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/app/agent_team.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/2df5fe9d801f62b1616fbe5358db7bff6d50e07e/app/agent_team.py",
       "sha256": "d181976387b24c2319b3933704e6dd59f5297aed0eec1cf2cd54fb809c014136"
     },
     {
@@ -745,7 +745,7 @@
     {
       "path": "verify_release_manifest.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/verify_release_manifest.py",
-      "sha256": "d7d91cbc7b3ef87eddf8eb6334f2b03c6dc2be3d2191995b953ae2d0e781d0cb"
+      "sha256": "e30162d4d7fb380ca6fc7cb893a134363f056f344b2a60c77e94f9816a1ed8e6"
     },
     {
       "path": "XemAi.pyw",
