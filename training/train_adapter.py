@@ -17,6 +17,7 @@ from pathlib import Path
 from training.prepare_dataset import DatasetRejected, _private_output, _safe_path, verify
 
 _MODELS = {"Qwen/Qwen3.5-4B": 12.0, "Qwen/Qwen3.5-9B": 24.0}
+_HIDDEN_SIZE = {"Qwen/Qwen3.5-4B": 2560, "Qwen/Qwen3.5-9B": 4096}
 _CONFIRMATION = "TRAIN REVIEWED LOCAL ADAPTER"
 _REPO = Path(__file__).resolve().parent.parent
 
@@ -40,13 +41,27 @@ def plan(run: Path, model_id: str, revision: str, max_steps: int, sequence: int)
     }
 
 
-def _checkpoint(path: Path, revision: str) -> Path:
+def _checkpoint(path: Path, revision: str, model_id: str) -> Path:
     path = _safe_path(path)
     if not path.is_dir() or path.name != revision:
         raise DatasetRejected("Expected an explicitly downloaded local checkpoint snapshot pinned to revision.")
-    if not (path / "config.json").is_file() or not (path / "tokenizer_config.json").is_file():
+    config_path = path / "config.json"
+    tokenizer_path = path / "tokenizer_config.json"
+    if not config_path.is_file() or not tokenizer_path.is_file():
         raise DatasetRejected("Incomplete local Qwen checkpoint.")
-    # HuggingFace snapshot files may be symlinks into its content-addressed blob cache.
+    if config_path.stat().st_size > 100_000 or tokenizer_path.stat().st_size > 2_000_000:
+        raise DatasetRejected("Unexpected model configuration file size.")
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        tokenizer = json.loads(tokenizer_path.read_text(encoding="utf-8"))
+    except (ValueError, UnicodeError, OSError) as exc:
+        raise DatasetRejected("Invalid local checkpoint metadata.") from exc
+    if (not isinstance(config, dict) or not isinstance(tokenizer, dict)
+            or config.get("model_type") != "qwen3_5"
+            or config.get("text_config", {}).get("hidden_size") != _HIDDEN_SIZE[model_id]):
+        raise DatasetRejected("Local checkpoint architecture does not match the selected Qwen model.")
+    # Filename and metadata are sanity checks, not cryptographic proof of upstream contents.
+    # The owner must verify the full snapshot/revision from a trusted download separately.
     return path
 
 
@@ -56,7 +71,7 @@ def train(
 ) -> Path:
     """One manually invoked local training run; never touches the active XemAi model."""
     parameters = plan(run, model_id, revision, max_steps, sequence)
-    snapshot = _checkpoint(checkpoint_dir, revision)
+    snapshot = _checkpoint(checkpoint_dir, revision, model_id)
     root = _private_output(output_dir)
     if root == _safe_path(run) or root in _safe_path(run).parents:
         raise DatasetRejected("Adapters and source dataset must use separate locations.")
