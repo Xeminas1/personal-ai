@@ -1144,6 +1144,18 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
 
         match = re.fullmatch(r"/api/chats/(\d+)/ratings", path)
         if match:
+            # Do not accept cross-site form requests against the local host.
+            origin = self.headers.get("Origin", "")
+            try:
+                origin_host = urlparse(origin).netloc.lower() if origin else ""
+                host = self.headers.get("Host", "").lower()
+            except ValueError:
+                origin_host, host = "invalid", ""
+            if (self.headers.get("Sec-Fetch-Site") == "cross-site"
+                    or (origin and origin_host != host)
+                    or not self.headers.get("Content-Type", "").lower().startswith("application/json")):
+                self._error("Rate replies from XemAi's own interface.", HTTPStatus.FORBIDDEN)
+                return
             backend = None
             try:
                 chat_id = int(match.group(1))
