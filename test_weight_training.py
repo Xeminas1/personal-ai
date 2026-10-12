@@ -99,6 +99,15 @@ class TrainingGateTests(unittest.TestCase):
                 self.prepare()
         self.assertFalse(self.output.exists())
 
+    def test_rejects_same_prompt_with_different_answer(self):
+        records = [example(i) for i in range(20)]
+        records[-1]["messages"][0]["content"] = records[0]["messages"][0]["content"].upper() + "!!"
+        records[-1]["messages"][-1]["content"] = "A conflicting claim."
+        self.write(records)
+        with self.assertRaises(data.DatasetRejected):
+            self.prepare()
+        self.assertFalse(self.output.exists())
+
     def test_rejects_sensitive_fields_before_writing(self):
         for phrase in (
             "contact person@example.com", "https://example.com/private",
