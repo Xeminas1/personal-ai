@@ -20,6 +20,12 @@ from .ai_watch import chat_command as ai_watch_chat_command
 from .github_bridge import chat_command as github_bridge_chat_command, is_command as is_bridge_command
 from .github_bridge_auto import status as private_bridge_status
 from .bridge_conversation_context import bridge_topic_digest
+from .conversation_learning import (
+    is_command as is_conversation_learning_command,
+    chat_command as conversation_learning_command,
+    record_validation as record_conversation_validation,
+    lesson_context as approved_conversation_lessons,
+)
 from .github_bridge_review import recall_context as reviewed_bridge_lessons
 from .ai_watch import current_report as ai_watch_report
 from .attachment_tasks import (
@@ -542,6 +548,20 @@ class ChatBackend:
                     status_callback(None)
                 return bridge_answer
 
+            if (record_user and not parsed_attachments
+                    and is_conversation_learning_command(query_text)):
+                response = conversation_learning_command(
+                    DATA_DIR, query_text,
+                    history=worker_db.get_recent_messages(chat_id, limit=8),
+                )
+                worker_db.add_assistant_message(
+                    chat_id, response, compute_source="application",
+                )
+                assistant_recorded = True
+                if status_callback:
+                    status_callback(None)
+                return response
+
             # Exact explicit user commands are application actions, not model
             # tool calls. A model cannot silently enable background monitoring.
             if record_user and not parsed_attachments:
@@ -754,6 +774,11 @@ class ChatBackend:
                 reviewed_note = reviewed_bridge_lessons(DATA_DIR, query_text)
                 if reviewed_note:
                     messages.append({"role": "system", "content": reviewed_note})
+                # Owner-approved generalised corrections, never unverified
+                # examples, and never source-isolated/vision/audit/tool tasks.
+                learned_context = approved_conversation_lessons(DATA_DIR, query_text)
+                if learned_context:
+                    messages.append({"role": "system", "content": learned_context})
             modding_context = "" if visual_only else skyrim_context(
                 query_text, [str(item.get("name", "")) for item in parsed_attachments],
                 recognised_diagnostic=bool(diagnostic_state.get("skyrim")),
@@ -1316,6 +1341,10 @@ class ChatBackend:
                 dialogue_kind, answer,
                 bridge_topics_available=bridge_topics_available,
             ):
+                initial_dialogue_draft = str(answer)
+                revised_dialogue_draft = ""
+                validation_outcome = "model_revision"
+                validation_signal = "dialogue_validator"
                 # Correct the specific user-tested failure in which the model
                 # replaced an agent proposal with neural-weight boilerplate,
                 # denied a benchmark mission or refused an explicit hypothetical.
@@ -1332,10 +1361,17 @@ class ChatBackend:
                         retry_messages, tool_registry=task_tools,
                         max_tool_rounds=2,
                     )
+                    revised_dialogue_draft = str(corrected)
                     if dialogue_answer_needs_retry(
                         dialogue_kind, corrected,
                         bridge_topics_available=bridge_topics_available,
                     ):
+                        validation_outcome = "application_fallback"
+                        validation_signal = "dialogue_retry_rejected"
+                        self.logger.warning(
+                            "Dialogue retry draft rejected | chat_id=%s turn_id=%s kind=%s",
+                            chat_id, turn_id, dialogue_kind,
+                        )
                         answer = dialogue_fallback(
                             dialogue_kind, query_text, bridge_topic_digest=bridge_digest
                         )
@@ -1343,6 +1379,8 @@ class ChatBackend:
                     else:
                         answer = corrected
                 except Exception as error:
+                    validation_outcome = "application_fallback"
+                    validation_signal = "dialogue_retry_error"
                     self.logger.warning(
                         "Dialogue correction failed | chat_id=%s kind=%s type=%s",
                         chat_id, dialogue_kind, type(error).__name__,
@@ -1351,6 +1389,21 @@ class ChatBackend:
                             dialogue_kind, query_text, bridge_topic_digest=bridge_digest
                         )
                     application_answer = True
+                # Opt-in only: keep candidate drafts in a small private archive,
+                # not the noisy host logs. Heuristic rejection is NOT ground truth.
+                recorded = record_conversation_validation(
+                    DATA_DIR, chat_id=chat_id, turn_id=turn_id,
+                    model=str(getattr(llm, "model", "unknown")),
+                    compute=str((getattr(llm, "route_info", {}) or {}).get("compute", "unknown")),
+                    question=query_text, first_draft=initial_dialogue_draft,
+                    revised_draft=revised_dialogue_draft,
+                    outcome=validation_outcome, signal=validation_signal,
+                )
+                self.logger.info(
+                    "Conversation learning | chat_id=%s turn_id=%s event=dialogue_heuristic "
+                    "outcome=%s diagnostic_archived=%s (no draft text logged)",
+                    chat_id, turn_id, validation_outcome, recorded,
+                )
 
             if watch_linked and watch_answer_off_topic(answer, saved_watch, query_text):
                 self.logger.warning(
