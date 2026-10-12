@@ -76,6 +76,19 @@ Use `training\\windows_model_download.cmd --check` for read-only status; `traini
 
 Source-level privacy and mocked Windows consent checks run in CI. Real network download and model loading **cannot be verified on GitHub Actions**. No training dataset exists until the owner separately prepares human-reviewed, consented and selected records. Before a real LoRA run, review the source, ensure at least 10 distinct approved records and reserve held-out examples not trained on. The available ~13.7 GiB GPU headroom is only an estimate; a real 4B training smoke run may still fail due to CUDA memory or kernel incompatibilities and must be stopped without altering XemAi.
 
+## First genuinely trainable smoke pilot (after 4B checkpoint download)
+
+The owner has now confirmed that the official, revision-pinned Qwen3.5 4B checkpoint downloaded and the public shard/architecture validator succeeded. This is **not** proof that model loading or training works yet. The installed Qwen3.5 9B model remains unchanged.
+
+The next separate training package is also reproducible from the files in this draft PR:
+
+- `training/synthetic_smoke.py`: inspectable fictional dialogues only (16 training + four reserved holdouts), no source from bridge, messages or memory; pinned locally downloaded 4B checkpoint; no network requests or uploads.
+- Run `python -m training.synthetic_smoke --check` in the isolated Python 3.13 environment first. This reads the checkpoint index, shard presence, model architecture and installed package versions only.
+- With the owner's separate decision to use GPU resources, run `python -m training.synthetic_smoke --train --confirm "TRAIN SYNTHETIC 4B"` (or `training/TRAIN_SYNTHETIC_QWEN4B.cmd` in a complete PR checkout; the downloadable add-on uses a root-level wrapper). The extra confirmation string is required. Training uses **two optimisation steps** of BF16 LoRA at 384 tokens maximum, and checks at least one LoRA-B parameter tensor really changed. It stores a separate adapter and local SHA-256 file manifest below the gitignored `data/weight_training/pilot_runs/`.
+- The simple synthetic holdout is NOT automatically graded and does not prove improved quality. The result's `training_executed` flag describes a run, not XemAi app training. The adapter is **not activated** in Ollama, does not apply to the 9B model, and is not a release.
+
+**Limitations:** Windows/GitHub CI only executes safety and offline synthetic checks without a real GPU. Actual Unsloth/Triton/Qwen3.5 CUDA loading may fail, may use significant VRAM and compute, and is stopped rather than silently using QLoRA or overwriting the existing inference model. No public repo issue or tests contain owner data. A failed training run may leave a new incomplete temporary run folder, never a production model change. The smoke script proves measured adapter parameter change *only if* the PC training completes and its output is verified. Neither a low loss nor two tiny training steps establish improved general intelligence.
+
 ## Prototype CLI (owner-invoked only)
 
 Run from the repository root with Python 3.12+. No new packages are needed to **prepare and verify** a dataset. The commands below describe capabilities of this branch; they do not install anything on the owner's computer.
