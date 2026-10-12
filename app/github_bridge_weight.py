@@ -194,9 +194,12 @@ def _export_private(data_dir: Path, rows: list[dict]) -> str:
     return path.name
 
 
-def command(data_dir: Path, query: str) -> str:
+def command(data_dir: Path, query: str, *, client=None) -> str:
     """Only call this after an exact owner-entered 'bridge weight ...' command."""
     q = str(query or "").strip()
+    if q.lower() == "bridge weight inbox" or q.lower().startswith("bridge weight inbox "):
+        from .github_bridge_weight_inbox import command as inbox_command
+        return inbox_command(data_dir, q, client=client)
     try:
         with _LOCK:
             archive, _ = _snapshot(data_dir)
