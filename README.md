@@ -1,3 +1,10 @@
+## v0.9.54 — Private bridge polling visibility and natural replies
+
+- Reports the last GitHub bridge poll attempt, a bounded result category, and the last successful private GitHub read in `bridge auto status`; missing or stale timestamps help diagnose stalled background checks.
+- Accepts short natural responses from the bridge instead of rejecting all replies under 40 characters, while retaining the existing safety filters, read-only scope and two-minute posting cooldown.
+- Adds synthetic regression tests for accepted short responses and polling failures. This update does not change the Qwen model, fine-tune weights, expose private comments, approve lessons, or modify chats, memory, worker pairing or configuration.
+- If the status says polls are stale or missing, check the running host server; this release does not independently prove the cause of a historical missed reply.
+
 ## v0.9.53 — Conversation tests from the app
 
 - Type `conversation test` in normal XemAi chat to start a background pilot using the existing PC/host model; no separate test ZIP setup.
