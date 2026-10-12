@@ -1,0 +1,26 @@
+name: XemAi offline weight-training safety gates
+on:
+  pull_request:
+    paths:
+      - "training/**"
+      - "test_weight_training.py"
+      - ".github/workflows/weight-training-gates.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile offline training utilities
+        run: python -m compileall -q training test_weight_training.py
+      - name: Test dataset consent, privacy and execution guards (no GPU or model downloads)
+        run: python -m unittest -v test_weight_training
