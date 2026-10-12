@@ -216,6 +216,11 @@ class TrainingGateTests(unittest.TestCase):
             def save_pretrained(self, directory):
                 (Path(directory) / "tokenizer.json").write_text('{"synthetic_only":true}')
 
+            def apply_chat_template(self, messages, *, tokenize, add_generation_prompt):
+                self_last = "assistant" if messages and messages[-1]["role"] == "assistant" else "user"
+                # Fake increasing token lengths only; never a real tokenizer test.
+                return list(range(10 + len(messages) * 12 + (1 if self_last == "assistant" else 0)))
+
         class FakeLoader:
             @staticmethod
             def from_pretrained(**kwargs):
