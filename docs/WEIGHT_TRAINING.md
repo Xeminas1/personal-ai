@@ -45,6 +45,27 @@ Interpreting memory estimates: the RTX 5080 with 16 GB can potentially support a
 
 Public Qwen3.5 guidance: https://unsloth.ai/docs/models/qwen3.5/fine-tune . Training examples and the holdout remain on the owner's device, not GitHub.
 
+## Result of the initial owner-run PC check (generalised hardware constraints)
+
+A **16 GiB NVIDIA Blackwell GPU** with roughly **14 GiB free VRAM** can be a viable 4B BF16 LoRA test target, but not the existing 9B BF16 LoRA recipe. The diagnostic showed Python **3.14** and no training dependencies, so the next step is a **separate Python 3.13 environment** (not replacing the owner's existing installation or XemAi's Ollama instance). This statement does not establish working CUDA kernels or local training.
+
+### Windows setup helper (optional; no model downloads)
+
+From the branch checkout, in a Windows terminal:
+
+```bat
+training\windows_setup.cmd --check
+training\windows_setup.cmd --install
+```
+
+The first command is read-only. The second clearly describes the changes and **requires the owner to type INSTALL**. It installs Astral uv via Windows Package Manager only if missing (with a separate package-manager confirmation), then exits so the terminal can be reopened and the command run again. Once uv is available, the helper installs **Python 3.13** and the official Unsloth/PyTorch dependency stack into **`data/weight_training/env_python313`**, which is gitignored and isolated. Installation may download multiple gigabytes. It verifies CUDA BF16 and Transformers v5 after dependency installation.
+
+No Qwen weights, chat archives, private GitHub messages or local memories are downloaded or read. It does not initiate a training run, change installed models, activate a new adapter, create agents or publish anything. The helper's package downloads are the only intended network activity. Review the script before choosing to run it.
+
+Native Windows support for NVIDIA RTX 50 / Blackwell and Python 3.13 is documented by Unsloth, but a successful Windows installation is not proof that our custom SFT trainer works; we must still perform a controlled end-to-end experiment on the actual model and evaluate performance. If setup fails, preserve the existing environment and diagnose rather than modifying XemAi's Python installation.
+
+Official references: https://unsloth.ai/docs/get-started/fine-tuning-for-beginners/unsloth-requirements ; https://unsloth.ai/docs/models/qwen3.5/fine-tune ; https://docs.astral.sh/uv/reference/cli/
+
 ## Prototype CLI (owner-invoked only)
 
 Run from the repository root with Python 3.12+. No new packages are needed to **prepare and verify** a dataset. The commands below describe capabilities of this branch; they do not install anything on the owner's computer.
