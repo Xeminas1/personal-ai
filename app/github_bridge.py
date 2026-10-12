@@ -81,6 +81,8 @@ def save_state(data_dir: Path, state: dict) -> None:
                 "auto_last_post_at", "auto_paused", "auto_chat_id",
                 "auto_last_poll_at", "auto_last_poll_status",
                 "auto_last_github_read_at", "learning_enabled",
+                "weight_inbox_enabled", "weight_inbox_issue",
+                "weight_inbox_cursor", "weight_inbox_last_poll",
             }}
     tmp.write_text(json.dumps(safe, indent=2, ensure_ascii=False), encoding="utf-8")
     try:
@@ -255,6 +257,7 @@ def chat_command(question: str, data_dir: Path, logger=None, *, client=None) -> 
                 "bridge auto on | bridge auto off | bridge auto status.\n"
                 "bridge learning on | bridge learning off | bridge learning status.\n"
                 "bridge weight status | draft N: ANSWER | rewrite N: STANDALONE QUESTION || ANSWER | approve N CODE | revoke N | export.\n"
+                "bridge weight inbox status | on ISSUE | off | sync | list | show N | approve N CODE.\n"
                 "bridge learning review | show N | propose N: LESSON || EVIDENCE | approve N | reject N | approved | revoke N.\n"                "bridge review scores | bridge review show N (untrusted external scores).\n"
                 "Nothing is uploaded automatically. This GitHub bridge does not "
                 "make ChatGPT respond until this conversation is checked."
@@ -273,7 +276,7 @@ def chat_command(question: str, data_dir: Path, logger=None, *, client=None) -> 
         if q.lower() == "bridge weight" or q.lower().startswith("bridge weight "):
             # Only exact owner-entered commands enter private review/approval.
             from .github_bridge_weight import command as weight_command
-            return weight_command(data_dir, q)
+            return weight_command(data_dir, q, client=client)
         if q.lower() in {"bridge learning on", "bridge learning off",
                          "bridge learning status"}:
             from .github_bridge_learning import command
