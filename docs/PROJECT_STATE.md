@@ -7,12 +7,12 @@
 | Field | Verified snapshot |
 | --- | --- |
 | Published XemAi app version | **v0.9.55** |
-| `main` merge SHA at v0.9.55 release | To be verified after final merge; see PR #57 |
-| Frozen release `release-v0.9.55` SHA | To be confirmed by final-head validation |
-| Release/merge relationship | Matching repository **tree** verified for those commits |
+| `main` merge SHA at v0.9.55 release | `cdf1155f12cc4010e6ca82a7c82606408aa47038` |
+| Frozen release `release-v0.9.55` SHA | `cdda12bace92acdfaa8cfa811e9206fcf670ff67` |
+| Release/merge relationship | Matching repository **tree** verified for those commits after PR #57 merge |
 | Release PR | [#57 — Read-only GitHub resume request](https://github.com/Xeminas1/personal-ai/pull/57) |
-| Latest verified release manifest | v0.9.55 (verification required before merge) |
-| Release CI at final tested source head | Must be checked at final v0.9.55 head before merge |
+| Latest verified release manifest | v0.9.55, **162 SHA-256 pinned assets** |
+| Release CI at final tested source head | Windows/Linux regressions, manifest verification and handoff checks **passed** at frozen head |
 | Installed version on an owner's computer | **Unknown from GitHub alone** |
 
 The code repository's newer **documentation-only** commits are not necessarily new app releases; the authoritative installed app version is the running host's report. GitHub merges cannot verify automatic installation on the laptop/PC.
