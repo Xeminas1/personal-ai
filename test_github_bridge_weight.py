@@ -141,7 +141,7 @@ class BridgeToWeightTests(unittest.TestCase):
         archive.write_text("null\n", encoding="utf-8")
         self.assertIn("stopped safely", self.call(
             "bridge weight draft 1: We must verify the underlying evidence first."))
-        self.assertIn("Approval refused", self.call(
+        self.assertIn("stopped safely", self.call(
             "bridge weight approve 1 deadbeef"))
         self.assertFalse((self.data / _EXPORT_DIR).exists())
 
