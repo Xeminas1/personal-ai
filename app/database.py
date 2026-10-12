@@ -648,6 +648,27 @@ class Database:
             if (scores := [int(r["score"]) for r in rows if r["aspect"] == aspect])
         ]
 
+    def rated_model_responses(self, user_id: int, limit: int = 80) -> list[dict]:
+        """Private in-process scoring examples, never raw model prompt text.
+
+        Only actual model outputs with owner rating; no assistant application
+        fallback, GitHub mirror, chat-wide rating or external scores.
+        """
+        rows = self.conn.execute(
+            """
+            SELECT f.score, f.aspect, m.content
+            FROM feedback AS f
+            JOIN chats AS c ON c.id=f.chat_id AND c.user_id=f.user_id
+            JOIN messages AS m ON m.id=f.assistant_message_id
+                AND m.chat_id=f.chat_id AND m.role='assistant'
+            JOIN message_inference AS mi ON mi.message_id=m.id
+            WHERE f.user_id=? AND mi.compute_source IN ('local_host','remote_worker')
+              AND f.aspect IN ('overall','clarity','usefulness','understanding')
+            ORDER BY f.id DESC LIMIT ?
+            """, (int(user_id), min(max(int(limit), 1), 80)),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
     def add_chat_feedback(
         self,
         user_id: int,
