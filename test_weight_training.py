@@ -150,6 +150,9 @@ class TrainingGateTests(unittest.TestCase):
     def test_refuses_output_inside_public_code_tree(self):
         with self.assertRaises(data.DatasetRejected):
             data._private_output(data._REPO_ROOT / "training" / "accidental_public_data")
+        # A lexical path through gitignored data/ must not escape to tracked code.
+        with self.assertRaises(data.DatasetRejected):
+            data._private_output(data._REPO_ROOT / "data" / ".." / "training" / "leak")
 
     def test_plan_is_read_only_and_does_not_import_cuda(self):
         run = self.prepare()
