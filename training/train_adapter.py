@@ -69,10 +69,10 @@ def train(
     os.environ["WANDB_DISABLED"] = "true"
     # Dependencies are optional and only imported after all safe preflight checks.
     try:
+        from unsloth import FastLanguageModel  # Import first so GPU kernels are patched.
         import torch
         from datasets import Dataset
         from trl import SFTConfig, SFTTrainer
-        from unsloth import FastLanguageModel
     except ImportError as exc:
         raise DatasetRejected("Missing optional training dependencies; use a separate GPU environment.") from exc
     if not torch.cuda.is_available() or not torch.cuda.is_bf16_supported():
@@ -81,6 +81,10 @@ def train(
     vram = props.total_memory / (1024 ** 3)
     if vram < _MODELS[model_id]:
         raise DatasetRejected("Insufficient reported VRAM for the selected BF16 LoRA model.")
+    free_vram = torch.cuda.mem_get_info(0)[0] / (1024 ** 3)
+    required_free = 10.0 if model_id.endswith("-4B") else 22.0
+    if free_vram < required_free:
+        raise DatasetRejected("Too little free GPU memory; stop other workloads manually before training.")
     # Never import the held-out file into the training loop.
     with (_safe_path(run / "train.jsonl", file=True)).open(encoding="utf-8") as stream:
         rows = [json.loads(line) for line in stream]
