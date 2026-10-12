@@ -6,13 +6,13 @@
 
 | Field | Verified snapshot |
 | --- | --- |
-| Published XemAi app version | **v0.9.54** |
-| `main` merge SHA at v0.9.54 release | `fd4abc0dc65692c9aa5432848d885a1ec3a07a84` |
-| Frozen release `release-v0.9.54` SHA | `49d473d7d99cad1d2a5ec0a19c935917263752c7` |
+| Published XemAi app version | **v0.9.55** |
+| `main` merge SHA at v0.9.55 release | To be verified after final merge; see PR #57 |
+| Frozen release `release-v0.9.55` SHA | To be confirmed by final-head validation |
 | Release/merge relationship | Matching repository **tree** verified for those commits |
-| Release PR | [#53 — Bridge polling diagnostics and short natural replies](https://github.com/Xeminas1/personal-ai/pull/53) |
-| Latest verified release manifest | v0.9.54, **159 SHA-256 pinned assets** |
-| Release CI at final tested source head | Windows and Linux regression checks **passed**, manifest verification **passed** |
+| Release PR | [#57 — Read-only GitHub resume request](https://github.com/Xeminas1/personal-ai/pull/57) |
+| Latest verified release manifest | v0.9.55 (verification required before merge) |
+| Release CI at final tested source head | Must be checked at final v0.9.55 head before merge |
 | Installed version on an owner's computer | **Unknown from GitHub alone** |
 
 The code repository's newer **documentation-only** commits are not necessarily new app releases; the authoritative installed app version is the running host's report. GitHub merges cannot verify automatic installation on the laptop/PC.
@@ -23,7 +23,7 @@ The code repository's newer **documentation-only** commits are not necessarily n
 | --- | --- | --- | --- |
 | [Issue #54](https://github.com/Xeminas1/personal-ai/issues/54) | Investigate bounded GitHub bridge comments JSON read and synthetic reproduction | **Open; not shipped** | Reproduce size/transport failure, propose permitted minimal patch, verify privacy and tests, then publish **only if** required checks pass |
 
-**Issue #54 is not a v0.9.55 release.** The v0.9.54 patch made polling status observable and permitted short safe replies, but it did not fix any underlying GitHub API response-size/transport problem. There is no verified published v0.9.55 as of this snapshot. A previous tool restriction applied to an attempted fix; do not bypass a real platform block. Consult the live issue and available permissions for current status.
+**Issue #54 is not fixed by v0.9.55.** The v0.9.54 patch made polling status observable and permitted short safe replies, but it did not fix any underlying GitHub API response-size/transport problem. The v0.9.55 change addresses an unrelated public project-handoff request. A previous tool restriction applied to an attempted fix; do not bypass a real platform block. Consult the live issue and available permissions for current status.
 
 ### Cross-session collaboration itself
 
