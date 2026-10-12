@@ -1,0 +1,32 @@
+name: Verify XemAi collaboration handoff
+on:
+  pull_request:
+    paths:
+      - "AGENTS.md"
+      - "docs/PROJECT_STATE.md"
+      - "docs/AI_COLLABORATION_RULES.md"
+      - "docs/HANDOFF_PROTOCOL.md"
+      - ".github/ISSUE_TEMPLATE/development-work.md"
+      - "test_project_handoff_docs.py"
+      - ".github/workflows/handoff-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  handoff:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check handoff test syntax
+        run: python -m py_compile test_project_handoff_docs.py
+      - name: Verify docs, required checkpoint fields and public/private boundary
+        run: python test_project_handoff_docs.py

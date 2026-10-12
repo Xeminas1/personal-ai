@@ -1,3 +1,9 @@
+# XemAi — GPT and Codex development handoff
+
+**Continuing an interrupted update?** Start at [`AGENTS.md`](AGENTS.md), then read the [last verified project state](docs/PROJECT_STATE.md), [standing owner-approved collaboration rules](docs/AI_COLLABORATION_RULES.md) and [issue/PR handoff protocol](docs/HANDOFF_PROTOCOL.md). Check **live [open pull requests](https://github.com/Xeminas1/personal-ai/pulls?q=is%3Aopen)** and **[open development issues](https://github.com/Xeminas1/personal-ai/issues?q=is%3Aopen)** before starting work. These documents preserve development context across ChatGPT and Codex sessions; they do not automatically transfer private chat history or install an app update.
+
+## Releases
+
 ## v0.9.54 — Private bridge polling visibility and natural replies
 
 - Reports the last GitHub bridge poll attempt, a bounded result category, and the last successful private GitHub read in `bridge auto status`; missing or stale timestamps help diagnose stalled background checks.
