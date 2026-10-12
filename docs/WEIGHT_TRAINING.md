@@ -66,6 +66,16 @@ Native Windows support for NVIDIA RTX 50 / Blackwell and Python 3.13 is document
 
 Official references: https://unsloth.ai/docs/get-started/fine-tuning-for-beginners/unsloth-requirements ; https://unsloth.ai/docs/models/qwen3.5/fine-tune ; https://docs.astral.sh/uv/reference/cli/
 
+## Optional public model checkpoint — separate from XemAi (owner permission required)
+
+The owner has confirmed CUDA and BF16 work in an isolated Windows Python 3.13 + Unsloth environment on an RTX 5080 with ~13.7 GiB free VRAM. This **does not mean real fine-tuning has run**.
+
+To prepare a *separate* Qwen3.5 4B BF16 LoRA pilot, the exact official public checkpoint is pinned to Hugging Face commit `c7429d5a8ed57f4a9cfdaf1af76a8943eba0ae97` (Apache-2.0; approximately **9.34 GB**). The source is [Qwen/Qwen3.5-4B](https://huggingface.co/Qwen/Qwen3.5-4B/tree/c7429d5a8ed57f4a9cfdaf1af76a8943eba0ae97). A 4B checkpoint is **not interchangeable** with the running 9B Ollama model.
+
+Use `training\\windows_model_download.cmd --check` for read-only status; `training\\windows_model_download.cmd --download` only after deciding the network/storage cost is acceptable, then type **DOWNLOAD**. The download uses the installed isolated `hf` CLI with a fixed source and revision and suppresses implicit credential use. It writes only to local gitignored `data/weight_training/models/<revision>`, verifies architecture and required large public shards, and does **not** access private bridge records, change Ollama, train weights or upload anything. An interrupted download can be resumed by rerunning the command; incomplete shards never count as a successful checkpoint.
+
+Source-level privacy and mocked Windows consent checks run in CI. Real network download and model loading **cannot be verified on GitHub Actions**. No training dataset exists until the owner separately prepares human-reviewed, consented and selected records. Before a real LoRA run, review the source, ensure at least 10 distinct approved records and reserve held-out examples not trained on. The available ~13.7 GiB GPU headroom is only an estimate; a real 4B training smoke run may still fail due to CUDA memory or kernel incompatibilities and must be stopped without altering XemAi.
+
 ## Prototype CLI (owner-invoked only)
 
 Run from the repository root with Python 3.12+. No new packages are needed to **prepare and verify** a dataset. The commands below describe capabilities of this branch; they do not install anything on the owner's computer.
