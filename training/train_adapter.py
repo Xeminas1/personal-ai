@@ -58,7 +58,8 @@ def _checkpoint(path: Path, revision: str, model_id: str) -> Path:
         raise DatasetRejected("Invalid local checkpoint metadata.") from exc
     if (not isinstance(config, dict) or not isinstance(tokenizer, dict)
             or config.get("model_type") != "qwen3_5"
-            or config.get("text_config", {}).get("hidden_size") != _HIDDEN_SIZE[model_id]):
+            or not isinstance(config.get("text_config"), dict)
+            or config["text_config"].get("hidden_size") != _HIDDEN_SIZE[model_id]):
         raise DatasetRejected("Local checkpoint architecture does not match the selected Qwen model.")
     # Filename and metadata are sanity checks, not cryptographic proof of upstream contents.
     # The owner must verify the full snapshot/revision from a trusted download separately.
