@@ -4,6 +4,7 @@ on:
     paths:
       - "training/**"
       - "test_weight_training.py"
+      - "test_training_pc_preflight.py"
       - ".github/workflows/weight-training-gates.yml"
   workflow_dispatch:
 permissions:
@@ -21,6 +22,6 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile offline training utilities
-        run: python -m compileall -q training test_weight_training.py
+        run: python -m compileall -q training test_weight_training.py test_training_pc_preflight.py
       - name: Test dataset consent, privacy and execution guards (no GPU or model downloads)
-        run: python -m unittest -v test_weight_training
+        run: python -m unittest -v test_weight_training test_training_pc_preflight
