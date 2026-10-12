@@ -129,7 +129,7 @@ def _read_input(path: Path) -> tuple[list[dict], str]:
         # altered casing/punctuation or a different claimed correct answer.
         prompt = item["messages"][:-1]
         normalized = [
-            {"role": m["role"], "content": re.sub(r"\\W+", " ", m["content"].casefold()).strip()}
+            {"role": m["role"], "content": re.sub(r"\W+", " ", m["content"].casefold()).strip()}
             for m in prompt
         ]
         fingerprint = _digest(_json(normalized))
