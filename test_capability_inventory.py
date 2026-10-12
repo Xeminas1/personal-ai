@@ -94,8 +94,8 @@ class LocalInventoryTests(unittest.TestCase):
         self.assertIn("self-improvement audit", analysis)
         self.assertIn("not direct", analysis)
         updates = direct_answer(self.data, "update_reflection")
-        self.assertIn("v0.9.46", updates)
-        self.assertIn("v0.9.47", updates)
+        self.assertIn("v0.9.50", updates)
+        self.assertIn("v0.9.51", updates)
         self.assertIn("not the same as", updates.lower())
         disabled = inventory(
             {"agent_team_enabled": False, "ai_watch_enabled": False,
