@@ -1,11 +1,11 @@
 {
-  "version": "0.9.49",
-  "notes": "Adds three selective, bounded conversation-agent roles to the existing no-tool private specialist worker: Conversation Understanding for contextual follow-ups; Social Intelligence for explicit social cues; and Conversation Quality Reviewer on eligible draft responses. At most two extra passes per turn within existing budget, never three new models, opt-outs respected and evidence, attachment, agent, research and self-knowledge paths isolated. Documents future team proposals without enabling them. No autonomous actions, permissions changes, model installation or fine-tuning. Windows/Linux regression tests and pinned 151-file release verification.",
+  "version": "0.9.50",
+  "notes": "Adds five supervised, explicitly invoked read-only teams: Memory & Continuity, Software Engineering, Research & Verification, Learning & Benchmarks and Design & Accessibility. Each reuses the selected local/hybrid model for up to three constrained analytic passes, with scoped memory, conversation, rating and source evidence only for the relevant team. Fixes v0.9.49 conversation-specialist reply provenance persistence and honors no-agent commands. No autonomous edits, model installs, memory mutation, unverified benchmark claims or changed permissions. Windows/Linux regression coverage and 0.9.50 pinned release integrity verification.",
   "files": [
     {
       "path": ".github/workflows/developer-mode-tests.yml",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.49/.github/workflows/developer-mode-tests.yml",
-      "sha256": "e1f5d673fdc9e47a95a1620e4fc1e32feea799efae81d1c75f651d84e04eb2db"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/.github/workflows/developer-mode-tests.yml",
+      "sha256": "4d1bf7ff45bdc238b68b814950fd9be1c331c7dc5cc11261ce731b557a469026"
     },
     {
       "path": "app/__init__.py",
@@ -13,9 +13,14 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
+      "path": "app/agent_team_catalog.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/app/agent_team_catalog.py",
+      "sha256": "75ece156d75b6b73e07790d6730c62f939f70e0d20a56459deaae4401a91bed6"
+    },
+    {
       "path": "app/agent_team.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.30/app/agent_team.py",
-      "sha256": "4ea1a5ec73b11983e4ed93f1cabbb932bc0992a1661e133f8257f4cb86a01587"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/app/agent_team.py",
+      "sha256": "f66c7ab27cb1e1a986ee0cac69ad568e4f7d226bc70e1848f5f21328678179f3"
     },
     {
       "path": "app/ai_watch.py",
@@ -44,13 +49,13 @@
     },
     {
       "path": "app/capability_inventory.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.49/app/capability_inventory.py",
-      "sha256": "e6afd68446adb7ba09864267a96a1e653cec24da6e6b0b386316efaaa49b9f39"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/app/capability_inventory.py",
+      "sha256": "3e8526b1fd32bea7b16c12680478695800a94e91bc2d5bd22d9101eeb6bdccf9"
     },
     {
       "path": "app/config.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.49/app/config.py",
-      "sha256": "c89acccf2d230e656b5230d21f9841183c149e21e0768d84538485cc41c96106"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/app/config.py",
+      "sha256": "5dad4ba089208fe78cd9795d7ed968416797081696f74d5757706ed7a7f0bedc"
     },
     {
       "path": "app/conversation_agents.py",
@@ -69,8 +74,8 @@
     },
     {
       "path": "app/database.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.47/app/database.py",
-      "sha256": "ff797ecf5aaca38fcda665bda5a92f19b616da277024df3506412481c3377e17"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/app/database.py",
+      "sha256": "671613b0fa8dcd0fa09c47291f7ccff9b349c67bffca045d97c2a5ff77f4d89a"
     },
     {
       "path": "app/developer_guidance.py",
@@ -114,8 +119,8 @@
     },
     {
       "path": "app/gui_backend.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.49/app/gui_backend.py",
-      "sha256": "ce125e132a64dc942f534db30e66b1c48745f4877b506e1314e47b37ddd540c7"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/app/gui_backend.py",
+      "sha256": "f152e8bb86a751de6b6f90288452edaa6fb80664516d39418564c7414f3e509d"
     },
     {
       "path": "app/hybrid_autosetup.py",
@@ -184,8 +189,8 @@
     },
     {
       "path": "app/self_knowledge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.49/app/self_knowledge.py",
-      "sha256": "7c55f4cd644ee31e382fca7bdb1372ce21d08643d3ae572da880a6b67e6314c0"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/app/self_knowledge.py",
+      "sha256": "3330e8332d76b06c059f35cbccb658ed617c76aeee6f04a1cade426a034274e7"
     },
     {
       "path": "app/skyrim.py",
@@ -219,8 +224,8 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.49/app/version.py",
-      "sha256": "76c001b6dac939e0ab0f5de545f152931cda4c2fb75ae00152f779fcd6eb52df"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/app/version.py",
+      "sha256": "e336a37eefdaa4981db7b6a87b84719dc2392e13c362e720ab7fecf233dc9875"
     },
     {
       "path": "app/vision.py",
@@ -279,8 +284,8 @@
     },
     {
       "path": "docs/AGENT_TEAMS.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.49/docs/AGENT_TEAMS.md",
-      "sha256": "2ac2329ccda7a482af3a98b76c2708f38c9e0f34be9a61494b19a8f150662fb1"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/docs/AGENT_TEAMS.md",
+      "sha256": "e62f9c626c2c8e1333fdf72e39cc3f60bf74f61dd89b846c4fa85226c99e3698"
     },
     {
       "path": "docs/CONVERSATION_INTELLIGENCE.md",
@@ -389,8 +394,8 @@
     },
     {
       "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.49/README.md",
-      "sha256": "d28daf83d25dbd3f6ce15dbefbe4b5423d5b4e70fd3e05294a71a49781b2eeb9"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/README.md",
+      "sha256": "85e7ccfd28878a4563b3af529bdcbbc40484bb8c4f689af885488b2712630fc5"
     },
     {
       "path": "restart_mobile_server.bat",
@@ -411,6 +416,11 @@
       "path": "test_agent_team.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.29/test_agent_team.py",
       "sha256": "70c89dfcf858f4c45c11262c6783118f972ed327ac1d8ba7396e9ad08449530e"
+    },
+    {
+      "path": "test_agent_teams_catalog.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/test_agent_teams_catalog.py",
+      "sha256": "de75906c87d6f0ba55baead975e091f76de9e89fe150a44e68b88580e116f115"
     },
     {
       "path": "test_ai_watch.py",
@@ -439,8 +449,8 @@
     },
     {
       "path": "test_capability_inventory.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.49/test_capability_inventory.py",
-      "sha256": "4560ac9402baae64cd2b451d44d687b51951bc7f39c121a412696c0aab392293"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/test_capability_inventory.py",
+      "sha256": "ece0e4eb1cf42dce548821da58d604bff094527c487122143ae8dc01c3ab387a"
     },
     {
       "path": "test_chat_delete.py",
@@ -734,8 +744,8 @@
     },
     {
       "path": "verify_release_manifest.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.49/verify_release_manifest.py",
-      "sha256": "b13b2a79e2852add0e60eb171e19de2cd8bd0c8958bd8e85b051e788390c5108"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.50/verify_release_manifest.py",
+      "sha256": "d7d91cbc7b3ef87eddf8eb6334f2b03c6dc2be3d2191995b953ae2d0e781d0cb"
     },
     {
       "path": "XemAi.pyw",
