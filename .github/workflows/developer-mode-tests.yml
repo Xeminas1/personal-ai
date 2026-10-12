@@ -93,6 +93,9 @@ jobs:
         run: |
           python test_dialogue_mission.py
            python test_conversation_skills.py
+          python test_conversation_agents.py
+          python test_specialists.py
+          python test_specialist_worker.py
            python conversation_intelligence_benchmark.py --dry-run
           python test_bridge_conversation_context.py
           python test_conversation_learning.py
