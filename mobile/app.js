@@ -429,7 +429,7 @@ function linkify(text) {
 
 function messageSignature(messages) {
   return (messages || [])
-    .map((msg) => `${msg.id ?? ""}:${msg.role ?? ""}:${supportedSpecialistRoles(msg).join(",")}`)
+    .map((msg) => `${msg.id ?? ""}:${msg.role ?? ""}:${supportedSpecialistRoles(msg).join(",")}:${msg.rating_score ?? ""}:${msg.rating_aspect ?? ""}`)
     .join("|");
 }
 
@@ -699,6 +699,11 @@ function appendMessage(role, text, createdAt = null, delivery = null, inference 
   );
   const inferenceLabel = role === "assistant" && !retryable ? replyInferenceLabel(inference) : "";
   const specialistLabel = role === "assistant" && !retryable ? specialistHelpLabel(inference) : "";
+  const rateable = role === "assistant" && !retryable
+    && Number.isSafeInteger(inference?.id) && inference.id > 0
+    && !/^\[(?:XemAi|GitHub collaborator) — GitHub bridge/.test(String(text));
+  const ratingScore = Number.isInteger(inference?.rating_score) ? inference.rating_score : null;
+
   wrap.innerHTML = `
     <div class="bubble-wrap">
       ${role === "assistant" ? '<div class="tail"></div>' : ''}
@@ -718,12 +723,17 @@ function appendMessage(role, text, createdAt = null, delivery = null, inference 
         </div>
         ${inferenceLabel ? `<div class="message-inference">${escapeHtml(inferenceLabel)}</div>` : ""}
         ${specialistLabel ? `<div class="specialist-metadata">${escapeHtml(specialistLabel)}</div>` : ""}
+        ${rateable ? `<div class="message-rating-bar"><button type="button" class="message-rating-trigger" aria-label="Rate this XemAi reply from zero to ten">${ratingScore === null ? "☆ Rate reply" : `★ ${ratingScore}/10 · Edit rating`}</button></div>` : ""}
       </div>
       ${role === "user" ? '<div class="tail"></div>' : ''}
     </div>
   `;
   const retryBtn = wrap.querySelector(".retry-reply-btn");
   if (retryBtn) retryBtn.addEventListener("click", retryLastMessage);
+  const ratingBtn = wrap.querySelector(".message-rating-trigger");
+  if (ratingBtn) ratingBtn.addEventListener("click", () => {
+    showMessageRating(inference.id, ratingScore, inference.rating_aspect || "overall");
+  });
   els.messages.appendChild(wrap);
 }
 
@@ -1273,6 +1283,105 @@ async function showCapabilities() {
   } catch (err) {
     showModal("Capabilities", err.message || String(err));
   }
+}
+
+function showMessageRating(messageId, currentScore = null, currentAspect = "overall") {
+  if (!state.chatId || !Number.isSafeInteger(messageId) || state.chatMutation || state.loadingChat) return;
+  const targetChat = state.chatId;
+  clearModal();
+  els.modalTitle.textContent = "Rate XemAi's reply";
+
+  const intro = document.createElement("div");
+  intro.textContent = "How well did this particular answer meet your needs? A high score means you preferred it, not necessarily that every claim was verified.";
+  els.modalBody.appendChild(intro);
+
+  const aspectLabel = document.createElement("label");
+  aspectLabel.className = "rating-aspect-label";
+  aspectLabel.textContent = "What are you rating?";
+  const aspectSelect = document.createElement("select");
+  aspectSelect.className = "rating-aspect";
+  const aspects = [
+    ["overall", "Overall response"],
+    ["understanding", "Understood my intention"],
+    ["accuracy", "Factual accuracy"],
+    ["usefulness", "Useful answer"],
+    ["clarity", "Clarity and tone"],
+  ];
+  for (const [value, label] of aspects) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    aspectSelect.appendChild(option);
+  }
+  aspectSelect.value = aspects.some(([value]) => value === currentAspect) ? currentAspect : "overall";
+  aspectLabel.appendChild(aspectSelect);
+  els.modalBody.appendChild(aspectLabel);
+
+  const row = document.createElement("div");
+  row.className = "rating-row";
+  row.setAttribute("role", "group");
+  row.setAttribute("aria-label", "Score from zero to ten");
+  let selected = Number.isInteger(currentScore) ? currentScore : null;
+  for (let i = 0; i <= 10; i++) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = String(i);
+    button.setAttribute("aria-label", `Score ${i} out of 10`);
+    button.setAttribute("aria-pressed", String(i === selected));
+    button.addEventListener("click", () => {
+      selected = i;
+      for (const entry of row.children) entry.setAttribute("aria-pressed", String(entry === button));
+    });
+    row.appendChild(button);
+  }
+  els.modalBody.appendChild(row);
+
+  const note = document.createElement("textarea");
+  note.className = "feedback-note";
+  note.maxLength = 350;
+  note.placeholder = "Optional: what was right or wrong?";
+  els.modalBody.appendChild(note);
+  const guidance = document.createElement("div");
+  guidance.className = "rating-guidance";
+  guidance.textContent = "Saved locally for learning patterns. It won't change model weights or certify the answer as correct.";
+  els.modalBody.appendChild(guidance);
+
+  const cancel = document.createElement("button");
+  cancel.textContent = "Cancel";
+  cancel.addEventListener("click", () => els.modal.close());
+  const save = document.createElement("button");
+  save.textContent = "Save rating";
+  save.disabled = selected === null;
+  row.addEventListener("click", () => { save.disabled = selected === null; });
+  save.addEventListener("click", async () => {
+    if (selected === null) return;
+    save.disabled = true;
+    try {
+      await api(`/api/chats/${targetChat}/ratings`, {
+        method: "POST",
+        body: JSON.stringify({
+          message_id: messageId, score: selected,
+          aspect: aspectSelect.value, note: note.value.trim(),
+        }),
+      });
+      els.modal.close();
+      setStatus(`Reply rated · ${selected}/10`);
+      if (state.chatId === targetChat) {
+        const data = await api(`/api/chats/${targetChat}/messages`);
+        if (state.chatId === targetChat) {
+          const wasNearBottom = isNearBottom();
+          state.lastMessageSignature = messageSignature(data.messages || []);
+          renderMessageList(data.messages || []);
+          if (wasNearBottom) scrollBottom();
+        }
+      }
+    } catch (error) {
+      save.disabled = false;
+      showModal("Rating not saved", error.message || String(error));
+    }
+  });
+  els.modalActions.append(cancel, save);
+  els.modal.showModal();
 }
 
 function showFeedback() {
