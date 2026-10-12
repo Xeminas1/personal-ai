@@ -10,7 +10,7 @@
 | `main` merge SHA at v0.9.54 release | `fd4abc0dc65692c9aa5432848d885a1ec3a07a84` |
 | Frozen release `release-v0.9.54` SHA | `49d473d7d99cad1d2a5ec0a19c935917263752c7` |
 | Release/merge relationship | Matching repository **tree** verified for those commits |
-| Release PR | [#53 — Bridge polling diagnostics and short natural replies](../pull/53) |
+| Release PR | [#53 — Bridge polling diagnostics and short natural replies](https://github.com/Xeminas1/personal-ai/pull/53) |
 | Latest verified release manifest | v0.9.54, **159 SHA-256 pinned assets** |
 | Release CI at final tested source head | Windows and Linux regression checks **passed**, manifest verification **passed** |
 | Installed version on an owner's computer | **Unknown from GitHub alone** |
