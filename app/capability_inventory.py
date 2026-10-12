@@ -62,6 +62,11 @@ _SELF_RELEASE = re.compile(
     r"(?:(?:most|very|latest|recent|last|newest|current|installed|own)\s+){0,4}"
     r"(?:updates?|releases?|changelogs?|versions?)\b", re.I,
 )
+_SELF_RELEASE_REVERSE = re.compile(
+    r"\b(?:latest|last|newest|most\s+recent|current)\s+"
+    r"(?:updates?|releases?|changelogs?|versions?)\s+"
+    r"(?:to|of|for|in)\s+(?:xemai|this (?:app|assistant|ai))\b", re.I,
+)
 _LATEST = re.compile(r"\b(?:latest|last|newest|most\s+recent|current)\b", re.I)
 
 
@@ -76,7 +81,7 @@ def local_question_type(question: str) -> str:
     # whereas "what was your latest release?" asks for the installed facts.
     if _UPDATE_REFLECTION.search(q):
         return "update_reflection"
-    if _SELF_RELEASE.search(q) and _LATEST.search(q):
+    if (_SELF_RELEASE.search(q) or _SELF_RELEASE_REVERSE.search(q)) and _LATEST.search(q):
         return "latest_release"
     if _AGENT_QUERY.search(q):
         return "agent_inventory"
