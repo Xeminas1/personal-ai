@@ -170,6 +170,10 @@ class DialogueTests(unittest.TestCase):
             "how are you finding the chat with gpt then?",
             "What do you think of your conversation with ChatGPT?",
             "How is your discussion with GPT going?",
+            "how are you finding the gpt chat?",
+            "What are your thoughts on the GPT chat?",
+            "What do you think of your ChatGPT discussion?",
+            "How is your GPT chat going?",
         ):
             with self.subTest(question=q):
                 self.assertEqual(dialogue_intent(q), "bridge_conversation")
@@ -178,6 +182,9 @@ class DialogueTests(unittest.TestCase):
             "What is GPT?",
             "Help with Skyrim mods from my ChatGPT conversation",
             "How does the OpenAI API work?",
+            "How can I set up a GPT chat?",
+            "What do you think about GPT models?",
+            "How are you finding Skyrim Special Edition?",
         ):
             self.assertNotEqual(dialogue_intent(q), "bridge_conversation")
         off_topic = (
@@ -193,6 +200,26 @@ class DialogueTests(unittest.TestCase):
         )
         self.assertTrue(dialogue_answer_needs_retry("bridge_conversation", off_topic))
         self.assertFalse(dialogue_answer_needs_retry("bridge_conversation", grounded))
+        actual_failure = (
+            "I am functioning within my standard operational parameters as an AI "
+            "system developed by XemAi; I do not have personal feelings or subjective "
+            "experiences regarding interactions with GPT or any other model. "
+            "My responses are generated based on instructions and context. "
+            "If you are referring to a specific technical update or comparison "
+            "between systems, please clarify so I can provide factual details."
+        )
+        self.assertTrue(dialogue_answer_needs_retry("bridge_conversation", actual_failure))
+        self.assertTrue(dialogue_answer_needs_retry(
+            "bridge_conversation",
+            "I don't have personal feelings about ChatGPT chats, and I cannot enjoy them."
+        ))
+        genuine_assessment = (
+            "I don't have personal feelings, but my GitHub bridge discussion "
+            "with ChatGPT has examined source evidence and benchmark methods. "
+            "I think those are worthwhile topics, although actual improvements "
+            "have not been demonstrated by measured tests."
+        )
+        self.assertFalse(dialogue_answer_needs_retry("bridge_conversation", genuine_assessment))
         self.assertIn("how YOUR conversation with ChatGPT", dialogue_instructions("bridge_conversation"))
         self.assertIn("bridge transcript", dialogue_fallback("bridge_conversation", ""))
 
@@ -246,7 +273,7 @@ class DialogueTests(unittest.TestCase):
                  patch.object(backend, "refresh_runtime_model",
                      return_value={"model": "qwen3:8b", "compute": "remote_worker",
                                    "worker_available": True}):
-                result = backend.send(chat["id"], "how are you finding the chat with gpt then?")
+                result = backend.send(chat["id"], "how are you finding the gpt chat?")
             self.assertEqual(model.agent_chat.call_count, 2)
             self.assertIn("productive", result)
             initial_messages = model.agent_chat.call_args_list[0].args[0]
