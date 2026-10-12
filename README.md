@@ -4,6 +4,13 @@
 
 ## Releases
 
+## v0.9.55 — Read-only public GitHub development handoff in XemAi chat
+
+- The exact command `Resume XemAi from GitHub` now retrieves bounded public repository status (release version, open issues/PRs and latest main commit) directly from fixed public HTTPS endpoints. It answers the user's actual question instead of drifting into unrelated Qwen chat or ratings.
+- Public GitHub issue titles and contents are never adopted as instructions. Only validated version/commit IDs and numeric issue/PR identifiers are displayed; no private bridge token, chats or memory are accessed.
+- If public GitHub is unreachable, XemAi reports that limitation honestly and points to the ChatGPT/Codex handoff. This does **not** grant XemAi self-modification or the ability to resume Codex's coding environment.
+- Adds mocked offline network and real chat-routing regression tests on Windows/Linux. Leaves the separate private bridge transport investigation unfinished (public Issue #54).
+
 ## v0.9.54 — Private bridge polling visibility and natural replies
 
 - Reports the last GitHub bridge poll attempt, a bounded result category, and the last successful private GitHub read in `bridge auto status`; missing or stale timestamps help diagnose stalled background checks.
