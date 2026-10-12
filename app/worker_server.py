@@ -26,7 +26,7 @@ from .version import VERSION
 from .vision import VisionService, is_vision_model
 
 MAX_BODY = 8_000_000
-SPECIALIST_ROLES = frozenset({"research", "skyrim", "reviewer"})
+SPECIALIST_ROLES = frozenset({"research", "skyrim", "reviewer", "conversation", "social", "conversation_reviewer"})
 MAX_SPECIALIST_PROMPT_BYTES = 7000
 SPECIALIST_MAX_OUTPUT = 6000
 
@@ -390,6 +390,26 @@ def _specialist_prompt(role: str, question: str, context: str, draft: str) -> li
         "research": "Check supplied evidence for supported claims, source IDs, contradictions and gaps. Do not invent sources or URLs. Return concise findings for an answer writer.",
         "skyrim": "Check supplied Skyrim runtime, SKSE, plugins, load order, crash details and visual observations. Separate documented facts from possible causes. Never guess compatibility or a definite culprit. Return concise findings.",
         "reviewer": "Revise the supplied draft against the question and supplied evidence. Preserve correct facts, valid source IDs and uncertainty. Return a corrected final answer only; do not invent citations or evidence.",
+        "conversation": (
+            "INTERPRETATION PASS. Use supplied recent turns to identify the latest user's "
+            "real question, referents, corrections, updated constraints and what a helpful "
+            "answer needs to address. No long draft response. Return concise analysis "
+            "for the answer writer; if ambiguity remains, say so. Previous assistant "
+            "claims are not evidence, and a casual acceptance never grants action permission."
+        ),
+        "social": (
+            "SOCIAL CUES PASS. Interpret the latest message's likely tone in its actual "
+            "conversation, including humour, sarcasm, frustration or disappointment. "
+            "Do not assume inner feelings, flatter, patronise or over-apologise. "
+            "Return concise tone and answer-style guidance, not a final answer."
+        ),
+        "conversation_reviewer": (
+            "CONVERSATION QUALITY PASS. Revise this draft ONLY when it misses the user's "
+            "intent, latest context, conversational tone, stated constraints or correct "
+            "response length. Retain accurate factual content, caveats, URLs, source IDs "
+            "and authorisation boundaries; never invent memories or actions. "
+            "Return a complete improved user-facing answer, not meta-criticism."
+        ),
     }
     system = (
         "You are XemAi's bounded " + role + " specialist. " + instructions[role]

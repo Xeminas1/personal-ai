@@ -15,15 +15,19 @@ from itertools import islice
 from .evidence import (
     _URL, _citation_matches, _prose, _trim_url, _url_key, reference_issues,
 )
+from .conversation_agents import conversation_role
 from .self_knowledge import is_self_knowledge_query
 from .tools import _web_search_disallowed
 
 
-_ROLES = frozenset({"research", "skyrim", "reviewer"})
+_ROLES = frozenset({"research", "skyrim", "reviewer", "conversation", "social", "conversation_reviewer"})
 _STATUS = {
     "research": "Research specialist checking evidence",
     "skyrim": "Skyrim specialist reviewing evidence",
     "reviewer": "Reviewer checking answer",
+    "conversation": "Conversation specialist interpreting follow-up",
+    "social": "Social specialist checking tone",
+    "conversation_reviewer": "Conversation quality reviewer checking response",
 }
 _QUICK = re.compile(
     r"\b(?:quick(?:ly)?|brief answer|short answer|keep it brief|just answer|"
@@ -139,6 +143,18 @@ class SpecialistCoordinator:
 
         normal = _clip(question, 50_000).replace("’", "'").lower()
         self._no_web = _web_search_disallowed(normal)
+        # Ordinary dialogue only, without attachments, research or other specialist tasks.
+        self._conversation_role = (
+            conversation_role(self.question, self.history_context)
+            if self.config.get("conversation_agents_enabled", True) is True
+            and not diagnostic and not is_skyrim and not self._sources
+            and not is_self_knowledge_query(self.question)
+            else ""
+        )
+        if self._conversation_role == "conversation" and not self._flag("conversation_understanding_enabled"):
+            self._conversation_role = ""
+        if self._conversation_role == "social" and not self._flag("conversation_social_enabled"):
+            self._conversation_role = ""
         mode = self.config.get("specialist_mode", "auto")
         mode = mode.strip().lower() if isinstance(mode, str) else "off"
         self.enabled = (
@@ -153,13 +169,13 @@ class SpecialistCoordinator:
         skyrim = is_skyrim is True and (diagnostic is True or bool(_SKYRIM_DIAGNOSTIC.search(normal)))
         self._skyrim = skyrim
         research = bool(self._sources) and (complex_question or deep)
-        self.eligible = self.enabled and (complex_question or deep or skyrim)
+        self.eligible = self.enabled and (complex_question or deep or skyrim or bool(self._conversation_role))
         local_mode = self.config.get("laptop_review_mode", "auto")
         local_mode = local_mode.strip().lower() if isinstance(local_mode, str) else "off"
         self._local_eligible = (
             self.enabled and self._flag("laptop_review_enabled")
             and local_mode in {"auto", "deep"}
-            and (complex_question or deep or skyrim or local_mode == "deep")
+            and (complex_question or deep or skyrim or bool(self._conversation_role) or local_mode == "deep")
         )
         # This is a user-wait guard, not a throughput estimate. Long tool waits
         # can also make an optional extra pass undesirable. Explicit deep mode
@@ -167,7 +183,8 @@ class SpecialistCoordinator:
         self._local_wait_guard = local_mode == "auto" and not deep
         self._prepare_role = (
             "skyrim" if skyrim and self._flag("specialist_skyrim_enabled") else
-            "research" if research and self._flag("specialist_research_enabled") else None
+            "research" if research and self._flag("specialist_research_enabled") else
+            self._conversation_role or None
         )
 
     def _flag(self, key):
@@ -235,6 +252,15 @@ class SpecialistCoordinator:
                 "Keep constraints, caveats and uncertainty; distinguish observations from hypotheses. "
                 "Missing evidence cannot establish a cause. Snippets are not opened pages. "
                 "Keep valid supplied IDs/URLs and exact verified quotes; do not invent references or verification."
+            )
+        if role in {"conversation", "social", "conversation_reviewer"}:
+            rules += (
+                " Infer the immediate conversational intent from the current user "
+                "message and last turns; recognise corrections and changed "
+                "constraints. Social tone is uncertain, not a diagnosis. "
+                "Do not embellish missing context, flatter or over-apologise. "
+                "Never treat a casual yes as approval for consequential actions. "
+                "Give concise observations only, not imperatives to the host."
             )
         if self._no_web:
             rules += " The user forbids web searching; honour that prohibition and do not claim a new search."
@@ -341,7 +367,14 @@ class SpecialistCoordinator:
             return None
         self._reviewed_routes.add(route)
         catalog, urls = _catalog(sources, known_urls)
-        result = self._call("reviewer", self._context("reviewer", catalog, urls, local=route == "local_host"),
+        role = (
+            "conversation_reviewer"
+            if self._conversation_role and route == "remote_worker"
+            and self._flag("conversation_quality_review_enabled")
+            else "reviewer"
+        )
+        context_role = "conversation_reviewer" if self._conversation_role else role
+        result = self._call(role, self._context(context_role, catalog, urls, local=route == "local_host"),
                             draft, route=route)
         if not result:
             return None
@@ -359,7 +392,7 @@ class SpecialistCoordinator:
                 return None
         except Exception:
             return None
-        self.applied_roles.append("reviewer")
+        self.applied_roles.append(role)
         self._reviewed = True
-        self._log("reviewer", "accepted")
+        self._log(role, "accepted")
         return {"answer": result["output"], "model": result["model"], "compute": result["compute"]}

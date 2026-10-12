@@ -1,3 +1,11 @@
+## v0.9.49 — Selective Conversation Agent Team
+
+- Three new bounded specialist roles help interpret ambiguous follow-ups, social tone, and draft response quality, using the existing private worker/model.
+- Understanding and Social agents activate only for supported same-chat cues; the Conversation Quality Reviewer replaces, rather than stacks with, the normal reviewer on qualifying remote turns.
+- Existing two-extra-pass cap, time budgets, failure fallbacks, citation safeguards and opt-outs remain; ordinary quick replies are not subjected to extra passes.
+- No autonomous actions, additional model downloads, permissions or model-weight fine-tuning.
+- Candidate future agent teams are described in `docs/AGENT_TEAMS.md` but **are not installed**.
+
 ## v0.9.48 — Conversational continuity and social judgement
 
 - Guides ordinary multi-turn replies to interpret the latest user message against recent conversation, including short confirmations, corrections, indirect references, changing constraints and requests for opinions.
