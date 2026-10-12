@@ -73,6 +73,23 @@ class ConversationSkillsTests(unittest.TestCase):
         self.assertIn("reasoned judgement", note)
         self.assertIn("no canned sympathy", note)
 
+    def test_simulated_dialogue_coaching_is_direct_and_non_executing(self):
+        note = CONTINUITY_GUIDANCE.lower()
+        for phrase in (
+            "simulated dialogue", "latest turn", "evaluation methodology",
+            "does not itself authorise a real action", "changed constraints",
+            "without claiming to have booked", "explicitly asks for critique",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, note)
+
+        history = [
+            {"role": "user", "content": "Let's choose the second restaurant."},
+            {"role": "assistant", "content": "The Italian place?"},
+            {"role": "user", "content": "Yes, outside if possible."},
+        ]
+        self.assertEqual(guidance_for_turn(history), CONTINUITY_GUIDANCE)
+
     def test_full_and_laptop_prompts_share_social_goals(self):
         self.assertIn("Social judgement", CONSTITUTION)
         self.assertIn("Maintain the thread", CONSTITUTION)
