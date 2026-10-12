@@ -4,6 +4,12 @@
 
 ## Releases
 
+## v0.9.57 — Owner-reviewed bridge correction dataset preparation
+
+- Adds literal `bridge weight` commands to review a previously opted-in local learning candidate, draft a manually corrected answer, confirm that exact correction, revoke it, and export at least ten approved, screened, distinct examples as private JSONL.
+- Preserves private GitHub bridge permissions, unchanged archive data, chats, memory, Ollama 9B weights and hybrid worker. Exports stay in the host's gitignored data directory, with no network upload, automatic training or model promotion.
+- Tests synthetic approval-code integrity, stale drafts, malformed candidates, privacy screening and immutable exports on Windows/Linux. The separate actual Qwen LoRA training effort remains in unmerged experimental PR #62.
+
 ## v0.9.56 — Private bridge large-discussion reader repair
 
 - Fixes a confirmed response-size problem where long private GitHub issue comment lists exceeded the previous 160 KB read buffer, stopping `bridge replies` and the background discussion poll.
