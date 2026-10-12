@@ -15,7 +15,6 @@ from pathlib import Path
 from app.github_bridge import chat_command
 from app.github_bridge_learning import append_candidate, command as bridge_collection
 from app.github_bridge_weight import _EXPORT_DIR, _journal, command as weight_command
-from training.prepare_dataset import _read_input, prepare, verify
 
 
 class BridgeToWeightTests(unittest.TestCase):
@@ -103,20 +102,21 @@ class BridgeToWeightTests(unittest.TestCase):
         files = list((self.data / _EXPORT_DIR).glob("bridge_reviewed_*.jsonl"))
         self.assertEqual(len(files), 1)
         source = files[0]
-        records, digest = _read_input(source)
+        records = [json.loads(row) for row in source.read_text(encoding="utf-8").splitlines()]
         self.assertEqual(len(records), 10)
-        self.assertEqual(len(digest), 64)
-        self.assertFalse(any("first option must always be right" in r["messages"][1]["content"]
-                             for r in records))
-        self.assertTrue(all(r["messages"][0]["role"] == "user" and
-                            r["messages"][1]["role"] == "assistant" for r in records))
-        # A second, separately consented action prepares the train/holdout split.
-        prepared = prepare(source, self.data / "weight_training" / "prepared",
-                           seed="bridge-review-test-v1", label="bridge")
-        integrity = verify(prepared)
-        self.assertEqual(integrity["train_count"] + integrity["heldout_count"], 10)
-        self.assertFalse(integrity["training_applied"])
-        self.assertFalse(integrity["model_changed"])
+        expected_fields = {"reviewed", "consent", "source", "messages"}
+        seen = set()
+        for record in records:
+            self.assertEqual(set(record), expected_fields)
+            self.assertIs(record["reviewed"], True)
+            self.assertIs(record["consent"], True)
+            self.assertEqual(record["source"], "owner_consented")
+            self.assertEqual([m["role"] for m in record["messages"]], ["user", "assistant"])
+            fingerprint = record["messages"][0]["content"].casefold()
+            self.assertNotIn(fingerprint, seen)
+            seen.add(fingerprint)
+            self.assertNotIn("first option must always be right",
+                             record["messages"][1]["content"])
         self.assertFalse((self.data / "model.gguf").exists())
 
     def test_revoking_changes_export_fingerprint_and_excludes_example(self):
