@@ -28,6 +28,11 @@ _LOCK = threading.RLock()
 _MAX_OUTBOUND = 2800
 _MAX_COMMENT = 3500
 _ENDPOINT = "https://api.github.com"
+# Per-page and aggregate limits keep private GitHub dialogue reads bounded.
+_MAX_API_RESPONSE_BYTES = 512_000
+_MAX_COMMENT_COLLECTION_BYTES = 8_000_000
+_COMMENTS_PER_PAGE = 25
+_MAX_COMMENT_PAGES = 60
 
 
 def _host_provenance() -> str:
@@ -95,7 +100,7 @@ class GitHubBridgeClient:
     def request(self, repo: str, resource: str, payload: dict | None = None):
         if not valid_repo(repo):
             raise BridgeError("Invalid GitHub repository name.")
-        if not re.fullmatch(r"(?:|/issues|/issues/[1-9][0-9]*/comments(?:\?per_page=100(?:&page=[1-9][0-9]?)?)?)", resource):
+        if not re.fullmatch(r"(?:|/issues|/issues/[1-9][0-9]*/comments(?:\?per_page=(?:25|100)(?:&page=[1-9][0-9]?)?)?)", resource):
             raise BridgeError("Unsupported GitHub bridge endpoint.")
         url = _ENDPOINT + "/repos/" + repo + resource
         data = None if payload is None else json.dumps(payload).encode("utf-8")
@@ -109,8 +114,13 @@ class GitHubBridgeClient:
                                          method="POST" if data is not None else "GET")
         try:
             with self._open(request, timeout=15) as response:
-                result = json.loads(response.read(160_001).decode("utf-8"))
-                return result
+                raw = response.read(_MAX_API_RESPONSE_BYTES + 1)
+                if len(raw) > _MAX_API_RESPONSE_BYTES:
+                    raise BridgeError("GitHub response exceeded the bounded read limit.")
+                try:
+                    return json.loads(raw.decode("utf-8"))
+                except (ValueError, UnicodeError):
+                    raise BridgeError("GitHub returned incomplete or invalid JSON.") from None
         except urllib.error.HTTPError as exc:
             # Do not show HTTP response bodies: they may echo private input.
             raise BridgeError(f"GitHub returned HTTP {exc.code}. Check access and Issues permission.") from None
@@ -183,15 +193,19 @@ class GitHubBridgeClient:
         budget is exceeded, rather than pretending all comments were read.
         """
         all_comments: list[dict] = []
-        for page in range(1, 16):
+        cumulative_bytes = 0
+        for page in range(1, _MAX_COMMENT_PAGES + 1):
             suffix = "" if page == 1 else f"&page={page}"
             result = self.request(
-                repo, f"/issues/{issue}/comments?per_page=100{suffix}"
+                repo, f"/issues/{issue}/comments?per_page={_COMMENTS_PER_PAGE}{suffix}"
             )
             if not isinstance(result, list):
                 raise BridgeError("GitHub comments response was invalid.")
+            cumulative_bytes += len(json.dumps(result, ensure_ascii=False).encode("utf-8"))
+            if cumulative_bytes > _MAX_COMMENT_COLLECTION_BYTES:
+                raise BridgeError("Private issue exceeds the safe comment-read budget.")
             all_comments.extend(result)
-            if len(result) < 100:
+            if len(result) < _COMMENTS_PER_PAGE:
                 return all_comments
         raise BridgeError(
             "Private issue has too many comments to poll safely. "
