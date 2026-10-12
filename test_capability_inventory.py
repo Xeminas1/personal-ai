@@ -43,6 +43,9 @@ class LocalInventoryTests(unittest.TestCase):
             "can you tell me all the agents you currently use": "agent_inventory",
             "Which agents do you currently use?": "agent_inventory",
             "What do you think of your recent updates?": "update_reflection",
+            "Can you see what your most recent update was?": "latest_release",
+            "What's XemAi's latest release?": "latest_release",
+            "Can you tell me about your last update?": "latest_release",
         }
         for text, desired in cases.items():
             with self.subTest(text=text):
@@ -65,7 +68,7 @@ class LocalInventoryTests(unittest.TestCase):
         ))
 
     def test_inventory_contains_exact_roles_release_history_and_no_secrets(self):
-        self.assertEqual(self.data["application_version"], "0.9.46")
+        self.assertEqual(self.data["application_version"], "0.9.47")
         self.assertEqual(len(self.data["agents"]), 9)
         names = {item["name"] for item in self.data["agents"]}
         self.assertIn("Self-Improvement Agent", names)
@@ -91,8 +94,8 @@ class LocalInventoryTests(unittest.TestCase):
         self.assertIn("self-improvement audit", analysis)
         self.assertIn("not direct", analysis)
         updates = direct_answer(self.data, "update_reflection")
-        self.assertIn("v0.9.28", updates)
-        self.assertIn("v0.9.29", updates)
+        self.assertIn("v0.9.46", updates)
+        self.assertIn("v0.9.47", updates)
         self.assertIn("not the same as", updates.lower())
         disabled = inventory(
             {"agent_team_enabled": False, "ai_watch_enabled": False,
@@ -209,7 +212,7 @@ class LocalInventoryTests(unittest.TestCase):
                      side_effect=AssertionError("No web research expected")), \
                  patch.object(gui_backend, "source_context_for_request", return_value=""):
                 answer = backend.send(chat["id"], prompt)
-            self.assertIn("XemAi v0.9.46", answer)
+            self.assertIn("XemAi v0.9.47", answer)
             self.assertIn("Verifier caution", answer)
             self.assertNotIn("RTX 3090", answer)
             self.assertEqual(client.chat.call_count, 3)
