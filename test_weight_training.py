@@ -9,6 +9,8 @@ import json
 import os
 import tempfile
 import unittest
+import sys
+import types
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
@@ -188,6 +190,124 @@ class TrainingGateTests(unittest.TestCase):
                 max_steps=10, sequence=512,
             )
         self.assertFalse((self.root / "adapters").exists())
+
+
+    def test_mock_gpu_runner_stays_isolated_and_ignores_holdout(self):
+        """A mocked dry laboratory run exercises code paths, NOT actual CUDA/weight learning."""
+        run = self.prepare()
+        revision = "a" * 40
+        snapshot = self.root / revision
+        snapshot.mkdir()
+        (snapshot / "config.json").write_text("{}")
+        (snapshot / "tokenizer_config.json").write_text("{}")
+        observed = {}
+
+        class FakeModel:
+            def save_pretrained(self, directory):
+                directory = Path(directory)
+                directory.mkdir()
+                (directory / "adapter_config.json").write_text('{"synthetic_only":true}')
+                (directory / "adapter_model.safetensors").write_bytes(b"fake weights")
+
+        class FakeTokenizer:
+            def save_pretrained(self, directory):
+                (Path(directory) / "tokenizer.json").write_text('{"synthetic_only":true}')
+
+        class FakeLoader:
+            @staticmethod
+            def from_pretrained(**kwargs):
+                observed["base"] = kwargs
+                return FakeModel(), FakeTokenizer()
+
+            @staticmethod
+            def get_peft_model(model, **kwargs):
+                observed["lora"] = kwargs
+                return model
+
+        class FakeDataset:
+            @staticmethod
+            def from_list(rows):
+                return rows
+
+        class FakeTrainer:
+            def __init__(self, *, train_dataset, args, **kwargs):
+                observed["samples"] = train_dataset
+                observed["options"] = vars(args)
+
+            def train(self):
+                observed["trained_mock"] = True
+
+        gib = 1024 ** 3
+        torch_fake = types.ModuleType("torch")
+        torch_fake.cuda = types.SimpleNamespace(
+            is_available=lambda: True,
+            is_bf16_supported=lambda: True,
+            get_device_properties=lambda index: types.SimpleNamespace(total_memory=24 * gib),
+            mem_get_info=lambda index: (22 * gib, 24 * gib),
+        )
+        datasets_fake = types.ModuleType("datasets")
+        datasets_fake.Dataset = FakeDataset
+        trl_fake = types.ModuleType("trl")
+        trl_fake.SFTConfig = lambda **kwargs: types.SimpleNamespace(**kwargs)
+        trl_fake.SFTTrainer = FakeTrainer
+        unsloth_fake = types.ModuleType("unsloth")
+        unsloth_fake.FastLanguageModel = FakeLoader
+
+        with patch.dict(sys.modules, {
+            "torch": torch_fake, "datasets": datasets_fake,
+            "trl": trl_fake, "unsloth": unsloth_fake,
+        }):
+            output = adapter.train(
+                run, model_id="Qwen/Qwen3.5-4B",
+                revision=revision, checkpoint_dir=snapshot,
+                output_dir=self.root / "adapters", max_steps=2, sequence=512,
+            )
+        meta = json.loads((output / "adapter_manifest.json").read_text())
+        self.assertTrue(observed["trained_mock"])
+        self.assertEqual(len(observed["samples"]), 16)
+        self.assertEqual(meta["reserved_holdout_records"], 4)
+        self.assertFalse(meta["heldout_used_for_training"])
+        self.assertTrue(meta["training_applied"])
+        self.assertEqual(meta["deployment"], "NONE")
+        self.assertEqual(observed["base"]["load_in_4bit"], False)
+        self.assertTrue(observed["base"]["load_in_16bit"])
+        self.assertTrue(observed["options"]["completion_only_loss"])
+        self.assertTrue((run / "heldout.jsonl").is_file())
+        self.assertFalse((snapshot / "adapter_manifest.json").exists())
+
+    def test_mock_gpu_9b_rejects_16gb_before_loading_model(self):
+        run = self.prepare()
+        revision = "a" * 40
+        snapshot = self.root / revision
+        snapshot.mkdir()
+        (snapshot / "config.json").write_text("{}")
+        (snapshot / "tokenizer_config.json").write_text("{}")
+        gib = 1024 ** 3
+        torch_fake = types.ModuleType("torch")
+        torch_fake.cuda = types.SimpleNamespace(
+            is_available=lambda: True,
+            is_bf16_supported=lambda: True,
+            get_device_properties=lambda index: types.SimpleNamespace(total_memory=16 * gib),
+        )
+        unsloth_fake = types.ModuleType("unsloth")
+        unsloth_fake.FastLanguageModel = types.SimpleNamespace()
+        datasets_fake = types.ModuleType("datasets")
+        datasets_fake.Dataset = types.SimpleNamespace()
+        trl_fake = types.ModuleType("trl")
+        trl_fake.SFTConfig = object
+        trl_fake.SFTTrainer = object
+        with patch.dict(sys.modules, {
+            "torch": torch_fake, "unsloth": unsloth_fake,
+            "datasets": datasets_fake, "trl": trl_fake,
+        }):
+            with self.assertRaises(data.DatasetRejected):
+                adapter.train(
+                    run, model_id="Qwen/Qwen3.5-9B",
+                    revision=revision, checkpoint_dir=snapshot,
+                    output_dir=self.root / "adapters", max_steps=2, sequence=512,
+                )
+        self.assertFalse((self.root / "adapters").exists())
+
 
 
 if __name__ == "__main__":
