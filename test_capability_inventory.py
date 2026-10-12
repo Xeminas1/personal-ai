@@ -95,7 +95,8 @@ class LocalInventoryTests(unittest.TestCase):
         self.assertIn("self-improvement audit", analysis)
         self.assertIn("not direct", analysis)
         updates = direct_answer(self.data, "update_reflection")
-        self.assertIn("v0.9.51", updates)
+        # Check the rolling release window, not a fixed historical version.
+        self.assertIn("v" + RELEASE_HISTORY[-2][0], updates)
         self.assertIn("v" + VERSION, updates)
         self.assertIn("not the same as", updates.lower())
         disabled = inventory(
