@@ -845,7 +845,7 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urlparse(self.path)
-        if re.fullmatch(r"/api/chats/\d+/(?:attachments|messages|retry|feedback)", parsed.path):
+        if re.fullmatch(r"/api/chats/\d+/(?:attachments|messages|retry|feedback|ratings)", parsed.path):
             if self.headers.get("Authorization"):
                 self._post_request(parsed)
                 return
@@ -1137,6 +1137,31 @@ class XemAiMobileHandler(BaseHTTPRequestHandler):
                 self._error(e)
             except Exception as e:
                 self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
+            finally:
+                if backend:
+                    backend.close()
+            return
+
+        match = re.fullmatch(r"/api/chats/(\\d+)/ratings", path)
+        if match:
+            backend = None
+            try:
+                chat_id = int(match.group(1))
+                message_id = body.get("message_id")
+                score = body.get("score")
+                aspect = body.get("aspect", "overall")
+                note = body.get("note", "")
+                if type(message_id) is not int or type(score) is not int:
+                    raise ValueError("Message ID and score must be integers.")
+                if not isinstance(aspect, str) or not isinstance(note, str):
+                    raise ValueError("Rating aspect and note must be text.")
+                backend = self._backend()
+                result = backend.rate_message(chat_id, message_id, score, aspect, note)
+                self._json({"ok": True, **result})
+            except (TypeError, ValueError) as error:
+                self._error(error)
+            except Exception:
+                self._error("Could not save message rating.", HTTPStatus.INTERNAL_SERVER_ERROR)
             finally:
                 if backend:
                     backend.close()
