@@ -62,6 +62,13 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.30", "Stages verified changed release files while chat remains available, uses bounded parallel downloads and selective rollback to shorten blocking installation; corrects unsupported self-audit benchmark gains and unobserved missing-file claims."),
     ("0.9.31", "Adds desktop drag-and-drop file attachment queue and grounds user-requested source-code assignments in their attached numbered task with no unrelated web research."),
     ("0.9.32", "Validates actual file/line excerpts for attached source tasks, isolates their prompts, suppresses unrelated tool calls and rejects invented missing-code claims; allows explicit recent same-chat attachment follow-ups."),
+    ("0.9.41", "Introduces a bounded local archive of unverified GitHub bridge learning candidates and owner-approved, scoped lessons; does not train model weights."),
+    ("0.9.42", "Adds host-generated app version, timestamp, model and compute metadata to outbound private GitHub bridge comments."),
+    ("0.9.43", "Adds dedicated interpretation and basic retries for conversational questions about the private GPT bridge, without introducing transcript access."),
+    ("0.9.44", "Adds bounded private bridge topic categories for conversational assessments, but its keyword validator could mistakenly reject valid free-form answers."),
+    ("0.9.45", "Adds opt-in diagnostics of rejected drafts, owner corrections, approved/revocable scoped lessons and a read-only A/B benchmark; loosens the keyword validator."),
+    ("0.9.46", "Adds individual editable 0–10 ratings to XemAi replies on phone/desktop and stores separate unverified GPT bridge review scores."),
+    ("0.9.47", "Grounds update-history replies in the running app's release facts, handles self-knowledge follow-up corrections, and tests guarded automatic style adaptation from repeated user ratings; no model weight training."),
 ]
 
 
@@ -153,7 +160,7 @@ def is_self_knowledge_query(text: str) -> bool:
         r"tools?|updates?|versions?|models?|runtime|compute|identity|"
         r"what changed|what has changed)"
     )
-    modifier = r"(?:(?:current|actual|underlying|runtime|running|language|ai|app|application|available|supported|installed|saved|latest|recent|persistent|long-term|cross-chat)\s+){0,3}"
+    modifier = r"(?:(?:current|actual|underlying|runtime|running|language|ai|app|application|available|supported|installed|saved|latest|recent|newest|last|most|own|persistent|long-term|cross-chat)\s+){0,4}"
     named = r"(?:xemai|this ai|this assistant)"
     if any(re.search(pattern, lower) for pattern in (
         r"\b" + named + r"(?:'s|\s+(?:has|supports|uses|lacks|is running|is using|is))?\s+" + modifier + capability + r"\b",
@@ -182,6 +189,31 @@ def is_self_knowledge_query(text: str) -> bool:
         r"\b(?:what|which)\s+" + modifier + r"model\s+(?:generated|wrote|produced)\s+"
         r"(?:this|your|the last|the previous)\s+(?:answer|reply|response)(?:\s+(?:here|in this chat))?[?.!]*$",
     ))
+
+
+def followup_self_topic(text: str, history: list[dict]) -> str:
+    """Resolve short corrections from the *current chat* only.
+
+    Never infer access to other chats, model internals or external services.
+    Context is used for topic selection, not as proof of old assistant claims.
+    """
+    from .capability_inventory import local_question_type
+    q = " ".join(str(text or "").lower().replace("’", "'").split()).strip(" .!?")
+    if len(q) > 115 or not re.search(
+        r"\\b(?:sure|certain|actually|wrong|mistaken|incorrect|"
+        r"pretty sure|i thought|i think|you (?:can|could|do|have)|"
+        r"check again|that's not|that isn't|why not)\\b", q, re.I,
+    ):
+        return ""
+    rows = [r for r in history if r.get("role") in {"user", "assistant"}]
+    if rows and rows[-1].get("role") == "user":
+        rows.pop()  # this exact user turn has already been saved
+    if len(rows) < 2 or rows[-1].get("role") != "assistant":
+        return ""
+    previous = rows[-2]
+    if previous.get("role") != "user":
+        return ""
+    return local_question_type(str(previous.get("content") or ""))
 
 
 def looks_like_stale_self_description(text: str) -> bool:
