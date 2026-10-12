@@ -142,3 +142,19 @@ The owner ran the actual, revision-pinned Qwen3.5-4B BF16 + LoRA smoke test on W
 
 References: [Unsloth environment flags](https://unsloth.ai/docs/basics/unsloth-environment-flags), [Qwen3.5 training notes](https://unsloth.ai/docs/models/qwen3.5/fine-tune). Installing random third-party Windows GPU wheels for `causal-conv1d` without matching Python/PyTorch/CUDA evidence is not part of this plan.
 
+
+## 2026-10-12: Synthetic BF16 LoRA fine-tuning success on owner's RTX 5080
+
+**Observed success from user-shared host output:** The owner retried the pinned, offline Qwen3.5 4B smoke run with `UNSLOTH_COMPILE_DISABLE=1` and completed **2/2 optimiser steps** in **171.8 seconds** (2m52s). Synthetic training loss readings were 2.484 and 2.46; aggregate **2.47189**. The training code found **eight sampled LoRA-B parameter tensors changed**, wrote a private adapter and SHA-256 manifest, and the batch wrapper finished **exit status 0**. The `causal_conv1d_fn` reference-kernel warning appeared, but training succeeded despite it. The earlier failure's precise root cause remains unconfirmed: do not infer disabling compilation was necessarily the only difference responsible.
+
+The run used **16 fictional training examples**, four separate fictional holdout examples not used in training, and a recorded total of **286 supervised answer tokens**. The LoRA setup included **21,233,664 trainable parameters**. The adapter was written **only on the owner's machine**. The GitHub connector cannot inspect that adapter's bytes, so the record is based on the user's local console result, not on an independent remote audit. The active XemAi Qwen3.5 9B Ollama worker, memory, bridge, and settings were NOT changed; the 4B LoRA weights are incompatible with the 9B model.
+
+### Optional read-only holdout comparison (new experimental utility)
+
+`training/evaluate_synthetic_adapter.py` can confirm that the previously saved local training manifest and adapter file checksums match and score the **same four reserved synthetic examples** against **(a)** the original pinned 4B base with the LoRA adapter disabled and **(b)** the same 4B model with the saved adapter enabled. It uses Hugging Face PEFT's documented `PeftModel.disable_adapter()` context to prevent holding two BF16 4B copies in GPU memory ([PEFT reference](https://huggingface.co/docs/peft/en/package_reference/peft_model)). It uses no training, network, chat access, new installs, model promotion, or file writes.
+
+- Read-only CPU preflight: `python -m training.evaluate_synthetic_adapter --check` from the existing environment, or `training/CHECK_4B_HOLDOUT.cmd`. This validates hashes and chooses the one completed saved run; if several eligible runs are found, supply an explicit `--run-id` rather than guessing.
+- Owner-authorised GPU comparison: `python -m training.evaluate_synthetic_adapter --evaluate --confirm "EVALUATE SYNTHETIC 4B"`, or `training/EVALUATE_4B_HOLDOUT.cmd` (which separately requires typing `EVALUATE`). Requires GPU headroom and may take time. It prints base/adapted answer-token negative log-likelihood and their difference (lower is better).
+- **Never confuse the holdout metric with an intelligence improvement**. Four synthetic examples cannot establish robust gains in dialogue, reasoning, coding, safety or truthfulness, even if the adapted holdout loss is lower. The held-out examples themselves may also be similar to training examples; additional real but owner-consented, independently evaluated benchmarks would be required for any promotion.
+
+This utility is currently validated only by **synthetic, CPU-only regression tests and GitHub Actions**. A real post-training 4B base+PEFT loading comparison on the owner's RTX 5080 remains to be run and could reveal additional Windows/Unsloth compatibility issues. No weight-training automation or automatic production model updates are implied.
