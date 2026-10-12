@@ -195,3 +195,17 @@ Possible separately reviewed routes:
 
 The ONLY next action here is to run the read-only 9B feasibility check and review the sanitized report. This is not authorization to download public 9B model files (~19.31 GB), use private bridge chats, train the active 9B model, or deploy any adapter.
 
+
+
+## Draft bridge-to-adapter supervised learning implementation (owner approval on each correction)
+
+New source in draft PR #62 adds the missing technical link between the **existing opt-in local private bridge candidate archive** and the **already-tested isolated 4B LoRA training method**:
+
+1. app/github_bridge_weight.py, routed by literal owner commands in app/github_bridge.py: individually preview and approve a CORRECTED ANSWER, not the old XemAi model answer. Uses archive source hash and approval fingerprint, conservative personal-data screening, local-only append journal, per-candidate revocation, and distinct-prompt checks. Existing lesson approval and untrusted external numeric scores do NOT authorise weight training.
+2. With >=10 reviewed corrections and new export-code approval, write private local owner-consented JSONL under data/weight_training/bridge_exports. No GitHub, Ollama or network transfer occurs. This host may be the always-on laptop, not the RTX 5080 PC. No automatic movement between devices is implemented or authorised.
+3. On a separately owner-managed training PC, the existing training.prepare_dataset.prepare / verify validates that chosen private file, deduplicates and creates held-out samples in a new sealed integrity-manifest run.
+4. training/train_reviewed_bridge_4b.py accepts only a prepared, integrity-checked, reviewed run; requires the additional exact command-line consent phrase TRAIN REVIEWED BRIDGE 4B; reuses the known-working pinned original Qwen3.5 4B BF16 Unsloth path with auto compilation disabled, identical non-thinking Qwen3.5 template, explicit answer-only token mask, gradient updates, adapter delta assertion, and a separate, gitignored checkpoint + checksum manifest. Default four optimiser steps, bounded maximum sixteen, no automatic model promotion or deployment. No user message contents are shown in training logs. The reserved heldout examples are NOT used for gradient updates. The runner's success still would not prove improved intelligence; a separately validated comparative heldout evaluation is needed.
+5. **The owner has NOT run this new reviewed-data runner on a real GPU.** Source/CI tests use invented synthetic data and mocked GPU libraries. The successful earlier GPU training and holdout evaluation concern only the separate 4B fictional pilot. **No live 9B adapter training**, Ollama model update, automatic bridge ingestion, release, or private transfer has happened.
+
+Development gate: Keep PR #62 in draft until all final-head Windows/Linux checks and privacy regressions pass, then explicitly decide whether/when to ship the app-side manual review commands separately from experimental offline weight training. An app upgrade still does not grant permission to access previous private archives, start training, move data to a remote PC or replace a model.
+
