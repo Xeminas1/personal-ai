@@ -1,0 +1,31 @@
+name: Specialist agent regression
+on:
+  pull_request:
+    paths:
+      - 'app/agent_team.py'
+      - 'app/agent_team_catalog.py'
+      - 'test_three_specialist_teams.py'
+      - '.github/workflows/specialist-agents.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'app/agent_team.py'
+      - 'app/agent_team_catalog.py'
+      - 'test_three_specialist_teams.py'
+      - '.github/workflows/specialist-agents.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  specialist-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify specialist registration and routing
+        run: python -m unittest -v test_three_specialist_teams
