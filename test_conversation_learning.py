@@ -116,7 +116,7 @@ class ConversationLearningTests(unittest.TestCase):
             "Response to " + messages[-1]["content"]
         )
         rows = benchmark_rows(
-            model, notes_fn=lambda d, q: "APPROVED NOTE FOR TEST", data_dir=self.data,
+            model, notes_fn=lambda d, q: "Example #3: APPROVED NOTE FOR TEST", data_dir=self.data,
         )
         self.assertEqual(len(rows), len(FIXTURES) * 2)
         for i in range(0, len(rows), 2):
@@ -125,6 +125,13 @@ class ConversationLearningTests(unittest.TestCase):
             self.assertNotEqual(a["condition"], b["condition"])
             self.assertEqual(a["owner_score_intent_0_or_1"], None)
             self.assertEqual(b["owner_score_evidence_0_or_1"], None)
+            for row in (a, b):
+                if row["condition"] == "with_lessons":
+                    self.assertEqual(row["lesson_ids"], [3])
+                    self.assertEqual(len(row["lesson_context_sha256"]), 64)
+                else:
+                    self.assertEqual(row["lesson_ids"], [])
+                    self.assertIsNone(row["lesson_context_sha256"])
         for call in model.agent_chat.call_args_list:
             self.assertEqual(call.kwargs["max_tool_rounds"], 0)
             self.assertEqual(call.kwargs["tool_registry"].definitions(), [])
