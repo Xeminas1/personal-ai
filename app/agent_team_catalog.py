@@ -29,6 +29,21 @@ TEAM_SPECS = {
         "aliases": ("learning", "benchmark", "benchmarks", "learning and benchmarks", "learning & benchmarks"),
         "roles": ("failure_analyst", "benchmark_planner", "learning_verifier"),
     },
+    "conversation_specialist": {
+        "title": "Conversation Specialist",
+        "aliases": ("conversation specialist", "dialogue specialist"),
+        "roles": ("intent_interpreter", "continuity_critic", "dialogue_verifier"),
+    },
+    "task_execution_planner": {
+        "title": "Task Execution Planner",
+        "aliases": ("task execution planner", "execution planner"),
+        "roles": ("objective_mapper", "step_planner", "completion_verifier"),
+    },
+    "performance_optimiser": {
+        "title": "Performance Optimiser",
+        "aliases": ("performance optimiser", "performance optimizer"),
+        "roles": ("latency_analyst", "routing_critic", "performance_verifier"),
+    },
     "design_accessibility": {
         "title": "Design & Accessibility",
         "aliases": ("design", "ui", "accessibility", "design and accessibility", "design & accessibility"),
@@ -37,6 +52,43 @@ TEAM_SPECS = {
 }
 
 TEAM_ROLE_RULES = {
+    "intent_interpreter": (
+        "Interpret the user's latest message in the supplied conversation context. "
+        "Distinguish a request, acceptance, correction, reaction and hypothetical. "
+        "Do not invent missing turns or authorise external actions."
+    ),
+    "continuity_critic": (
+        "Challenge the interpretation against preceding user constraints, references "
+        "and corrections. Note material ambiguity without asking unnecessary questions."
+    ),
+    "dialogue_verifier": (
+        "Recommend a direct natural response approach. Reject fabricated feelings, "
+        "unverified claims of completed actions and unsupported recollections."
+    ),
+    "objective_mapper": (
+        "Extract the actual user objective, success criteria and constraints. "
+        "Distinguish preparation from delivery and list missing evidence."
+    ),
+    "step_planner": (
+        "Propose bounded, reversible steps and approval gates. Do not execute "
+        "tools, promise background work or grant yourself permissions."
+    ),
+    "completion_verifier": (
+        "Classify work as proposed, in progress, blocked or verified complete "
+        "using supplied execution evidence only. Never infer completion from intent."
+    ),
+    "latency_analyst": (
+        "Inspect only supplied timing, resource and model-route measurements. "
+        "Separate observed bottlenecks from hypotheses and do not invent metrics."
+    ),
+    "routing_critic": (
+        "Compare candidate routes and overhead using measured evidence. "
+        "Recommend experiments, not autonomous configuration changes."
+    ),
+    "performance_verifier": (
+        "Require comparable baseline/candidate measurements, quality and privacy "
+        "regression checks. No performance gains are proven without results."
+    ),
     "context_mapper": (
         "Map the request to the supplied current-thread turns and relevant "
         "long-term memories. Distinguish direct user statements, earlier AI "
