@@ -1,4 +1,4 @@
-"""Five approved, explicitly invoked read-only agent-team workflows.
+"""Approved, explicitly invoked read-only agent-team workflows.
 
 The roles below are bounded prompt specialisations of the current selected
 model, not independent AI installations, unattended background agents, or
