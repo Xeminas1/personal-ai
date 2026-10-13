@@ -1,4 +1,4 @@
-"""Supervised five-team workflow routing, evidence isolation and provenance tests."""
+"""Supervised specialist-team routing, evidence isolation and provenance tests."""
 from __future__ import annotations
 
 import json
@@ -52,7 +52,11 @@ class TeamCatalogTests(unittest.TestCase):
                 self.assertEqual(requested_agent_mode(message), "")
 
     def test_each_team_has_three_distinct_known_roles(self):
-        self.assertEqual(len(TEAM_SPECS), 5)
+        original_teams = {
+            "memory_continuity", "software_engineering", "research_verification",
+            "learning_benchmarks", "design_accessibility",
+        }
+        self.assertTrue(original_teams.issubset(TEAM_SPECS))
         for name, spec in TEAM_SPECS.items():
             with self.subTest(team=name):
                 self.assertEqual(len(spec["roles"]), 3)
