@@ -28,6 +28,10 @@ class NewSpecialistTeamTests(unittest.TestCase):
             ("run task execution planner team", "task_execution_planner"),
             ("run performance optimizer team", "performance_optimiser"),
             ("run performance optimiser team", "performance_optimiser"),
+            ("run conversation specialist", "conversation_specialist"),
+            ("use the dialogue specialist", "conversation_specialist"),
+            ("run task execution planner", "task_execution_planner"),
+            ("please start the performance optimiser", "performance_optimiser"),
         ]:
             with self.subTest(command=command):
                 self.assertEqual(requested_specialist_team(command), team)
@@ -39,6 +43,10 @@ class NewSpecialistTeamTests(unittest.TestCase):
             "What does the performance optimizer do?",
             "Tell me about task execution planners",
             "run conversation specialist team without agents",
+            "run conversation specialist without agents",
+            "Should I run conversation specialist?",
+            "How can I run task execution planner?",
+            "run performance optimiser maybe",
         ]:
             with self.subTest(message=message):
                 self.assertEqual(requested_agent_mode(message), "")
