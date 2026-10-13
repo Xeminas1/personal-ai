@@ -1,6 +1,14 @@
 # XemAi project state — public-safe handoff index
 
-**Snapshot checked:** 2026-10-12 (UTC). This page is a **manual checkpoint, not a live GitHub API feed**. Before taking action, compare it with the actual latest `main` SHA, `app/version.py`, the manifest, open issues/draft PRs and recent CI, following [HANDOFF_PROTOCOL.md](HANDOFF_PROTOCOL.md). Newer verified GitHub changes take precedence over this snapshot.
+**Snapshot checked:** 2026-10-13 (UTC). This page is a **manual checkpoint, not a live GitHub API feed**. Before taking action, compare it with the actual latest `main` SHA, `app/version.py`, the manifest, open issues/draft PRs and recent CI, following [HANDOFF_PROTOCOL.md](HANDOFF_PROTOCOL.md). Newer verified GitHub changes take precedence over this snapshot.
+
+## 2026-10-13 — specialist agents phase 1 merged, not released
+
+[PR #71](https://github.com/Xeminas1/personal-ai/pull/71) merged to `main` as **`ca212ad4fe3c35c8e1a96c62557adbca0cdc2879`** after the final PR source head `f6c790ce4151eed63849858cf7cac5665acd64be` passed the dedicated [specialist tests](https://github.com/Xeminas1/personal-ai/actions/runs/38327764770) and full [Windows/Linux developer-mode regressions](https://github.com/Xeminas1/personal-ai/actions/runs/38327764802). The old five-team catalog assertion was revised to preserve its original team identities while accepting additional approved teams.
+
+Source now contains three **explicitly invoked, read-only** teams: Conversation Specialist, Task Execution Planner and Performance Optimiser, each with three bounded model prompt roles. **Only phase 1** (catalog, routing, role guidance and synthetic tests) is merged. These do **not** autonomously execute tasks, keep durable task checkpoints, collect performance telemetry or establish measured conversational improvements. Phase 2 (owner-controlled task state, performance instrumentation, held-out evaluation and runtime validation) remains tracked in [issue #70](https://github.com/Xeminas1/personal-ai/issues/70).
+
+**No new app version or updater release followed the source merge.** `app/version.py` and `update_manifest.json` still report **v0.9.57**, and the prior release-history safety block remains binding. GitHub does not establish that a computer is running the new teams; do not claim installed availability or bypass the release restriction. The separate conversational evaluation [PR #69](https://github.com/Xeminas1/personal-ai/pull/69) remains an independent unreleased test-only branch.
 
 ## Last verified released XemAi application
 
