@@ -204,4 +204,11 @@ def requested_specialist_team(question: str) -> str:
             tail = rest[m.end():].lstrip()
             if _TEAM_SUFFIX.match(tail):
                 return name
+            # The three explicitly named specialist roles are unambiguous
+            # standalone imperatives; generic aliases still require a suffix.
+            if not tail and name in {
+                "conversation_specialist", "task_execution_planner",
+                "performance_optimiser",
+            }:
+                return name
     return ""
