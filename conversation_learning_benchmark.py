@@ -49,7 +49,7 @@ def benchmark_rows(model, notes_fn=lesson_context, data_dir=DATA_DIR):
     for i, (category, question, rubric) in enumerate(FIXTURES):
         extra = notes_fn(data_dir, question)
         # Record IDs and a content fingerprint, not raw owner-approved notes.
-        lesson_ids = sorted({int(n) for n in re.findall(r"Example #(\\d+):", extra)}) if extra else []
+        lesson_ids = sorted({int(n) for n in re.findall(r"Example #(\d+):", extra)}) if extra else []
         lesson_hash = hashlib.sha256(extra.encode("utf-8")).hexdigest() if extra else None
         # Counterbalance request order, keep both prompts otherwise identical.
         conditions = ("baseline", "with_lessons") if i % 2 == 0 else ("with_lessons", "baseline")
