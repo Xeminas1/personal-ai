@@ -5,12 +5,16 @@ on:
     paths:
       - 'tests/conversation_behaviour_eval.py'
       - 'test_conversation_behaviour_eval.py'
+      - 'tests/lesson_ab_report.py'
+      - 'test_lesson_ab_report.py'
       - '.github/workflows/conversation-behaviour.yml'
   push:
     branches: [main]
     paths:
       - 'tests/conversation_behaviour_eval.py'
       - 'test_conversation_behaviour_eval.py'
+      - 'tests/lesson_ab_report.py'
+      - 'test_lesson_ab_report.py'
       - '.github/workflows/conversation-behaviour.yml'
 
 permissions:
@@ -27,6 +31,6 @@ jobs:
         with:
           python-version: '3.11'
       - name: Validate synthetic dialogue scoring
-        run: python -m unittest -v test_conversation_behaviour_eval
+        run: python -m unittest -v test_conversation_behaviour_eval test_lesson_ab_report
       - name: Verify scenario JSON export
         run: python tests/conversation_behaviour_eval.py --json > /dev/null
