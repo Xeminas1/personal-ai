@@ -1,0 +1,32 @@
+name: Conversation behaviour rubric tests
+
+on:
+  pull_request:
+    paths:
+      - 'tests/conversation_behaviour_eval.py'
+      - 'test_conversation_behaviour_eval.py'
+      - '.github/workflows/conversation-behaviour.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tests/conversation_behaviour_eval.py'
+      - 'test_conversation_behaviour_eval.py'
+      - '.github/workflows/conversation-behaviour.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  rubric:
+    name: Offline rubric validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate synthetic dialogue scoring
+        run: python -m unittest -v test_conversation_behaviour_eval
+      - name: Verify scenario JSON export
+        run: python tests/conversation_behaviour_eval.py --json > /dev/null
