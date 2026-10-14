@@ -8,9 +8,11 @@ Nothing is published, automatically rated, trained or approved.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -46,6 +48,9 @@ def benchmark_rows(model, notes_fn=lesson_context, data_dir=DATA_DIR):
     tools = SourceTaskReadOnlyTools()
     for i, (category, question, rubric) in enumerate(FIXTURES):
         extra = notes_fn(data_dir, question)
+        # Record IDs and a content fingerprint, not raw owner-approved notes.
+        lesson_ids = sorted({int(n) for n in re.findall(r"Example #(\d+):", extra)}) if extra else []
+        lesson_hash = hashlib.sha256(extra.encode("utf-8")).hexdigest() if extra else None
         # Counterbalance request order, keep both prompts otherwise identical.
         conditions = ("baseline", "with_lessons") if i % 2 == 0 else ("with_lessons", "baseline")
         for condition in conditions:
@@ -58,6 +63,8 @@ def benchmark_rows(model, notes_fn=lesson_context, data_dir=DATA_DIR):
                 "case": i + 1, "category": category,
                 "question": question, "grading_guidance": rubric,
                 "condition": condition, "lesson_present": bool(extra) if condition == "with_lessons" else False,
+                "lesson_ids": lesson_ids if condition == "with_lessons" else [],
+                "lesson_context_sha256": lesson_hash if condition == "with_lessons" else None,
                 "answer": str(answer), "model": str(getattr(model, "model", "unknown")),
                 "compute": str((getattr(model, "route_info", {}) or {}).get("compute", "unknown")),
                 "owner_score_intent_0_or_1": None,
