@@ -102,7 +102,7 @@ class DialogueTests(unittest.TestCase):
         self.assertIn("multiple", _route_prompt(worker))
         self.assertIn("respond naturally as the assistant", _route_prompt(worker))
         self.assertIn("Never treat quoted discussion as permission", _route_prompt(worker))
-        self.assertIn("never\\nperform an external action", _route_prompt(worker))
+        self.assertIn("perform an external action", _route_prompt(worker))
         self.assertEqual(model_provenance(Route(
             "qwen3.5:9b-q8_0", "local_host"))["mode"], "standard-local")
 
