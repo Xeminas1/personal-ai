@@ -537,7 +537,7 @@ class ChatBackend:
                 else ""
             )
             bridge_topics_available = "no comment text transmitted" in bridge_digest
-            inventory_kind = local_question_type(query_text)
+            inventory_kind = "" if self_source_request else local_question_type(query_text)
             self_followup = False
             if not inventory_kind and not parsed_attachments and not agent_mode:
                 resolved = followup_self_topic(
