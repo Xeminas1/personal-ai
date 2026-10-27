@@ -343,17 +343,12 @@ def source_answer_needs_retry(question: str, answer: str, context: str) -> bool:
     answer = str(answer or "")
     if not answer.strip() or len(answer.strip()) < 170:
         return True
-    # Reject positive claims of verified class/method/schema definitions not
-    # present in any source file actually retrieved for this request. This is
-    # not a full semantic verifier, but it catches invented code identifiers
-    # disguised as observations. Explicit negative findings remain allowed.
-    claimed = re.findall(
-        r"(?i)\b(?:found|confirmed|verified|contains?|defines?|declares?|"
-        r"implements?)\s+(?:a\s+|the\s+)?"
-        r"(?:class|function|method|schema)\s+`?([A-Za-z_][A-Za-z0-9_]+)`?",
-        answer,
-    )
-    if any(identifier not in context for identifier in claimed):
+    # Reject positive claims of code identifiers that do not appear as whole
+    # tokens in the source actually retrieved for this request. Claims are
+    # matched on several phrasings, explicit negative findings are allowed, and
+    # only file contents (never the instruction text) count as evidence. This is
+    # still a heuristic, not a full semantic verifier.
+    if unsupported_identifier_claims(answer, context):
         return True
     # Asking the user to select files instead of completing the request is
     # unacceptable even if the answer names one or more real source files.
@@ -366,6 +361,71 @@ def source_answer_needs_retry(question: str, answer: str, context: str) -> bool:
                      + r"(?![A-Za-z0-9_])", answer, re.IGNORECASE)
     )
     return mentioned < expected
+
+
+_CODE_KEYWORD_CLAIM = re.compile(
+    r"\b(?:class|function|method|schema|def)\s+`?([A-Za-z_][A-Za-z0-9_]{2,})`?"
+)
+_VERB_CLAIM = re.compile(
+    r"(?i:\b(?:found|confirmed|verified|contains?|defines?|declares?|"
+    r"implements?|exposes?|has))\s+(?:an?\s+|the\s+)?`?"
+    r"([A-Z][a-z0-9]+(?:[A-Z][a-z0-9]*)+)`?"
+)
+_CALL_CLAIM = re.compile(r"`([A-Za-z_][A-Za-z0-9_]{2,})\(\)`|\b([A-Za-z_][A-Za-z0-9_]{2,})\(\)")
+_NEGATION = re.compile(
+    r"(?i)(?:\b(?:no|not|never|without|absent|missing|lacks?|nor|neither|cannot)\b"
+    r"|n't)[^\n]{0,80}$"
+)
+_TOKEN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+_SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+|\n")
+
+
+def _inspected_source_text(context: str) -> str:
+    """Return only retrieved file contents and cross-file excerpts, no prose."""
+    if not isinstance(context, str) or not context.startswith(
+        "VERIFIED READ-ONLY DEVELOPMENT FILE CONTENTS\n"
+    ):
+        return ""
+    try:
+        body = context.split("\n", 2)[2]
+        json_part, _, trace = body.partition("\nREAD-ONLY CROSS-FILE")
+        records = json.loads(json_part)
+    except (IndexError, ValueError, TypeError):
+        return ""
+    parts = [
+        item["content"] for item in records
+        if isinstance(item, dict) and isinstance(item.get("content"), str)
+    ] if isinstance(records, list) else []
+    return "\n".join(parts) + "\n" + trace
+
+
+def _looks_like_identifier(token: str) -> bool:
+    return (
+        "_" in token
+        or any(ch.isupper() for ch in token[1:])
+        or (token[:1].isupper() and len(token) >= 4)
+    )
+
+
+def unsupported_identifier_claims(answer: str, context: str) -> list[str]:
+    """Identifiers positively claimed in an answer but absent from real source."""
+    source_text = _inspected_source_text(context)
+    if not source_text:
+        return []
+    known = set(_TOKEN.findall(source_text))
+    answer = str(answer or "")
+    unsupported: list[str] = []
+    for pattern in (_CODE_KEYWORD_CLAIM, _VERB_CLAIM, _CALL_CLAIM):
+        for match in pattern.finditer(answer):
+            token = next((g for g in match.groups() if g), "")
+            if not token or token in known or not _looks_like_identifier(token):
+                continue
+            clause = _SENTENCE_BREAK.split(answer[:match.start()])[-1]
+            if _NEGATION.search(clause):
+                continue
+            if token not in unsupported:
+                unsupported.append(token)
+    return unsupported
 
 
 def source_failure_report(context: str) -> str:
