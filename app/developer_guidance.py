@@ -123,9 +123,20 @@ def source_context_for_request(user_text: str, tool_registry: Any) -> str:
     if not _INTENT.search(question) and not self_source:
         return ""
 
+    # An explicit request to call dev_projects must correspond to a real
+    # tool execution, not a model claim or a hidden direct registry read.
+    if self_source:
+        try:
+            inventory = json.loads(tool_registry.execute("dev_projects", {}))
+            project_rows = inventory.get("result") if inventory.get("ok") is True else []
+        except (ValueError, TypeError, OSError, RuntimeError):
+            project_rows = []
+    else:
+        project_rows = registry.projects()
     projects = [
-        row["project"] for row in registry.projects()
-        if row.get("available") and isinstance(row.get("project"), str)
+        row["project"] for row in project_rows
+        if isinstance(row, dict) and row.get("available")
+        and isinstance(row.get("project"), str)
     ]
     if not projects:
         return ""
