@@ -16,6 +16,7 @@ from app.developer_guidance import (
     inspected_source_paths,
     self_source_unavailable_report,
     source_context_for_request,
+    source_answer_needs_retry,
 )
 from app.developer_projects import DeveloperProjects
 from app.evidence import TurnEvidenceTools
@@ -97,6 +98,27 @@ class SelfSourceRoutingTests(unittest.TestCase):
         self.assertNotIn("has_admin_write_access", source)
         self.assertEqual(self.logger.calls.count("dev_read"), 3)
         self.assertEqual(self.logger.calls.count("dev_projects"), 1)
+
+    def test_fabricated_confirmed_class_is_rejected_after_real_source_read(self):
+        tools = self.configure()
+        source = source_context_for_request(QUESTION, tools)
+        claim = (
+            "The file app/developer_projects.py defines the actual class "
+            "DeveloperProjects, which checks only approved project roots. "
+            "The module app/agent_team.py contains verified class DevTaskAgent "
+            "which can perform hidden writes. This was verified from source. "
+            "The proposed engineering workflow must remain read-only."
+        )
+        self.assertTrue(source_answer_needs_retry(QUESTION, claim, source))
+        good = (
+            "The file app/developer_projects.py defines class DeveloperProjects. "
+            "The file app/agent_team.py defines class ReadOnlyTeamTools. "
+            "Both definitions appear in the retrieved synthetic source, so "
+            "we can report them as observations. This does not demonstrate "
+            "any deployed shell access, development privileges or runtime "
+            "test execution."
+        )
+        self.assertFalse(source_answer_needs_retry(QUESTION, good, source))
 
     def test_unrelated_approved_checkout_is_never_misidentified_as_self(self):
         tools = self.configure("xemtv")
