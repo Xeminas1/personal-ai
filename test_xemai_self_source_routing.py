@@ -5,10 +5,11 @@ Never uses private conversations, network access or real owner machine paths.
 from __future__ import annotations
 
 import json
+import logging
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, PropertyMock, patch
 
 from app.developer_guidance import (
     is_xemai_source_request,
@@ -117,6 +118,46 @@ class SelfSourceRoutingTests(unittest.TestCase):
         self.assertIn("does not expose dev_projects/dev_read", report)
         self.assertIn("No dev_read call succeeded", report)
         self.assertNotIn(str(self.checkout), report)
+
+    def test_backend_reports_missing_self_source_without_web_or_model_claims(self):
+        from app import gui_backend
+        from app.database import Database
+
+        self.registry.developer = DeveloperProjects(
+            [], workspace=self.registry.workspace
+        )
+        db = Database(self.data / "personal_ai.db")
+        user = db.create_user("Synthetic User")
+        chat_id = db.create_chat(user["id"], "Source test")["id"]
+        db.close()
+        backend = gui_backend.ChatBackend.__new__(gui_backend.ChatBackend)
+        backend.config = {
+            "model": "qwen3:8b", "auto_memory": False,
+            "specialists_enabled": False, "laptop_answer_guidance": False,
+            "evidence_research_mode": "auto", "agent_team_enabled": False,
+        }
+        backend.logger = logging.getLogger("self-source-regression")
+        llm = Mock()
+        llm.model = "qwen3:8b"
+        llm.route_info = {"compute": "remote_worker"}
+        with patch.object(gui_backend, "DATA_DIR", self.data), \
+             patch.object(gui_backend, "ToolRegistry", return_value=self.registry), \
+             patch.object(gui_backend, "build_llm_client", return_value=llm), \
+             patch.object(backend, "refresh_runtime_model", return_value={
+                 "model": "qwen3:8b", "compute": "remote_worker",
+                 "worker_available": True,
+             }), \
+             patch.object(gui_backend, "should_research_query", return_value=True), \
+             patch.object(gui_backend, "should_force_web_search", return_value=True), \
+             patch.object(ToolRegistry, "web_search_enabled",
+                          new_callable=PropertyMock, return_value=True), \
+             patch.object(self.registry, "research_evidence",
+                          side_effect=AssertionError("web must not be called")):
+            response = backend.send(chat_id, QUESTION)
+        self.assertIn("does not expose dev_projects/dev_read", response)
+        self.assertIn("No dev_read call succeeded", response)
+        llm.agent_chat.assert_not_called()
+        self.assertNotIn("DeveloperProjectsManager", response)
 
     def test_generic_xemtv_source_question_remains_supported(self):
         tools = self.configure("xemtv")
