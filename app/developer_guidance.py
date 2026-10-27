@@ -79,7 +79,7 @@ def self_source_unavailable_report(tool_registry: Any) -> str:
         report = json.loads(tool_registry.execute("dev_projects", {}))
     except (ValueError, TypeError, OSError, RuntimeError):
         report = {}
-    if report.get("ok") is not True or not isinstance(report.get("result"), list):
+    if not isinstance(report, dict) or report.get("ok") is not True or not isinstance(report.get("result"), list):
         return (
             "dev_projects was available but did not return a verified project "
             "inventory. No XemAi application files were inspected. "
@@ -128,7 +128,9 @@ def source_context_for_request(user_text: str, tool_registry: Any) -> str:
     if self_source:
         try:
             inventory = json.loads(tool_registry.execute("dev_projects", {}))
-            project_rows = inventory.get("result") if inventory.get("ok") is True else []
+            project_rows = (inventory.get("result") if isinstance(inventory, dict)
+                            and inventory.get("ok") is True
+                            and isinstance(inventory.get("result"), list) else [])
         except (ValueError, TypeError, OSError, RuntimeError):
             project_rows = []
     else:
@@ -340,6 +342,18 @@ def source_answer_needs_retry(question: str, answer: str, context: str) -> bool:
         return False
     answer = str(answer or "")
     if not answer.strip() or len(answer.strip()) < 170:
+        return True
+    # Reject positive claims of verified class/method/schema definitions not
+    # present in any source file actually retrieved for this request. This is
+    # not a full semantic verifier, but it catches invented code identifiers
+    # disguised as observations. Explicit negative findings remain allowed.
+    claimed = re.findall(
+        r"(?i)\\b(?:found|confirmed|verified|contains?|defines?|declares?|"
+        r"implements?)\\s+(?:a\\s+|the\\s+)?"
+        r"(?:class|function|method|schema)\\s+`?([A-Za-z_][A-Za-z0-9_]+)`?",
+        answer,
+    )
+    if any(identifier not in context for identifier in claimed):
         return True
     # Asking the user to select files instead of completing the request is
     # unacceptable even if the answer names one or more real source files.
