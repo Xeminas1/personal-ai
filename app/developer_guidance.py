@@ -348,9 +348,9 @@ def source_answer_needs_retry(question: str, answer: str, context: str) -> bool:
     # not a full semantic verifier, but it catches invented code identifiers
     # disguised as observations. Explicit negative findings remain allowed.
     claimed = re.findall(
-        r"(?i)\\b(?:found|confirmed|verified|contains?|defines?|declares?|"
-        r"implements?)\\s+(?:a\\s+|the\\s+)?"
-        r"(?:class|function|method|schema)\\s+`?([A-Za-z_][A-Za-z0-9_]+)`?",
+        r"(?i)\b(?:found|confirmed|verified|contains?|defines?|declares?|"
+        r"implements?)\s+(?:a\s+|the\s+)?"
+        r"(?:class|function|method|schema)\s+`?([A-Za-z_][A-Za-z0-9_]+)`?",
         answer,
     )
     if any(identifier not in context for identifier in claimed):
