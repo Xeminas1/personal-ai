@@ -36,15 +36,15 @@ _SKIP_TERMS = frozenset({
 
 
 _SELF_APP = re.compile(
-    r"\\b(?:xemai(?:'s)?|your own|your application|your installed|"
-    r"your source|your codebase|your repo(?:sitory)?|my assistant's)\\b",
+    r"\b(?:xemai(?:'s)?|your own|your application|your installed|"
+    r"your source|your codebase|your repo(?:sitory)?|my assistant's)\b",
     re.IGNORECASE,
 )
 _SELF_SOURCE = re.compile(
-    r"\\b(?:dev_(?:projects|list|read|search|trace)|source\\s+code|"
-    r"source\\s+files?|codebase|repository|project\\s+files?|"
-    r"app/[a-z_]+\\.py|tools?\\s+(?:registry|availability)|"
-    r"file\\s+inspection|classes?\\s+defined)\\b",
+    r"\b(?:dev_(?:projects|list|read|search|trace)|source\s+code|"
+    r"source\s+files?|codebase|repository|project\s+files?|"
+    r"app/[a-z_]+\.py|tools?\s+(?:registry|availability)|"
+    r"file\s+inspection|classes?\s+defined)\b",
     re.IGNORECASE,
 )
 
@@ -58,8 +58,8 @@ def is_xemai_source_request(question: str) -> bool:
     q = str(question or "")[:5000].replace("’", "'")
     return bool(_SELF_APP.search(q) and _SELF_SOURCE.search(q) and
                 (_INTENT.search(q) or re.search(
-                    r"\\b(?:check|verify|call|locate|list|confirm|available|"
-                    r"exists?|accessible|evidence|inspect)\\b", q, re.I)))
+                    r"\b(?:check|verify|call|locate|list|confirm|available|"
+                    r"exists?|accessible|evidence|inspect)\b", q, re.I)))
 
 
 def self_source_unavailable_report(tool_registry: Any) -> str:
