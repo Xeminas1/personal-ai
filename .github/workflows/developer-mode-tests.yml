@@ -76,7 +76,9 @@ jobs:
       - name: Run developer-mode security tests
         run: python test_developer_projects.py
       - name: Test developer source retrieval
-        run: python test_developer_guidance.py
+        run: |
+          python test_developer_guidance.py
+          python -m unittest -q test_xemai_self_source_routing
       - name: Test multi-file read-only investigations
         run: python test_developer_multifile.py
       - name: Test read-only source tracing
