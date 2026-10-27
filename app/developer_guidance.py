@@ -35,6 +35,80 @@ _SKIP_TERMS = frozenset({
 })
 
 
+_SELF_APP = re.compile(
+    r"\b(?:xemai(?:'s)?|your own|your application|your installed|"
+    r"your source|your codebase|your repo(?:sitory)?|my assistant's)\b",
+    re.IGNORECASE,
+)
+_SELF_SOURCE = re.compile(
+    r"\b(?:dev_(?:projects|list|read|search|trace)|source\s+code|"
+    r"source\s+files?|codebase|repository|project\s+files?|"
+    r"app/[a-z_]+\.py|tools?\s+(?:registry|availability)|"
+    r"file\s+inspection|classes?\s+defined)\b",
+    re.IGNORECASE,
+)
+
+
+def is_xemai_source_request(question: str) -> bool:
+    """Recognise inspection of this app, not generic questions or other projects.
+
+    Explicit self-source requests require local evidence. Lack of an approved
+    checkout must not be silently replaced with unrelated internet research.
+    """
+    q = str(question or "")[:5000].replace("’", "'")
+    return bool(_SELF_APP.search(q) and _SELF_SOURCE.search(q) and
+                (_INTENT.search(q) or re.search(
+                    r"\b(?:check|verify|call|locate|list|confirm|available|"
+                    r"exists?|accessible|evidence|inspect)\b", q, re.I)))
+
+
+def self_source_unavailable_report(tool_registry: Any) -> str:
+    """Host-backed, path-free failure explanation; never invent tool outcomes."""
+    names = {item.get("function", {}).get("name")
+             for item in tool_registry.definitions()}
+    if "dev_projects" not in names:
+        return (
+            "I could not inspect my application source in this session. "
+            "My read-only developer tools are implemented in XemAi, but the "
+            "current tool registry does not expose dev_projects/dev_read. "
+            "That generally means no approved development project is configured "
+            "for this running host. No dev_read call succeeded and no source "
+            "classes or methods were verified. I did not search the web."
+        )
+    try:
+        report = json.loads(tool_registry.execute("dev_projects", {}))
+    except (ValueError, TypeError, OSError, RuntimeError):
+        report = {}
+    if not isinstance(report, dict) or report.get("ok") is not True or not isinstance(report.get("result"), list):
+        return (
+            "dev_projects was available but did not return a verified project "
+            "inventory. No XemAi application files were inspected. "
+            "I did not use outside web results as substitute evidence."
+        )
+    projects = [
+        row.get("project") for row in report["result"]
+        if isinstance(row, dict) and isinstance(row.get("project"), str)
+        and re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", row["project"])
+        and row.get("available") is True
+    ]
+    candidates = [p for p in projects if p in {"xemai", "personal-ai", "personal_ai"}]
+    if not candidates:
+        return (
+            "dev_projects succeeded. Available approved project IDs: "
+            + (", ".join(projects[:12]) if projects else "none")
+            + ". None identifies an approved XemAi source checkout. "
+            "I cannot verify app source files from other projects. "
+            "No dev_read call succeeded for XemAi and no source declarations "
+            "were verified; I did not search the web."
+        )
+    return (
+        "dev_projects succeeded and identified an available XemAi checkout, "
+        "but this request did not yield a successful dev_read of the relevant "
+        "source files. Check the selected file paths or local project access. "
+        "No classes or methods were verified and no external web search was used."
+    )
+
+
 def source_context_for_request(user_text: str, tool_registry: Any) -> str:
     """Return source evidence for an explicit read-only developer question.
 
@@ -45,12 +119,26 @@ def source_context_for_request(user_text: str, tool_registry: Any) -> str:
     if registry is None or not getattr(registry, "enabled", False):
         return ""
     question = str(user_text or "")[:3000]
-    if not _INTENT.search(question):
+    self_source = is_xemai_source_request(question)
+    if not _INTENT.search(question) and not self_source:
         return ""
 
+    # An explicit request to call dev_projects must correspond to a real
+    # tool execution, not a model claim or a hidden direct registry read.
+    if self_source:
+        try:
+            inventory = json.loads(tool_registry.execute("dev_projects", {}))
+            project_rows = (inventory.get("result") if isinstance(inventory, dict)
+                            and inventory.get("ok") is True
+                            and isinstance(inventory.get("result"), list) else [])
+        except (ValueError, TypeError, OSError, RuntimeError):
+            project_rows = []
+    else:
+        project_rows = registry.projects()
     projects = [
-        row["project"] for row in registry.projects()
-        if row.get("available") and isinstance(row.get("project"), str)
+        row["project"] for row in project_rows
+        if isinstance(row, dict) and row.get("available")
+        and isinstance(row.get("project"), str)
     ]
     if not projects:
         return ""
@@ -72,15 +160,23 @@ def source_context_for_request(user_text: str, tool_registry: Any) -> str:
         r"|\bdeveloper\s+mode\b",
         question, flags=re.IGNORECASE,
     )
-    if len(named) != 1 and not (len(projects) == 1 and explicit_local_checkout):
-        return ""
-    project = named[0] if len(named) == 1 else projects[0]
+    if self_source:
+        # Do not infer that an unrelated sole project (such as XemTV) is
+        # XemAi's source. Only a specifically approved XemAi ID qualifies.
+        own = [p for p in projects if p in {"xemai", "personal-ai", "personal_ai"}]
+        if len(own) != 1:
+            return ""
+        project = own[0]
+    else:
+        if len(named) != 1 and not (len(projects) == 1 and explicit_local_checkout):
+            return ""
+        project = named[0] if len(named) == 1 else projects[0]
 
     file_mentions = [
         match.group(1).replace("\\", "/")
         for match in _FILENAMES.finditer(question)
     ][:4]
-    if not file_mentions and not _SCOPE.search(question) and project.lower() not in question.lower():
+    if not self_source and not file_mentions and not _SCOPE.search(question) and project.lower() not in question.lower():
         return ""
 
     try:
@@ -246,6 +342,18 @@ def source_answer_needs_retry(question: str, answer: str, context: str) -> bool:
         return False
     answer = str(answer or "")
     if not answer.strip() or len(answer.strip()) < 170:
+        return True
+    # Reject positive claims of verified class/method/schema definitions not
+    # present in any source file actually retrieved for this request. This is
+    # not a full semantic verifier, but it catches invented code identifiers
+    # disguised as observations. Explicit negative findings remain allowed.
+    claimed = re.findall(
+        r"(?i)\b(?:found|confirmed|verified|contains?|defines?|declares?|"
+        r"implements?)\s+(?:a\s+|the\s+)?"
+        r"(?:class|function|method|schema)\s+`?([A-Za-z_][A-Za-z0-9_]+)`?",
+        answer,
+    )
+    if any(identifier not in context for identifier in claimed):
         return True
     # Asking the user to select files instead of completing the request is
     # unacceptable even if the answer names one or more real source files.

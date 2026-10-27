@@ -61,6 +61,8 @@ from .developer_guidance import (
     source_answer_needs_retry,
     source_context_for_request,
     source_failure_report,
+    is_xemai_source_request,
+    self_source_unavailable_report,
 )
 from .evidence import (
     TurnEvidenceTools,
@@ -525,14 +527,17 @@ class ChatBackend:
             agent_mode = requested_agent_mode(
                 query_text, enabled=self.config.get("agent_team_enabled", True) is True
             )
-            dialogue_kind = dialogue_intent(query_text)
+            # A direct request to inspect this application's implementation
+            # must not be misclassified as a generic development mission.
+            self_source_request = is_xemai_source_request(query_text)
+            dialogue_kind = "" if self_source_request else dialogue_intent(query_text)
             bridge_digest = (
                 bridge_topic_digest(DATA_DIR)
                 if dialogue_kind == "bridge_conversation" and not parsed_attachments
                 else ""
             )
             bridge_topics_available = "no comment text transmitted" in bridge_digest
-            inventory_kind = local_question_type(query_text)
+            inventory_kind = "" if self_source_request else local_question_type(query_text)
             self_followup = False
             if not inventory_kind and not parsed_attachments and not agent_mode:
                 resolved = followup_self_topic(
@@ -691,7 +696,9 @@ class ChatBackend:
                 "" if visual_only or attached_code_task or inline_source_task or dialogue_kind == "bridge_conversation"
                 else source_context_for_request(query_text, tools)
             )
-            if visual_only or prefer_local_project_sources(query_text, developer_context):
+            if self_source_request or visual_only or prefer_local_project_sources(query_text, developer_context):
+                # Fail closed even when no local files could be read; web
+                # results about similarly named projects are not local evidence.
                 tools.web_allowed = False
                 self.logger.info(
                     "Source/web tool routing | visual_only=%s local_source_files=%d",
@@ -1024,7 +1031,8 @@ class ChatBackend:
             research_sources = []
 
             if (
-                tools.web_search_enabled
+                tools.web_allowed
+                and tools.web_search_enabled
                 and research_mode != "off"
                 and should_research_query(query_text)
                 and (not dialogue_kind or explicit_independent_research(query_text))
@@ -1098,7 +1106,8 @@ class ChatBackend:
                 })
 
             if (
-                tools.web_search_enabled
+                tools.web_allowed
+                and tools.web_search_enabled
                 and should_force_web_search(query_text)
                 and (not watch_linked or explicit_independent_research(query_text))
                 and not internal_audit
@@ -1324,7 +1333,14 @@ class ChatBackend:
                 else ReadOnlyTeamTools(tools, allow_web=tools.web_allowed)
                 if agent_mode else tools
             )
-            if inventory_kind and inventory_data is not None and not agent_mode:
+            if self_source_request and not developer_context:
+                # An actual host-side tool check is more trustworthy than a
+                # model draft about whether dev_projects/dev_read are present.
+                # Never let missing local evidence turn into internet browsing
+                # or fabricated verified source declarations.
+                answer = self_source_unavailable_report(tools)
+                application_answer = True
+            elif inventory_kind and inventory_data is not None and not agent_mode:
                 answer = local_inventory_answer(inventory_data, inventory_kind)
                 if self_followup:
                     answer = (
