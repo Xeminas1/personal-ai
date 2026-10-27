@@ -95,9 +95,7 @@ class SelfSourceRoutingTests(unittest.TestCase):
         self.assertNotIn("class DevTaskAgent:", source)
         self.assertNotIn("has_admin_write_access", source)
         self.assertEqual(self.logger.calls.count("dev_read"), 3)
-        self.assertEqual(self_source_unavailable_report(tools).startswith(
-            "dev_projects succeeded"
-        ), False)  # not a missing-source path after a successful preflight
+        self.assertEqual(self.logger.calls.count("dev_projects"), 0)
 
     def test_unrelated_approved_checkout_is_never_misidentified_as_self(self):
         tools = self.configure("xemtv")
