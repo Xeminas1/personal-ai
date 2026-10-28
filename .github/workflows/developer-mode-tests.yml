@@ -6,6 +6,7 @@ on:
       - "developer_setup.py"
       - "test_developer_projects.py"
       - "test_developer_guidance.py"
+      - "test_identifier_guard_heldout.py"
       - "test_developer_multifile.py"
       - "test_developer_trace.py"
       - "test_visual_routing.py"
@@ -79,6 +80,7 @@ jobs:
         run: |
           python test_developer_guidance.py
           python -m unittest -q test_xemai_self_source_routing
+          python -m unittest -q test_identifier_guard_heldout
       - name: Test multi-file read-only investigations
         run: python test_developer_multifile.py
       - name: Test read-only source tracing
