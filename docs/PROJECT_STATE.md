@@ -1,6 +1,6 @@
 # XemAi project state — public-safe handoff index
 
-**Snapshot checked:** 2026-10-13 (UTC). This page is a **manual checkpoint, not a live GitHub API feed**. Before taking action, compare it with the actual latest `main` SHA, `app/version.py`, the manifest, open issues/draft PRs and recent CI, following [HANDOFF_PROTOCOL.md](HANDOFF_PROTOCOL.md). Newer verified GitHub changes take precedence over this snapshot.
+**Snapshot checked:** 2026-10-28 (UTC). This page is a **manual checkpoint, not a live GitHub API feed**. Before taking action, compare it with the actual latest `main` SHA, `app/version.py`, the manifest, open issues/draft PRs and recent CI, following [HANDOFF_PROTOCOL.md](HANDOFF_PROTOCOL.md). Newer verified GitHub changes take precedence over this snapshot.
 
 ## 2026-10-13 — specialist agents phase 1 merged, not released
 
@@ -10,16 +10,26 @@ Source now contains three **explicitly invoked, read-only** teams: Conversation 
 
 **No new app version or updater release followed the source merge.** `app/version.py` and `update_manifest.json` still report **v0.9.57**, and the prior release-history safety block remains binding. GitHub does not establish that a computer is running the new teams; do not claim installed availability or bypass the release restriction. The separate conversational evaluation [PR #69](https://github.com/Xeminas1/personal-ai/pull/69) remains an independent unreleased test-only branch.
 
+## 2026-10-28 — v0.9.58 released (merged work since v0.9.57)
+
+[PR #81](https://github.com/Xeminas1/personal-ai/pull/81) merged to `main` as **`5bb1c19182f3585f0ffd35ece2fc9ce54e80d81f`**. Frozen release branch `release-v0.9.58` is at `1f1856dd33a584cade0b770f7a07420f420801ec`; its Git **tree** equals merged `main`'s (`0ed06135dbdc23907cf002f63bf99b41fdccfed7`). Scope: only changes already merged since v0.9.57 (#68, #71, #74, #75, #69, #79). Draft PRs #62, #64, #65 and #80 are **not** included.
+
+**Verified on the exact release head:** Windows/Linux developer-mode regression and specialist-agent regression passed; the manifest workflow passed when run on demand; `verify_release_manifest.py` downloaded and hash-checked all **170** pinned assets over HTTPS. A real updater run on a throwaway v0.9.57 copy (synthetic data/logs/config) upgraded to 0.9.58, matched every manifest hash, left `data/`, `logs/` and `config.json` byte-identical, and wrote a rollback backup. `main`'s manifest now offers 0.9.58 to a v0.9.57 client.
+
+**Not verified:** installation on the owner's laptop or desktop (check the host-reported version), a live-model check of the new behaviour, and the Windows runtime of the updater. `test_auto_updates.py` (3 failures) and `test_reply_http.py` (1 error) fail on unmodified `main` and are not run by any workflow; they predate this release and need separate triage.
+
+**Release-history restriction:** the write to `app/self_knowledge.py` that an earlier tool refused (see issue #76) was made in this release (PR #81) and **was not refused**. No workaround was used. This is one observation, not an explanation of the earlier refusal.
+
 ## Last verified released XemAi application
 
 | Field | Verified snapshot |
 | --- | --- |
-| Published XemAi app version | **v0.9.57** |
-| `main` merge SHA at v0.9.57 release | `775863bea3a7eba8dac494d81e39a75c6b7ba9e1` |
-| Frozen release `release-v0.9.57` SHA | `621b7205df892833b311f3d833ade2a240565190` |
+| Published XemAi app version | **v0.9.58** |
+| `main` merge SHA at v0.9.58 release | `5bb1c19182f3585f0ffd35ece2fc9ce54e80d81f` (v0.9.57: `775863bea3a7eba8dac494d81e39a75c6b7ba9e1`) |
+| Frozen release `release-v0.9.58` SHA | `1f1856dd33a584cade0b770f7a07420f420801ec` (v0.9.57: `621b7205df892833b311f3d833ade2a240565190`) |
 | Release/merge relationship | Matching repository **tree** verified for those commits after **PR #63** merge |
 | Release PR | [#63 — Owner-reviewed private bridge correction export](https://github.com/Xeminas1/personal-ai/pull/63) |
-| Latest verified release manifest | v0.9.57, **164 SHA-256 pinned assets** |
+| Latest verified release manifest | v0.9.58, **170 SHA-256 pinned assets** |
 | Release CI at final tested source head | Windows/Linux regressions and full manifest verification **passed** at frozen head |
 | Installed version on an owner's computer | **Unknown from GitHub alone** |
 
