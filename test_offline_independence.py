@@ -85,12 +85,16 @@ class OfflineIndependenceSmoke(unittest.TestCase):
         }
         backend.logger = self.logger
         model = LocalOnlyModel(self.logger)
-        with patch.object(gui_backend, "BASE_DIR", self.root), \\
-             patch.object(gui_backend, "DATA_DIR", self.data), \\
-             patch.object(gui_backend, "ToolRegistry", return_value=self.registry), \\
-             patch.object(gui_backend, "build_llm_client", return_value=model), \\
-             patch.object(urllib.request, "urlopen",
-                          side_effect=AssertionError("External network attempted")) as network:
+        with (
+            patch.object(gui_backend, "BASE_DIR", self.root),
+            patch.object(gui_backend, "DATA_DIR", self.data),
+            patch.object(gui_backend, "ToolRegistry", return_value=self.registry),
+            patch.object(gui_backend, "build_llm_client", return_value=model),
+            patch.object(
+                urllib.request, "urlopen",
+                side_effect=AssertionError("External network attempted"),
+            ) as network,
+        ):
             answer = backend.send(chat_id, "Say hello, without using the internet.")
             network.assert_not_called()
 
