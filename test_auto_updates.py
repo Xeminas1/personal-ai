@@ -69,9 +69,15 @@ class AutoUpdateTests(unittest.TestCase):
         check = check or Mock(return_value=None)
         install = install or Mock(return_value="9.9.9")
         restart = restart or Mock()
+        # The current scheduler stages downloads before reserving the update.
+        # Mock the staged installer rather than the older direct-install path.
+        self.prepared = SimpleNamespace(close=Mock())
         with patch.object(mobile_server, "load_config", side_effect=lambda: dict(self.config)), \
              patch.object(mobile_server.updater, "check_for_update", check), \
-             patch.object(mobile_server.updater, "install_update", install), \
+             patch.object(mobile_server.updater, "prepare_file_update", return_value=self.prepared), \
+             patch.object(mobile_server.updater, "install_prepared_update", install), \
+             patch.object(mobile_server.updater, "install_update",
+                          side_effect=AssertionError("Unexpected direct installer")), \
              patch.object(mobile_server, "ChatBackend", side_effect=AssertionError("Scheduler created backend")), \
              patch.object(mobile_server, "_schedule_mobile_server_restart", restart):
             mobile_server._auto_update_loop(self.server)
@@ -108,13 +114,13 @@ class AutoUpdateTests(unittest.TestCase):
                              3: lambda: setattr(self.server, "active_chat_requests", 0)}
         def install(**kwargs):
             self.assertTrue(self.server.update_lock.locked())
-            self.assertEqual(kwargs["manifest"], MANIFEST)
+            self.assertIs(kwargs["prepared"], self.prepared)
             self.assertEqual(self.server.active_chat_requests, 0)
             return "9.9.9"
         check, _, restart = self.run_loop(check=Mock(return_value=MANIFEST), install=Mock(side_effect=install))
         self.assertEqual(self.stop.waits, [2, 2, 2])
         check.assert_called_once_with(CHANNEL)
-        restart.assert_called_once_with()
+        restart.assert_called_once_with(self.server, "9.9.9")
         self.assertTrue(self.server.update_restarting)
         self.assertFalse(self.server.update_lock.locked())
 
@@ -184,6 +190,8 @@ class AutoUpdateTests(unittest.TestCase):
                 install.assert_not_called()
                 self.assertEqual(check.call_count, 0 if phase == "startup" else 1)
                 self.assertFalse(self.server.update_lock.locked())
+                if phase == "pending":
+                    self.prepared.close.assert_called_once()
 
 
 class AutoUpdateHTTPTests(unittest.TestCase):

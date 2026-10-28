@@ -94,7 +94,7 @@ vm.createContext(context);
 const labels = code.match(/^const SPECIALIST_LABELS = .*;$/m);
 assert(labels, 'specialist labels');
 vm.runInContext(labels[0], context);
-for (const name of ['escapeHtml', 'replyInferenceLabel', 'supportedSpecialistRoles', 'specialistHelpLabel', 'appendMessage']) {
+for (const name of ['escapeHtml', 'replyInferenceLabel', 'supportedSpecialistRoles', 'specialistHelpLabel', 'conversationTestResult', 'appendMessage']) {
   const fn = code.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'));
   assert(fn, name);
   vm.runInContext(fn[0], context);
@@ -112,7 +112,10 @@ const html = rendered.pop().innerHTML;
 assert(!html.includes('<img'));
 assert(html.includes('&lt;img'));
 '''
-        subprocess.run([shutil.which("node"), "-e", script], cwd=Path(__file__).resolve().parent, check=True, capture_output=True, text=True)
+        result = subprocess.run([shutil.which("node"), "-e", script],
+                                cwd=Path(__file__).resolve().parent,
+                                check=False, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, (result.stderr or result.stdout)[-1500:])
 
 
 if __name__ == "__main__":
