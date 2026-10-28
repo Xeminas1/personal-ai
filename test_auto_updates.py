@@ -120,7 +120,7 @@ class AutoUpdateTests(unittest.TestCase):
         check, _, restart = self.run_loop(check=Mock(return_value=MANIFEST), install=Mock(side_effect=install))
         self.assertEqual(self.stop.waits, [2, 2, 2])
         check.assert_called_once_with(CHANNEL)
-        restart.assert_called_once_with()
+        restart.assert_called_once_with(self.server, "9.9.9")
         self.assertTrue(self.server.update_restarting)
         self.assertFalse(self.server.update_lock.locked())
 
@@ -190,6 +190,8 @@ class AutoUpdateTests(unittest.TestCase):
                 install.assert_not_called()
                 self.assertEqual(check.call_count, 0 if phase == "startup" else 1)
                 self.assertFalse(self.server.update_lock.locked())
+                if phase == "pending":
+                    self.prepared.close.assert_called_once()
 
 
 class AutoUpdateHTTPTests(unittest.TestCase):
