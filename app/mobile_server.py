@@ -374,7 +374,8 @@ def _auto_update_loop(server) -> None:
                             update_lock.release()
 
             if stop_event.wait(2 if pending is not None else interval):
-                return
+                # Exit through the staged-update cleanup below on shutdown.
+                break
         except Exception as e:
             pending = None
             if prepared is not None:
