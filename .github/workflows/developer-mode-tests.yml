@@ -7,6 +7,7 @@ on:
       - "test_developer_projects.py"
       - "test_developer_guidance.py"
       - "test_identifier_guard_heldout.py"
+      - "test_offline_independence.py"
       - "test_developer_multifile.py"
       - "test_developer_trace.py"
       - "test_visual_routing.py"
@@ -81,6 +82,8 @@ jobs:
           python test_developer_guidance.py
           python -m unittest -q test_xemai_self_source_routing
           python -m unittest -q test_identifier_guard_heldout
+      - name: Test offline-first local conversation and tools
+        run: python -m unittest -q test_offline_independence
       - name: Test multi-file read-only investigations
         run: python test_developer_multifile.py
       - name: Test read-only source tracing
