@@ -1,0 +1,26 @@
+name: XemAi updater and reply HTTP reliability regressions
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/reliability-regressions.yml"
+      - "app/mobile_server.py"
+      - "app/updater.py"
+      - "test_auto_updates.py"
+      - "test_reply_http.py"
+      - "test_chat_delete.py"
+  workflow_dispatch:
+
+jobs:
+  reliability-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run previously untracked updater and reply HTTP tests
+        run: python -m unittest -v test_auto_updates test_reply_http
