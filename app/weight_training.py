@@ -424,6 +424,8 @@ def command(data_dir: Path, db, chat_id: int, text: str, *, executor, ollama_bas
             if result.get("ok"):
                 return f"Switched to {result['model']}. Type 'weights rollback' any time to go back."
         return result.get("message") or result.get("error") or "Done."
+    except WorkerOutdated as exc:
+        return str(exc)
     except Exception as exc:  # noqa: BLE001 - surface a short reason, never a traceback
         return f"Weight training is unavailable right now: {str(exc)[:200]}"
 
@@ -447,6 +449,10 @@ class LocalExecutor:
         return set_active(self.data_dir, run)
 
 
+class WorkerOutdated(RuntimeError):
+    """The paired PC is still running a worker without weight training."""
+
+
 class WorkerExecutor:
     """Same operations on the paired PC worker over its authenticated link."""
 
@@ -455,18 +461,35 @@ class WorkerExecutor:
     def __init__(self, worker_client):
         self.client = worker_client
 
+    def _call(self, path: str, payload: dict | None = None, timeout: int = 30) -> dict:
+        try:
+            return self.client._request(path, payload=payload, timeout=timeout)
+        except Exception as exc:
+            if "Unknown worker endpoint" not in str(exc):
+                raise
+            try:
+                version = str(self.client.worker_health().get("version") or "an older version")
+            except Exception:
+                version = "an older version"
+            version = f"v{version}" if version[:1].isdigit() else version
+            raise WorkerOutdated(
+                f"Your PC's XemAi worker is still running {version}, which doesn't have weight training yet. "
+                "From v0.9.62 the PC worker restarts itself after every update. This one time, restart the PC "
+                "(or sign out and back in) so it loads the new version, then try again."
+            ) from exc
+
     def status(self) -> dict:
-        return self.client._request("/api/weights/status", timeout=15)
+        return self._call("/api/weights/status", timeout=15)
 
     def setup(self) -> dict:
-        return self.client._request("/api/weights/setup", payload={}, timeout=30)
+        return self._call("/api/weights/setup", payload={}, timeout=30)
 
     def train(self, examples: list[dict], base: str) -> dict:
         # Stay under the worker's request limit; drop the lowest-priority (last) examples.
         examples = list(examples)
         while examples and len(json.dumps({"examples": examples}).encode()) > MAX_UPLOAD_BYTES:
             examples = examples[: max(0, len(examples) - max(1, len(examples) // 10))]
-        return self.client._request("/api/weights/train", payload={"examples": examples, "base": base}, timeout=60)
+        return self._call("/api/weights/train", payload={"examples": examples, "base": base}, timeout=60)
 
     def use(self, run: str | None) -> dict:
-        return self.client._request("/api/weights/use", payload={"run": run}, timeout=30)
+        return self._call("/api/weights/use", payload={"run": run}, timeout=30)

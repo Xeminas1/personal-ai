@@ -23,17 +23,25 @@ def _listening(port: int) -> bool:
         return False
 
 
+_ENTRYPOINTS = {
+    # launcher name: (health path, identifying field, value, status file)
+    "XemAiServer.pyw": ("/api/health", "server", "XemAiMobile", "server_restart_status.json"),
+    "XemAiWorker.pyw": ("/api/version", "role", "xemai_hybrid_worker", "worker_restart_status.json"),
+}
+_KIND = {"name": "XemAiServer.pyw"}
+
+
 def _health(port: int, version: str) -> bool:
+    path, field, value, _ = _ENTRYPOINTS[_KIND["name"]]
     try:
-        with urllib.request.urlopen(
-            f"http://127.0.0.1:{port}/api/health", timeout=2
-        ) as resp:
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open(f"http://127.0.0.1:{port}{path}", timeout=2) as resp:
             if resp.status != 200:
                 return False
             result = json.loads(resp.read(3000))
             return (
                 result.get("ok") is True
-                and result.get("server") == "XemAiMobile"
+                and result.get(field) == value
                 and result.get("version") == version
             )
     except (OSError, ValueError, TypeError):
@@ -41,7 +49,7 @@ def _health(port: int, version: str) -> bool:
 
 
 def _record(data_dir: Path, expected: str, state: str, attempts: int) -> None:
-    path = data_dir / "server_restart_status.json"
+    path = data_dir / _ENTRYPOINTS[_KIND["name"]][3]
     payload = {
         "target_version": expected, "state": state,
         "attempts": attempts, "recorded_at": time.time(),
@@ -65,11 +73,13 @@ def relaunch(
     base = Path(root).resolve()
     script = Path(entrypoint).resolve()
     data_dir = Path(data).resolve()
+    if script.name in _ENTRYPOINTS:
+        _KIND["name"] = script.name
     if (
         port < 1 or port > 65535
         or not script.is_file()
         or script.parent != base
-        or script.name != "XemAiServer.pyw"
+        or script.name not in _ENTRYPOINTS
     ):
         _record(data_dir, expected_version, "invalid_launch", 0)
         return False

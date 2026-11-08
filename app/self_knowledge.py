@@ -82,6 +82,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.59", "Reliability patch: stricter grounding so self-source answers reject more invented file, class and function names; the updater now cleans up a staged download when polling stops mid-update; adds offline local-chat smoke tests. No new permissions, tools, model-weight training or data changes."),
     ("0.9.60", "Makes the reply chime clearly audible on phones and in Brave (it was too quiet and too low-pitched for phone speakers) and plays one preview chime when reply sounds are switched on. No new permissions, tools, model-weight training or data changes."),
     ("0.9.61", "Adds owner-controlled weight training: 'teach: <better answer>' corrections plus 'weights setup', 'weights train', 'weights use rN' and 'weights rollback'. A 4-bit QLoRA adapter is trained on the PC and only offered if it beats the base model on held-out examples without general-skill drift. Base model never modified; nothing trains automatically."),
+    ("0.9.62", "The PC worker now loads updates by itself: it restarts onto newer files when idle (or downloads and verifies them if nothing else updates that PC), instead of running old code until a reboot. Clear message if the PC is behind. No new permissions or data changes."),
 ]
 
 

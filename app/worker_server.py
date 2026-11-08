@@ -23,6 +23,7 @@ from .secrets import (
     load_hybrid_pairing_state,
 )
 from .version import VERSION
+from .updater import is_newer_version
 from . import weight_training
 from .vision import VisionService, is_vision_model
 
@@ -590,6 +591,10 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if handle_support_read(self, BASE_DIR):
             return
+        if self.path == "/api/version":
+            # Version only (no Ollama, pairing or data); used to verify a restart.
+            self._json({"ok": True, "role": "xemai_hybrid_worker", "version": VERSION})
+            return
         if self.path == "/api/pair/status":
             client = self.server.ollama_client
             try:
@@ -924,6 +929,102 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
                 )
 
 
+WORKER_UPDATE_CHECK_SECONDS = 30
+
+
+def _installed_version() -> str:
+    """The version of the files on disk (may be newer than this running process)."""
+    try:
+        text = (BASE_DIR / "app" / "version.py").read_text(encoding="utf-8")
+    except OSError:
+        return VERSION
+    match = re.search(r'VERSION\s*=\s*"(\d+(?:\.\d+)*)"', text)
+    return match.group(1) if match else VERSION
+
+
+def _port_listening(port: int) -> bool:
+    import socket
+
+    try:
+        with socket.create_connection(("127.0.0.1", int(port)), timeout=0.5):
+            return True
+    except OSError:
+        return False
+
+
+def _schedule_worker_restart(server, expected_version: str) -> None:
+    """Hand over to a fresh worker process running the updated files.
+
+    The caller holds generation_lock, so no reply is cut off. A detached
+    supervisor waits for the port to free, starts XemAiWorker.pyw and checks
+    the new process reports the expected version.
+    """
+    import sys
+
+    exe = Path(sys.executable)
+    if os.name == "nt" and exe.with_name("pythonw.exe").exists():
+        exe = exe.with_name("pythonw.exe")
+    kwargs = {"cwd": str(BASE_DIR), "stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL,
+              "stderr": subprocess.DEVNULL, "close_fds": True}
+    if os.name == "nt":
+        kwargs["creationflags"] = (getattr(subprocess, "DETACHED_PROCESS", 0x8)
+                                   | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x200)
+                                   | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000))
+    else:
+        kwargs["start_new_session"] = True
+    subprocess.Popen([str(exe), "-m", "app.restart_supervisor", str(exe), str(BASE_DIR / "XemAiWorker.pyw"),
+                      str(BASE_DIR), str(DATA_DIR), expected_version, str(server.server_address[1])], **kwargs)
+    threading.Thread(target=server.shutdown, daemon=True, name="XemAiWorkerUpdateShutdown").start()
+
+
+def _worker_update_step(server, state: dict) -> str:
+    """One check. Returns what happened (for logs/tests)."""
+    from .updater import check_for_update, install_prepared_update, prepare_file_update
+
+    config = load_config()
+    on_disk = _installed_version()
+    if not is_newer_version(on_disk, VERSION):
+        url = str(config.get("update_manifest_url") or "").strip()
+        enabled = bool(config.get("auto_install_updates", True)) and bool(url)
+        # When XemAi's own server runs on this PC it installs updates; the worker
+        # then only needs to restart onto the new files.
+        if not enabled or _port_listening(int(config.get("mobile_server_port", 8765))):
+            return "idle"
+        prepared = state.get("prepared")
+        if prepared is None:
+            manifest = check_for_update(url)
+            if not manifest or "files" not in manifest:
+                return "current"
+            prepared = state["prepared"] = prepare_file_update(
+                base_dir=BASE_DIR, manifest=manifest, logger=server.xemai_logger)
+        if not server.generation_lock.acquire(blocking=False):
+            return "busy"
+        try:
+            on_disk = install_prepared_update(base_dir=BASE_DIR, prepared=prepared, logger=server.xemai_logger)
+            state.pop("prepared", None)
+        except Exception:
+            state.pop("prepared", None)
+            server.generation_lock.release()
+            raise
+    elif not server.generation_lock.acquire(blocking=False):
+        return "busy"
+    # Lock is held from here; it is released only by process exit.
+    server.xemai_logger.info("Hybrid worker restarting onto updated files | from=%s to=%s", VERSION, on_disk)
+    _schedule_worker_restart(server, on_disk)
+    return "restarting"
+
+
+def _worker_update_loop(server) -> None:
+    state: dict = {}
+    stop = server.update_stop_event
+    while not stop.wait(WORKER_UPDATE_CHECK_SECONDS):
+        try:
+            if _worker_update_step(server, state) == "restarting":
+                return
+        except Exception as exc:  # never take the worker down over an update check
+            server.xemai_logger.info("Hybrid worker update check failed | error=%r", exc)
+
+
 class XemAiWorkerServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
@@ -961,6 +1062,9 @@ def run_worker_server() -> int:
     server.pairing_lock = threading.Lock()
     server.vision_service = VisionService(ollama, server.generation_lock, logger)
     server.teacher_install_started = False
+    server.update_stop_event = threading.Event()
+    threading.Thread(target=_worker_update_loop, args=(server,), daemon=True,
+                     name="XemAiWorkerSelfUpdate").start()
     try:
         _ensure_teacher_model_async(server)
     except Exception:
@@ -997,6 +1101,7 @@ def run_worker_server() -> int:
     except KeyboardInterrupt:
         pass
     finally:
+        server.update_stop_event.set()
         server.server_close()
         try:
             if state_path.exists():

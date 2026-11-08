@@ -1,6 +1,6 @@
 {
-  "version": "0.9.61",
-  "notes": "Adds owner-controlled weight training: 'teach: <better answer>' corrections, and 'weights setup/train/use rN/rollback' to train a 4-bit QLoRA adapter on the PC that is only offered if it beats the base model on held-out examples without general-skill drift. Base model never modified; one-command rollback; nothing trains automatically. Preserves chats, memory, credentials and hybrid pairing.",
+  "version": "0.9.62",
+  "notes": "The PC worker now restarts itself onto updated files when idle (downloading and verifying them itself if nothing else updates that PC), instead of running old code until a reboot; clear message if the PC is behind. No new permissions or data changes; preserves chats, memory, credentials and hybrid pairing.",
   "files": [
     {
       "path": ".github/workflows/developer-mode-tests.yml",
@@ -14,8 +14,8 @@
     },
     {
       "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.61/README.md",
-      "sha256": "6e74cb4869dcbab807ef92857779d4f052a25299378e867fc5d1066f7b86f140"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.62/README.md",
+      "sha256": "e487df9cd5c81726a0cd67453f3ca69f745e5154beec5d4e2395307a4e7fc810"
     },
     {
       "path": "XemAi.pyw",
@@ -219,8 +219,8 @@
     },
     {
       "path": "app/restart_supervisor.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.28/app/restart_supervisor.py",
-      "sha256": "66a8ca897aff76ed81981fb26ca9e2a9ea1d17734ce0b1f993727dc3f7d4e69e"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.62/app/restart_supervisor.py",
+      "sha256": "c6811b6de3c885b7de16516c8ad17efc5ecdb37b6bac0839efcebc538e968ae9"
     },
     {
       "path": "app/secrets.py",
@@ -229,8 +229,8 @@
     },
     {
       "path": "app/self_knowledge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.61/app/self_knowledge.py",
-      "sha256": "2e0e949a53caee6ed24bd19056df1615886603a819d6208a32d1ab543c6f4aa8"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.62/app/self_knowledge.py",
+      "sha256": "633f93a7023bf3567ad19057b4cfb22742deacf2b6f50a0547aaa3a8f5cca421"
     },
     {
       "path": "app/skyrim.py",
@@ -264,8 +264,8 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.61/app/version.py",
-      "sha256": "bcacd5bdaa3cb6ebf28d6e1290ea9cf14e30ca007386e5b1f90c9ac527356a5b"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.62/app/version.py",
+      "sha256": "c3961d7e3ab21d22b53bce185c5b5eca1e74fde35c3a52b2b7463e9fbd8f72e5"
     },
     {
       "path": "app/vision.py",
@@ -289,8 +289,8 @@
     },
     {
       "path": "app/worker_server.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.61/app/worker_server.py",
-      "sha256": "de045ac63faac51a1b873c2720fb8d97afe977062d86ffd3f5cbab90938710ca"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.62/app/worker_server.py",
+      "sha256": "9b31cb3fe565362e21e97eef23f5878e7bd21e54a1ae2e0e434a65afb418c784"
     },
     {
       "path": "bridge_setup.bat",
@@ -794,8 +794,8 @@
     },
     {
       "path": "verify_release_manifest.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.61/verify_release_manifest.py",
-      "sha256": "d70c4d3a0ad6e98b20ab7a9042cb23841ab9c76449e33b22770d7b00f3782596"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.62/verify_release_manifest.py",
+      "sha256": "66201885ea9c325cae1c4dda8fabc4127bcdda129988af3771202e9849051371"
     },
     {
       "path": "app/project_handoff.py",
@@ -809,8 +809,8 @@
     },
     {
       "path": "docs/PROJECT_STATE.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.61/docs/PROJECT_STATE.md",
-      "sha256": "646b65a72bbe2a1ac3e91aaa4f3588aac7cf320ea60ccb9dd30a58bce5882175"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.62/docs/PROJECT_STATE.md",
+      "sha256": "016f97b110b1f1559e35ca89de0ba8ea0624b70ac9db901ace8158f58faaf910"
     },
     {
       "path": "app/github_bridge_weight.py",
@@ -864,8 +864,8 @@
     },
     {
       "path": "app/weight_training.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.61/app/weight_training.py",
-      "sha256": "3244d794c0522e1334a8fd8f246903608b67e5e85154497745e03fc77e5725ef"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.62/app/weight_training.py",
+      "sha256": "0b53e38f283d01964b9ed239584b12844625f78a547f286d7a7d70403aae44b8"
     },
     {
       "path": "training/__init__.py",
@@ -896,6 +896,11 @@
       "path": "test_weight_tuning_pipeline.py",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.61/test_weight_tuning_pipeline.py",
       "sha256": "b3cc05a6844acb24e44d9af9b1e13ddef2cc4b8e325b3259e088ac22f8b1ce4d"
+    },
+    {
+      "path": "test_worker_self_update.py",
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.62/test_worker_self_update.py",
+      "sha256": "0a18a1160638a53c1a3b5be1f6b5b4edaa5e44b7d2e999256befc185534aed9b"
     }
   ]
 }
