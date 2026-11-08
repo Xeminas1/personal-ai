@@ -8,6 +8,8 @@ on:
       - "test_auto_updates.py"
       - "test_reply_http.py"
       - "test_chat_delete.py"
+      - "mobile/**"
+      - "test_notifications_browser.py"
   workflow_dispatch:
 
 jobs:
@@ -24,3 +26,17 @@ jobs:
           python-version: "3.12"
       - name: Run previously untracked updater and reply HTTP tests
         run: python -m unittest -v test_auto_updates test_reply_http
+
+  reply-sound-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Playwright Chromium
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Reply sound plays at an audible level in real Chromium WebAudio
+        run: python test_notifications_browser.py

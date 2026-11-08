@@ -251,9 +251,12 @@ class ReplyNotificationBrowserTests(unittest.TestCase):
         self.assertEqual(self.count_tones(), 0)
         toggle.click()
         self.page.wait_for_function("audioProbe.contexts[0]?.state === 'running'")
+        # Switching sounds on plays one preview chime so the owner hears it works.
+        self.page.wait_for_function("audioProbe.oscillators.length === 2")
+        self.page.wait_for_timeout(450)  # Let the preview finish before the next reply.
         fixture.messages[10].append(fixture.message(103, "Audible new reply"))
         self.sync_app()
-        self.assertEqual(self.count_tones(), 2)
+        self.assertEqual(self.count_tones(), 4)
 
     def test_only_new_assistant_arrivals_sound_once_and_old_history_never_repeats(self):
         self.unlock()
@@ -275,7 +278,7 @@ class ReplyNotificationBrowserTests(unittest.TestCase):
         self.assertTrue(self.observe([{"id": "6", "role": "assistant", "content": "An error reply also arrived"}]))
         self.assertEqual(self.count_tones(), 4)
 
-    def test_real_audio_graph_is_quiet_short_fades_and_returns_to_silence(self):
+    def test_real_audio_graph_is_audible_short_fades_and_returns_to_silence(self):
         self.unlock()
         self.observe([], baseline=True)
         self.observe([{"id": 1, "role": "assistant"}])
@@ -293,17 +296,19 @@ class ReplyNotificationBrowserTests(unittest.TestCase):
         self.assertEqual(graph["state"], "running")
         self.assertEqual(graph["errors"], [])
         self.assertEqual(len(graph["tones"]), 2)
-        self.assertLess(max(row["stop"] for row in graph["tones"]) - min(row["start"] for row in graph["tones"]), 0.35)
+        self.assertLess(max(row["stop"] for row in graph["tones"]) - min(row["start"] for row in graph["tones"]), 0.4)
         for tone, gain in zip(graph["tones"], graph["gains"]):
             self.assertEqual(tone["type"], "sine")
-            self.assertTrue(250 <= tone["frequency"] <= 1000)
-            self.assertTrue(0.05 <= tone["duration"] <= 0.2)
+            # Phone speakers roll off below ~600 Hz; keep the chime in their range.
+            self.assertTrue(600 <= tone["frequency"] <= 1600)
+            self.assertTrue(0.1 <= tone["duration"] <= 0.25)
             self.assertTrue(tone["connected"] and gain["destination"])
             self.assertEqual(gain["envelope"][0]["value"], 0)
             self.assertEqual(gain["envelope"][-1]["value"], 0)
-            self.assertTrue(any(0 < entry["value"] <= 0.05 for entry in gain["envelope"]))
-            self.assertGreater(gain["peak"], 0.001)  # Real audio samples, not just mocked method calls.
-            self.assertLessEqual(gain["peak"], 0.05)
+            # Regression: a 0.035 peak was effectively inaudible on phones/Brave.
+            self.assertTrue(any(0.15 <= entry["value"] <= 0.4 for entry in gain["envelope"]))
+            self.assertGreater(gain["peak"], 0.1)  # Real, audible samples, not just mocked method calls.
+            self.assertLessEqual(gain["peak"], 0.4)
             self.assertLess(gain["latePeak"], 0.00001)
 
     def test_autoplay_blocked_attempt_retries_on_real_gesture_and_coalesces_pending_arrivals(self):

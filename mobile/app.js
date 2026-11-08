@@ -1,4 +1,4 @@
-const FRONTEND_VERSION = "0.9.53";
+const FRONTEND_VERSION = "0.9.60";
 const REPLY_ERROR_PREFIX = "⚠️ XemAi couldn\'t complete that reply.";
 
 const state = {
@@ -1182,7 +1182,7 @@ function showChatOptions() {
       button.addEventListener("click", () => {
         const enabled = !window.XemAiNotifications.isEnabled();
         window.XemAiNotifications.setEnabled(enabled);
-        if (enabled) window.XemAiNotifications.unlock();
+        if (enabled) (window.XemAiNotifications.preview || window.XemAiNotifications.unlock)();
         updateSoundButton();
       });
       actions.appendChild(button);

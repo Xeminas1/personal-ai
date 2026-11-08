@@ -4,6 +4,9 @@
 
   const PREFERENCE_KEY = "xemai.replySound";
   const MAX_CHATS = 128;
+  const TONES = [[880, 0], [1174.66, 0.13]];
+  const TONE_LENGTH = 0.16;
+  const PEAK = 0.25;
   const latestIds = new Map();
   const playing = new Set();
   let enabled = true;
@@ -32,7 +35,9 @@
     if (playing.size) return;
     const start = context.currentTime + 0.005;
     try {
-      for (const [frequency, offset] of [[523.25, 0], [659.25, 0.10]]) {
+      // Small phone speakers barely reproduce tones below ~600 Hz, and the old
+      // 0.035 peak was close to inaudible, so use A5/D6 at a clear but gentle level.
+      for (const [frequency, offset] of TONES) {
         const oscillator = context.createOscillator();
         const gain = context.createGain();
         const nodes = { oscillator, gain };
@@ -40,8 +45,8 @@
         oscillator.type = "sine";
         oscillator.frequency.setValueAtTime(frequency, start + offset);
         gain.gain.setValueAtTime(0, start + offset);
-        gain.gain.linearRampToValueAtTime(0.035, start + offset + 0.012);
-        gain.gain.linearRampToValueAtTime(0, start + offset + 0.12);
+        gain.gain.linearRampToValueAtTime(PEAK, start + offset + 0.015);
+        gain.gain.linearRampToValueAtTime(0, start + offset + TONE_LENGTH - 0.005);
         oscillator.connect(gain);
         gain.connect(context.destination);
         oscillator.onended = () => {
@@ -49,7 +54,7 @@
           try { oscillator.disconnect(); gain.disconnect(); } catch { /* Already disconnected. */ }
         };
         oscillator.start(start + offset);
-        oscillator.stop(start + offset + 0.125);
+        oscillator.stop(start + offset + TONE_LENGTH);
       }
     } catch {
       stopSounds();
@@ -92,6 +97,15 @@
     } catch {
       return Promise.resolve(false);
     }
+  }
+
+  // Play one chime right now (used when the owner switches sounds on, which is
+  // itself a user gesture, so the browser allows audio and they hear it works).
+  function preview() {
+    if (!enabled) return Promise.resolve(false);
+    pending = true;
+    pendingChat = null;
+    return unlock();
   }
 
   function setEnabled(value) {
@@ -149,7 +163,7 @@
   });
 
   window.XemAiNotifications = Object.freeze({
-    unlock, setEnabled, isEnabled: () => enabled, observe,
+    unlock, preview, setEnabled, isEnabled: () => enabled, observe,
     forgetChat,
   });
 })();
