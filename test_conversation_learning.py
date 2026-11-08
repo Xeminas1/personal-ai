@@ -86,12 +86,17 @@ class ConversationLearningTests(unittest.TestCase):
         self.assertIn("not active", self.cmd(lesson))
         self.assertEqual(lesson_context(self.data, "Did you learn anything?"), "")
         self.assertIn("owner-approved", self.cmd("conversation learning approve 1"))
-        context = lesson_context(self.data, "How was your catch-up?")
+        context = lesson_context(self.data, "How was your informal interaction with ChatGPT?")
         self.assertIn("assess the interaction", context)
+        self.assertIn("NOT part of this conversation", context)
+        # Unrelated or contentless messages never receive lesson text.
+        for unrelated in ("How was your catch-up?", "what do you think of them?",
+                          "lets explore its details", "Write me a shopping list"):
+            self.assertEqual(lesson_context(self.data, unrelated), "", unrelated)
         self.assertNotIn("I can connect to GitHub", context)
         self.assertIn("conversation", self.cmd("conversation learning approved"))
         self.assertIn("revoked", self.cmd("conversation learning revoke 1"))
-        self.assertEqual(lesson_context(self.data, "How was your catch-up?"), "")
+        self.assertEqual(lesson_context(self.data, "How was your informal interaction with ChatGPT?"), "")
 
     def test_block_sensitive_and_unsafe_content(self):
         self.cmd("conversation learning on")

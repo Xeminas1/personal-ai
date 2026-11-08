@@ -33,7 +33,7 @@ _UPDATE_REFLECTION = re.compile(
     r"\b(?:what\s+do\s+you\s+(?:make|think)\s+of|"
     r"how\s+do\s+you\s+(?:view|assess|evaluate|rate)|"
     r"review|assess|summari[sz]e|describe)\b.{0,85}"
-    r"\b(?:your|xemai(?:'s)?)\s+(?:current\s+|past\s+|previous\s+|recent\s+)?"
+    r"\b(?:your|xemai(?:'s)?)\s+(?:(?:current|past|previous|recent|new|newest|latest|last|most\s+recent)\s+)?"
     r"(?:updates?|releases?|development|progress|capabilities)\b"
     r"|\b(?:your|xemai(?:'s)?)\s+(?:update|release)\s+history\b",
     re.I,
@@ -75,6 +75,16 @@ _SELF_RELEASE_REVERSE = re.compile(
     r"(?:updates?|releases?|changelogs?|versions?)\s+"
     r"(?:to|of|for|in)\s+(?:xemai|this (?:app|assistant|ai))\b", re.I,
 )
+# "Have you just been updated?", "what have you been updated with?",
+# "are you able to see what you've just had updated?", "what's new with you?"
+_SELF_UPDATED = re.compile(
+    # Passive only: XemAi *being* updated, not XemAi updating something.
+    r"\b(?:you(?:'ve|\s+have)?|have\s+you|did\s+you)\s+(?:(?:just|recently|now)\s+)?"
+    r"(?:been|got|get|had|being)\s+(?:(?:just|recently)\s+)?(?:been\s+)?updated\b"
+    r"|\b(?:were\s+you|you\s+were)\s+(?:(?:just|recently)\s+)?updated\b"
+    r"|\bwhat(?:'s|\s+is|\s+has)\s+(?:new|changed)\s+(?:with|in|about|for)\s+(?:you|xemai)\b",
+    re.I,
+)
 _LATEST = re.compile(r"\b(?:latest|last|newest|most\s+recent|current)\b", re.I)
 
 
@@ -90,6 +100,8 @@ def local_question_type(question: str) -> str:
     if _UPDATE_REFLECTION.search(q):
         return "update_reflection"
     if (_SELF_RELEASE.search(q) or _SELF_RELEASE_REVERSE.search(q)) and _LATEST.search(q):
+        return "latest_release"
+    if _SELF_UPDATED.search(q):
         return "latest_release"
     if _AGENT_QUERY.search(q):
         return "agent_inventory"

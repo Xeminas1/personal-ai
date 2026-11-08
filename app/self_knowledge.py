@@ -83,6 +83,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.60", "Makes the reply chime clearly audible on phones and in Brave (it was too quiet and too low-pitched for phone speakers) and plays one preview chime when reply sounds are switched on. No new permissions, tools, model-weight training or data changes."),
     ("0.9.61", "Adds owner-controlled weight training: 'teach: <better answer>' corrections plus 'weights setup', 'weights train', 'weights use rN' and 'weights rollback'. A 4-bit QLoRA adapter is trained on the PC and only offered if it beats the base model on held-out examples without general-skill drift. Base model never modified; nothing trains automatically."),
     ("0.9.62", "The PC worker now loads updates by itself: it restarts onto newer files when idle (or downloads and verifies them if nothing else updates that PC), instead of running old code until a reboot. Clear message if the PC is behind. No new permissions or data changes."),
+    ("0.9.63", "Stops unrelated approved lesson examples being added to every reply, which made me answer scenarios that were never in the chat. Questions like 'have you been updated?' and 'what do you think of them?' now get my real release notes. No new permissions or data changes."),
 ]
 
 
@@ -205,6 +206,19 @@ def is_self_knowledge_query(text: str) -> bool:
     ))
 
 
+_CORRECTION = re.compile(
+    r"\b(?:sure|certain|actually|wrong|mistaken|incorrect|"
+    r"pretty sure|i thought|i think|you (?:can|could|do|have)|"
+    r"check again|that's not|that isn't|why not)\b", re.I,
+)
+
+
+def is_correction(text: str) -> bool:
+    """A short pushback on the previous answer (as opposed to a plain follow-up)."""
+    q = " ".join(str(text or "").lower().replace("’", "'").split())
+    return len(q) <= 115 and bool(_CORRECTION.search(q))
+
+
 def followup_self_topic(text: str, history: list[dict]) -> str:
     """Resolve short corrections from the *current chat* only.
 
@@ -213,11 +227,21 @@ def followup_self_topic(text: str, history: list[dict]) -> str:
     """
     from .capability_inventory import local_question_type
     q = " ".join(str(text or "").lower().replace("’", "'").split()).strip(" .!?")
-    if len(q) > 115 or not re.search(
-        r"\b(?:sure|certain|actually|wrong|mistaken|incorrect|"
-        r"pretty sure|i thought|i think|you (?:can|could|do|have)|"
-        r"check again|that's not|that isn't|why not)\b", q, re.I,
+    # "What do you think of them?" right after asking about its updates is a
+    # request to assess those updates, not a new unrelated topic.
+    if len(q) <= 80 and re.fullmatch(
+        r"(?:so\s+|and\s+|ok(?:ay)?\s+|well\s+)?(?:what\s+do\s+you\s+(?:think|make)\s+of\s+(?:them|it|those|these|that|they)"
+        r"|(?:any\s+)?thoughts(?:\s+on\s+(?:them|it|those|these))?|are\s+(?:they|those|these)\s+(?:good|any\s+good|useful|helpful)"
+        r"|(?:do\s+you\s+)?like\s+(?:them|it)|how\s+do\s+you\s+feel\s+about\s+(?:them|it|those|these))",
+        q,
     ):
+        rows = [r for r in history if r.get("role") in {"user", "assistant"}]
+        if rows and rows[-1].get("role") == "user":
+            rows.pop()
+        earlier = [r for r in rows[-4:] if r.get("role") == "user"]
+        if earlier and local_question_type(str(earlier[-1].get("content") or "")) in {"latest_release", "update_reflection"}:
+            return "update_reflection"
+    if len(q) > 115 or not _CORRECTION.search(q):
         return ""
     rows = [r for r in history if r.get("role") in {"user", "assistant"}]
     if rows and rows[-1].get("role") == "user":

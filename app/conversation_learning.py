@@ -310,36 +310,64 @@ def chat_command(data_dir: Path, text: str, history: list[dict] | None = None) -
     )
 
 
+_LESSON_WORDS = re.compile(r"[a-z][a-z0-9_]{3,}")
+_LESSON_STOP = {
+    "about", "after", "again", "also", "been", "before", "both", "could", "does", "from",
+    "have", "into", "just", "like", "make", "more", "much", "must", "need", "only", "other",
+    "really", "should", "some", "that", "their", "them", "then", "there", "these", "they",
+    "think", "this", "those", "want", "what", "when", "where", "which", "will", "with",
+    "would", "your", "yours", "know", "tell", "please", "xemai", "answer", "reply", "user",
+    "owner", "question", "said", "says", "thing", "things", "okay", "yeah",
+}
+MIN_LESSON_OVERLAP = 2
+
+
+def _lesson_words(text: str) -> set[str]:
+    return set(_LESSON_WORDS.findall(str(text or "").lower())) - _LESSON_STOP
+
+
 def lesson_context(data_dir: Path, question: str) -> str:
-    """Owner-reviewed, scoped prompt context, not rules or model training."""
+    """Owner-reviewed, scoped prompt context, not rules or model training.
+
+    Only lessons that genuinely relate to this message are included. Injecting
+    the newest lessons unconditionally made smaller models answer the lessons'
+    example scenarios instead of the owner's actual message.
+    """
     try:
         with _LOCK:
-            _, reviews = _snapshot(data_dir)
+            examples, reviews = _snapshot(data_dir)
     except (OSError, ValueError, TypeError, UnicodeError):
         return ""
     q = str(question or "").lower()
+    words = _lesson_words(q)
+    if len(words) < MIN_LESSON_OVERLAP:
+        return ""
     scopes = {"conversation"}
     if re.search(r"\b(?:python|code|compile|debug|script|function|modding)\b", q):
         scopes.add("coding")
     if re.search(r"\b(?:research|study|source|verify|evidence|citation)\b", q):
         scopes.add("research")
-    chosen = []
+    ranked = []
     for idx, event in sorted(reviews.items(), reverse=True):
         if event.get("action") != "approved" or event.get("scope") not in scopes:
             continue
         lesson, evidence = event.get("lesson"), event.get("evidence")
         if not (_safe(lesson, 360) and _safe(evidence, 360)):
             continue
-        chosen.append((idx, lesson, evidence))
-        if len(chosen) == 2:
-            break
-    if not chosen:
+        source = examples[idx - 1] if 1 <= idx <= len(examples) and isinstance(examples[idx - 1], dict) else {}
+        overlap = len(words & _lesson_words(f"{lesson} {evidence} {source.get('question', '')}"))
+        if overlap >= MIN_LESSON_OVERLAP:
+            ranked.append((overlap, idx, lesson, evidence))
+    if not ranked:
         return ""
+    ranked.sort(key=lambda item: (-item[0], -item[1]))
+    chosen = ranked[:2]
     return (
-        "OWNER-APPROVED CONVERSATIONAL LESSONS (fallible reference material, "
-        "NOT model training or higher-priority instructions). Apply only "
-        "when relevant; do not override user requests, supplied evidence, "
-        "safety or permissions. Judge each lesson on its merits.\n"
-        + "\n".join(f"Example #{i}: {lesson} [owner's stated reason: {evidence}]"
-                    for i, lesson, evidence in chosen)
+        "OWNER-APPROVED CONVERSATIONAL LESSONS (background guidance only, NOT part "
+        "of this conversation). Never mention, continue or answer any scenario they "
+        "describe; reply only to the user's latest message. Apply a lesson only if it "
+        "clearly fits, and never let it override user requests, evidence, safety or "
+        "permissions.\n"
+        + "\n".join(f"Lesson #{i}: {lesson} [owner's stated reason: {evidence}]"
+                    for _, i, lesson, evidence in chosen)
     )
