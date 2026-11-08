@@ -380,12 +380,12 @@
     {
       "path": "mobile/app.js",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.60/mobile/app.js",
-      "sha256": "d93cea409d6fd835e445262110c2f0125f0dd740366cd04e61bc5358580ebd3b"
+      "sha256": "c46c567ffd396d2b5c65468c0963deb6f8464f20a95d9b16daf3e2aa6bf559ed"
     },
     {
       "path": "mobile/index.html",
       "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.60/mobile/index.html",
-      "sha256": "6f4a24dad7ace87598dd8c79bb8c92f4b5a1df9ac79857503664c188f42bd6f6"
+      "sha256": "0dfe61207ba410c5edc73b689ca999702d153fc7b37b5b2edb1ce374bdc50b28"
     },
     {
       "path": "mobile/manifest.webmanifest",
@@ -419,8 +419,8 @@
     },
     {
       "path": "mobile/sw.js",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.53/mobile/sw.js",
-      "sha256": "e289915200235f3477a9a743c4e95d8265e3034561f4130b8f9d949a3b90c4e1"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.60/mobile/sw.js",
+      "sha256": "8a1302efa646c53b90d31aeb57f38c6702f0c53f7f52cdb48baebd2c013e8d60"
     },
     {
       "path": "mobile_server.bat",
