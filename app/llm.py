@@ -201,6 +201,30 @@ class OllamaClient:
         installed_qwen = self._qwen_models(installed)
         running_qwen = self._qwen_models(running)
 
+        # An owner-tuned model is used only after an explicit 'weights use'; it
+        # must never be picked up just because it is the newest Qwen in Ollama.
+        from .config import DATA_DIR
+        from .weight_training import active_tuned_model, is_tuned_model
+
+        pinned = active_tuned_model(DATA_DIR)
+        pinned_item = next(
+            (item for item in installed_qwen
+             if pinned and self._model_name(item) in {pinned, pinned + ":latest"}),
+            None,
+        )
+        if pinned_item is not None:
+            self.model = self._model_name(pinned_item)
+            info = {
+                "model": self.model,
+                "source": "owner_tuned",
+                "installed_qwen": [self._model_name(i) for i in installed_qwen if self._model_name(i)],
+                "running_qwen": [self._model_name(i) for i in running_qwen if self._model_name(i)],
+            }
+            self.logger.info("Ollama runtime model discovery | model=%s source=owner_tuned", self.model)
+            return info
+        installed_qwen = [i for i in installed_qwen if not is_tuned_model(self._model_name(i))]
+        running_qwen = [i for i in running_qwen if not is_tuned_model(self._model_name(i))]
+
         running_selected = (
             max(
                 running_qwen,

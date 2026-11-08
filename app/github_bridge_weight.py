@@ -300,3 +300,23 @@ def command(data_dir: Path, query: str) -> str:
             )
     except (BridgeWeightRejected, OSError, UnicodeError, ValueError, TypeError):
         return "Bridge weight operation stopped safely. No model training or upload occurred."
+
+
+def approved_examples(data_dir: Path) -> list[dict]:
+    """Owner-approved corrections as training rows, for an owner-started 'weights train'.
+
+    Read-only; duplicates keep the first approval instead of failing the whole set.
+    """
+    with _LOCK:
+        archive, _ = _snapshot(data_dir)
+        rows = _approved(archive, _events(data_dir))
+    seen, result = set(), []
+    for _, source, review in rows:
+        key = _canonical(source["input_excerpt"])
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append({"source": "bridge", "messages": [
+            {"role": "user", "content": source["input_excerpt"].strip()},
+            {"role": "assistant", "content": review["target"].strip()}]})
+    return result

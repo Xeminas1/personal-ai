@@ -1,0 +1,35 @@
+name: XemAi weight training (real CPU training on a tiny Qwen3.5)
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/weight-training.yml"
+      - "app/weight_training.py"
+      - "app/worker_server.py"
+      - "app/llm.py"
+      - "app/gui_backend.py"
+      - "app/github_bridge_weight.py"
+      - "training/**"
+      - "test_weight_training.py"
+      - "test_weight_tuning_pipeline.py"
+  workflow_dispatch:
+
+jobs:
+  weight-training:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: App-side commands, pinning and worker endpoints (no ML packages)
+        run: python -m unittest -v test_weight_training
+      - name: Install CPU PyTorch and training libraries
+        run: |
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install "transformers>=5.0" "peft>=0.15" accelerate safetensors tokenizers
+      - name: Real LoRA training, held-out gate and Ollama export path
+        run: python -m unittest -v test_weight_tuning_pipeline

@@ -23,6 +23,7 @@ from .secrets import (
     load_hybrid_pairing_state,
 )
 from .version import VERSION
+from . import weight_training
 from .vision import VisionService, is_vision_model
 
 MAX_BODY = 8_000_000
@@ -63,12 +64,29 @@ def _qwen_only(items) -> list[dict]:
     ]
 
 
-def _recommended_model(client: OllamaClient) -> tuple[str, list[str], list[str]]:
+def _untuned_everyday_model(client: OllamaClient) -> str:
+    """The base model training should improve (never a previous tuned copy)."""
+    model, _, _ = _recommended_model(client, allow_tuned=False)
+    return model
+
+
+def _recommended_model(client: OllamaClient, *, allow_tuned: bool = True) -> tuple[str, list[str], list[str]]:
     installed = _qwen_only(client.installed_models())
     try:
         running = _qwen_only(client.running_models())
     except Exception:
         running = []
+    pinned = weight_training.active_tuned_model(DATA_DIR) if allow_tuned else None
+    pinned_item = next((item for item in installed if pinned and _model_name(item) in {pinned, pinned + ":latest"}), None)
+    if pinned_item is not None:
+        return (
+            _model_name(pinned_item),
+            [_model_name(item) for item in installed],
+            [_model_name(item) for item in running],
+        )
+    # Tuned copies are only used when the owner pinned one with 'weights use'.
+    installed = [item for item in installed if not weight_training.is_tuned_model(_model_name(item))]
+    running = [item for item in running if not weight_training.is_tuned_model(_model_name(item))]
 
     # Prefer the explicitly selected Qwen3.5 9B Q8 once Ollama has it.
     # With no 9B installed, retain the existing configured/running 8B model.
@@ -603,7 +621,19 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
                     self._json({"ok": True, **service.status()})
                 return
 
+            if self.path == "/api/weights/status":
+                self._json(weight_training.local_status(DATA_DIR))
+                return
+
             if self.path == "/api/health":
+                job = weight_training.busy(DATA_DIR)
+                if job:
+                    # The GPU is in use; the host answers on its own model meanwhile.
+                    self._error(
+                        f"This PC is busy with weight {job}; using the always-on host for now.",
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                    )
+                    return
                 try:
                     # Inventory retrieval already checks Ollama connectivity;
                     # avoid an extra /api/tags request before discovering it.
@@ -690,6 +720,30 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
             return
 
         if not self._require_auth():
+            return
+        if self.path in {"/api/weights/setup", "/api/weights/train", "/api/weights/use"}:
+            try:
+                payload = self._read_json()
+                if self.path == "/api/weights/setup":
+                    result = weight_training.local_setup(DATA_DIR)
+                elif self.path == "/api/weights/train":
+                    examples = payload.get("examples")
+                    if not isinstance(examples, list):
+                        raise ValueError("examples must be a list")
+                    base = _untuned_everyday_model(self.server.ollama_client)
+                    result = weight_training.local_train(
+                        DATA_DIR, examples, base, self.server.ollama_client.base_url,
+                    )
+                else:
+                    run = payload.get("run")
+                    if run is not None and not isinstance(run, str):
+                        raise ValueError("run must be a string or null")
+                    result = weight_training.set_active(DATA_DIR, run)
+                self._json(result)
+            except ValueError as e:
+                self._error(e, HTTPStatus.BAD_REQUEST)
+            except Exception as e:
+                self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
             return
         if self.path in {"/api/vision/setup", "/api/vision/analyse"}:
             try:
