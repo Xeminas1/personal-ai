@@ -87,6 +87,7 @@ from .specialists import SpecialistCoordinator
 from .rating_adaptation import (
     derive_style_preferences, prompt_context as rating_strategy_prompt,
 )
+from .self_knowledge import is_correction as is_self_correction
 from .self_knowledge import (
     build_ai_comparison_fallback,
     build_authoritative_self_context,
@@ -568,7 +569,8 @@ class ChatBackend:
                 )
                 if resolved in {"latest_release", "update_reflection", "agent_inventory", "self_analysis"}:
                     inventory_kind = resolved
-                    self_followup = True
+                    # Only pushback ("are you sure?") gets the correction preamble.
+                    self_followup = is_self_correction(query_text)
             internal_audit = agent_mode == "self_audit" and not asks_for_external_research(query_text)
             diagnostic_state = {}
             model_user_text = _expand_attachment_message(stored_user_text, diagnostic_state=diagnostic_state)
