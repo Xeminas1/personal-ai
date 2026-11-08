@@ -80,6 +80,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.57", "Adds owner-controlled bridge training-candidate corrections, explicit per-example approval/revocation and private JSONL export. No automatic model training, chat upload, 9B weight changes or deployment."),
     ("0.9.58", "Adds three explicitly invoked read-only specialist teams, direct in-role replies to simulated dialogues without real actions, and real read-only source inspection for genuine XemAi self-source questions with transparent missing-evidence reports. Adds offline evaluation tools. No new permissions, source-edit or shell tools, model-weight training or 9B changes."),
     ("0.9.59", "Reliability patch: stricter grounding so self-source answers reject more invented file, class and function names; the updater now cleans up a staged download when polling stops mid-update; adds offline local-chat smoke tests. No new permissions, tools, model-weight training or data changes."),
+    ("0.9.60", "Makes the reply chime clearly audible on phones and in Brave (it was too quiet and too low-pitched for phone speakers) and plays one preview chime when reply sounds are switched on. No new permissions, tools, model-weight training or data changes."),
 ]
 
 

@@ -1,6 +1,6 @@
 {
-  "version": "0.9.59",
-  "notes": "Reliability patch: self-source answers reject more invented file, class and function names; the updater now cleans up a staged download when polling stops mid-update; adds offline local-chat smoke tests. No new permissions, tools, model-weight training or 9B changes; preserves chats, memory, credentials and hybrid pairing.",
+  "version": "0.9.60",
+  "notes": "Makes the reply chime clearly audible on phones and in Brave and plays one preview chime when reply sounds are switched on. No new permissions, tools, model-weight training or 9B changes; preserves chats, memory, credentials and hybrid pairing.",
   "files": [
     {
       "path": ".github/workflows/developer-mode-tests.yml",
@@ -14,8 +14,8 @@
     },
     {
       "path": "README.md",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.59/README.md",
-      "sha256": "30e75227bf0ed773491ce6356124a7b66f7d8410fa2516ecf699193fe640a77d"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.60/README.md",
+      "sha256": "8886cb1a470805d15d1235b7d5b5f745a44638a70c97c4ec509ce8b3403d4607"
     },
     {
       "path": "XemAi.pyw",
@@ -229,8 +229,8 @@
     },
     {
       "path": "app/self_knowledge.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.59/app/self_knowledge.py",
-      "sha256": "2dd9b586a8b5eb572c894f677eb883339bf07337ff7887857add2185d4e18db7"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.60/app/self_knowledge.py",
+      "sha256": "dc224835443a5948d89537e7b5c8c3980d30487a41cacda54d0406c845dfec3f"
     },
     {
       "path": "app/skyrim.py",
@@ -264,8 +264,8 @@
     },
     {
       "path": "app/version.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.59/app/version.py",
-      "sha256": "296a71d9bb0c92412c61c50e1eb673be06f761186e5d891169a2a418cac391e9"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.60/app/version.py",
+      "sha256": "7150d92e3aa0a900e33e34d0c217ec5c5c134be5ee965d5e0bc58224c716ccaf"
     },
     {
       "path": "app/vision.py",
@@ -379,13 +379,13 @@
     },
     {
       "path": "mobile/app.js",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.53/mobile/app.js",
-      "sha256": "8f94f8d20bbcbce311640ca19cf8403e7e6702842a037345a7c0fa11e67798a6"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.60/mobile/app.js",
+      "sha256": "d93cea409d6fd835e445262110c2f0125f0dd740366cd04e61bc5358580ebd3b"
     },
     {
       "path": "mobile/index.html",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.53/mobile/index.html",
-      "sha256": "c0ae79dc95a20dea77a4969b5a20306ab939b7be338d2312ee19ba0c04b1c8d8"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.60/mobile/index.html",
+      "sha256": "6f4a24dad7ace87598dd8c79bb8c92f4b5a1df9ac79857503664c188f42bd6f6"
     },
     {
       "path": "mobile/manifest.webmanifest",
@@ -399,8 +399,8 @@
     },
     {
       "path": "mobile/notifications.js",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/mobile/notifications.js",
-      "sha256": "e36f08ea4c750bdd35276ec685791c80b2124c8f47aba75c70f022a2bf301bf0"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.60/mobile/notifications.js",
+      "sha256": "a5d6f621b33ce755f1f60e302570b05b33565e6cc5ec50acc2019e12a7317418"
     },
     {
       "path": "mobile/styles.css",
@@ -669,8 +669,8 @@
     },
     {
       "path": "test_notifications_browser.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.18/test_notifications_browser.py",
-      "sha256": "d67a3f682d522bb2b7a0bd07ad4ebbcae90ea814d3bb375bb684e6c4100f86d0"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.60/test_notifications_browser.py",
+      "sha256": "8a879248f3f2c17089c62a5c73d358dbad70832faae77bdaf7b06570569db1c2"
     },
     {
       "path": "test_rating_adaptation.py",
@@ -794,8 +794,8 @@
     },
     {
       "path": "verify_release_manifest.py",
-      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.59/verify_release_manifest.py",
-      "sha256": "96141193d07db2c1f266a2f60d9dad8f0a76a087e6947d4ab7293c23e8248cca"
+      "url": "https://raw.githubusercontent.com/Xeminas1/personal-ai/release-v0.9.60/verify_release_manifest.py",
+      "sha256": "beecf450cdf39fae43199b69cd990bcc898803c93f0b991a0762a9860e1b6a91"
     },
     {
       "path": "app/project_handoff.py",
