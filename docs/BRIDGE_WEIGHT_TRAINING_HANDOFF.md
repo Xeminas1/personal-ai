@@ -1,5 +1,7 @@
 # XemAi bridge discussion to Qwen weight training — shared GPT/Codex checkpoint
 
+> **Update 2026-11-08:** superseded for weight training by [WEIGHT_TRAINING.md](WEIGHT_TRAINING.md) and PR #88 (owner-approved 4-bit QLoRA on the PC with held-out and drift gates). Approved `bridge weight` corrections are one of its data sources. The rest of this page is the historical October checkpoint.
+
 **Checked:** 2026-10-12 UTC. **Source:** verified public GitHub release, issues, draft PRs and CI. This is a **public-safe development record**, not an installed-host audit, proof of neural learning, a private dialogue transcript or a new grant of permissions.
 
 ## Start here before continuing

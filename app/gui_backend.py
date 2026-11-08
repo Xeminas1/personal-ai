@@ -19,6 +19,10 @@ from .agent_team import (
 from .ai_watch import chat_command as ai_watch_chat_command
 from .github_bridge import chat_command as github_bridge_chat_command, is_command as is_bridge_command
 from .github_bridge_auto import status as private_bridge_status
+from .weight_training import (
+    is_command as is_weights_command, command as weights_command,
+    LocalExecutor as WeightsLocalExecutor, WorkerExecutor as WeightsWorkerExecutor,
+)
 from .project_handoff import is_command as is_project_handoff_command, project_status
 from .bridge_conversation_context import bridge_topic_digest
 from .conversation_skills import guidance_for_turn
@@ -466,6 +470,24 @@ class ChatBackend:
             logger=self.logger,
         )
 
+    def _weights_base_model(self) -> str:
+        """The everyday (untuned) model to improve when training on this computer."""
+        from .weight_training import is_tuned_model
+
+        discovered = str((getattr(self, "runtime_model_info", None) or {}).get("model") or "")
+        if discovered and discovered != "unknown" and not is_tuned_model(discovered):
+            return discovered
+        return str(self.config.get("model") or "qwen3:8b")
+
+    def _weights_executor(self):
+        """Training runs where the GPU is: the paired PC worker, else this computer."""
+        worker = getattr(self.llm, "worker_client", None)
+        if getattr(self.llm, "is_hybrid", False) and worker is not None:
+            return WeightsWorkerExecutor(worker)
+        return WeightsLocalExecutor(
+            DATA_DIR, str(self.config.get("ollama_url", "http://localhost:11434")),
+        )
+
     def send(
         self,
         chat_id: int,
@@ -591,6 +613,20 @@ class ChatBackend:
                 if status_callback:
                     status_callback(None)
                 return bridge_answer
+
+            if record_user and not parsed_attachments and is_weights_command(query_text):
+                response = weights_command(
+                    DATA_DIR, worker_db, chat_id, query_text,
+                    executor=self._weights_executor(),
+                    ollama_base=self._weights_base_model(),
+                )
+                worker_db.add_assistant_message(
+                    chat_id, response, compute_source="application",
+                )
+                assistant_recorded = True
+                if status_callback:
+                    status_callback(None)
+                return response
 
             if (record_user and not parsed_attachments
                     and conversation_evaluation.is_command(query_text)):
