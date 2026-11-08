@@ -4,7 +4,7 @@
 
 ## Current development / unreleased patch notes — 2026-10-12
 
-**Latest app release: XemAi v0.9.63 (see Releases below).** The draft entries below describe GitHub work **not included in any release or installed app**; v0.9.58 contains only changes already merged to `main`. For the verified full handoff, read [Bridge weight training: GPT/Codex handoff](docs/BRIDGE_WEIGHT_TRAINING_HANDOFF.md), followed by the latest public [issue #61](https://github.com/Xeminas1/personal-ai/issues/61) and open draft PRs.
+**Latest app release: XemAi v0.9.64 (see Releases below).** The draft entries below describe GitHub work **not included in any release or installed app**; v0.9.58 contains only changes already merged to `main`. For the verified full handoff, read [Bridge weight training: GPT/Codex handoff](docs/BRIDGE_WEIGHT_TRAINING_HANDOFF.md), followed by the latest public [issue #61](https://github.com/Xeminas1/personal-ai/issues/61) and open draft PRs.
 
 - **[Draft #64: owner-written standalone examples](https://github.com/Xeminas1/personal-ai/pull/64).** Fixes a 1,800-character archived bridge input vs. 1,600-character training review limit. Proposes an explicitly owner-written replacement question AND corrected answer tied to the original candidate and a fresh approval code. Synthetic Windows and Linux regression tests passed at the last code head; final version/release work **blocked**, unmerged, not installed. Existing approved examples remain unchanged.
 - **[Draft #65: private ChatGPT-proposal inbox research](https://github.com/Xeminas1/personal-ai/pull/65).** A GitHub-connected assistant can already access and respond within the owner-authorised separate private bridge, avoiding manual conversation relay. Early opt-in inbox source is **incomplete, untested, unmerged**; additional connection/polling work was blocked by platform safety checks. A separate private proposal issue exists, but nothing is automatically imported, approved, exported, trained or deployed. Do not circumvent those blocked operations.
@@ -12,6 +12,13 @@
 - **Review/release requirements:** Keep drafts separate; never expose private dialogue or model inputs in this public repository. Verify exact final-head Windows/Linux checks, authoritative release history, version and complete frozen SHA-256 manifest *before* announcing a new app release. Release-history and private-inbox updates encountered tool safety blocks. Do not bypass them via alternate tools or release routes.
 
 ## Releases
+
+## v0.9.64 — Model scoreboard
+
+- **`scoreboard run`** scores every installed local model on the PC against 42 fixed, automatically graded tasks: coding (answers are run against hidden tests), conversation follow-through, facts and honesty (including made-up books and false premises), instruction following and reasoning. Results show a score per category and speed in tokens per second. `scoreboard run gpt-oss:20b, qwen3-coder:30b` scores just those.
+- The everyday model is also scored with XemAi's full system prompt, so you can see whether the prompt helps or hurts.
+- **`scoreboard models`** lists installed models and researched candidates for a 16 GB GPU + 64 GB RAM; **`scoreboard pull <model>`** downloads one. **`scoreboard`** shows progress and the latest table.
+- Model-written code is checked for disallowed imports and calls, then run in a short-lived subprocess with a time limit. Chat moves to the laptop while a run uses the PC's GPU. No new permissions; chats, memories, credentials and pairing are preserved.
 
 ## v0.9.63 — Replies stay on your actual conversation
 

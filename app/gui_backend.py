@@ -19,6 +19,7 @@ from .agent_team import (
 from .ai_watch import chat_command as ai_watch_chat_command
 from .github_bridge import chat_command as github_bridge_chat_command, is_command as is_bridge_command
 from .github_bridge_auto import status as private_bridge_status
+from . import scoreboard
 from .weight_training import (
     is_command as is_weights_command, command as weights_command,
     LocalExecutor as WeightsLocalExecutor, WorkerExecutor as WeightsWorkerExecutor,
@@ -480,6 +481,15 @@ class ChatBackend:
             return discovered
         return str(self.config.get("model") or "qwen3:8b")
 
+    def _scoreboard_executor(self):
+        """Models are scored where the GPU is: the paired PC worker, else here."""
+        worker = getattr(self.llm, "worker_client", None)
+        if getattr(self.llm, "is_hybrid", False) and worker is not None:
+            return scoreboard.WorkerExecutor(worker)
+        return scoreboard.LocalExecutor(
+            DATA_DIR, str(self.config.get("ollama_url", "http://localhost:11434")),
+        )
+
     def _weights_executor(self):
         """Training runs where the GPU is: the paired PC worker, else this computer."""
         worker = getattr(self.llm, "worker_client", None)
@@ -615,6 +625,19 @@ class ChatBackend:
                 if status_callback:
                     status_callback(None)
                 return bridge_answer
+
+            if record_user and not parsed_attachments and scoreboard.is_command(query_text):
+                response = scoreboard.command(
+                    query_text, executor=self._scoreboard_executor(),
+                    everyday=self._weights_base_model(),
+                )
+                worker_db.add_assistant_message(
+                    chat_id, response, compute_source="application",
+                )
+                assistant_recorded = True
+                if status_callback:
+                    status_callback(None)
+                return response
 
             if record_user and not parsed_attachments and is_weights_command(query_text):
                 response = weights_command(

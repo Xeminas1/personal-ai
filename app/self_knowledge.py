@@ -84,6 +84,7 @@ RELEASE_HISTORY: list[tuple[str, str]] = [
     ("0.9.61", "Adds owner-controlled weight training: 'teach: <better answer>' corrections plus 'weights setup', 'weights train', 'weights use rN' and 'weights rollback'. A 4-bit QLoRA adapter is trained on the PC and only offered if it beats the base model on held-out examples without general-skill drift. Base model never modified; nothing trains automatically."),
     ("0.9.62", "The PC worker now loads updates by itself: it restarts onto newer files when idle (or downloads and verifies them if nothing else updates that PC), instead of running old code until a reboot. Clear message if the PC is behind. No new permissions or data changes."),
     ("0.9.63", "Stops unrelated approved lesson examples being added to every reply, which made me answer scenarios that were never in the chat. Questions like 'have you been updated?' and 'what do you think of them?' now get my real release notes. No new permissions or data changes."),
+    ("0.9.64", "Adds the model scoreboard: 'scoreboard run' scores installed local models on 42 fixed, automatically graded tasks (coding run against hidden tests, conversation, facts and honesty, instructions, reasoning), plus my full prompt vs a plain one. 'scoreboard models' and 'scoreboard pull <model>' manage candidates."),
 ]
 
 

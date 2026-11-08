@@ -14,6 +14,10 @@ on:
       - "app/restart_supervisor.py"
       - "app/weight_training.py"
       - "test_worker_self_update.py"
+      - "app/scoreboard.py"
+      - "app/scoreboard_tasks.py"
+      - "app/gui_backend.py"
+      - "test_scoreboard.py"
   workflow_dispatch:
 
 jobs:
@@ -29,7 +33,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Run previously untracked updater and reply HTTP tests
-        run: python -m unittest -v test_auto_updates test_reply_http test_worker_self_update
+        run: python -m unittest -v test_auto_updates test_reply_http test_worker_self_update test_scoreboard
 
   reply-sound-browser:
     runs-on: ubuntu-latest
