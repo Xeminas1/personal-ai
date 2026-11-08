@@ -37,13 +37,12 @@ Use [docs/HANDOFF_PROTOCOL.md](docs/HANDOFF_PROTOCOL.md) and its exact status te
 - A docs-only collaboration update does **not** by itself imply a new installed XemAi version; don't bump the runtime or manifest without changing shipped app behavior.
 - After merging, verify the merge and shipped state; close/update its issue and write a short factual handoff. A merged PR does not prove any owner's local host has installed the update.
 
-## Critical current model-learning handoff (checked 2026-10-12)
+## Current model-learning state (checked 2026-11-08)
 
-- **Published app is v0.9.58** (checked 2026-10-28; see `docs/PROJECT_STATE.md`). Its bridge-weight feature set is unchanged from v0.9.57: it has owner-entered, manually approved `bridge weight` dataset-preparation commands. Not automatically trained and not a 9B weight update.
-- Read **[docs/BRIDGE_WEIGHT_TRAINING_HANDOFF.md](docs/BRIDGE_WEIGHT_TRAINING_HANDOFF.md)** and current public issue [#61](https://github.com/Xeminas1/personal-ai/issues/61) **before** editing training/bridge code or drafting a new release. Broader training PR #62, clipped-question review PR #64 and private proposal inbox PR #65 are three **distinct, unmerged drafts**; #65 is stacked on #64.
-- A direct GitHub connection can access the owner-authorised **separate private bridge conversation**, so the owner does not need to copy every discussion message. Existing hourly replies and private proposal staging are separate from installed app ingestion. **No tested app-side private proposal syncing, automatic training or production 9B adaptation is released.**
-- During preparation of a later version, tool safety checks blocked changes to the authoritative release-history file and integration/hardening of the private proposal inbox. **Do not circumvent these restrictions using another action, tool, file path, API, PR or release method.** Keep blocked work draft and state its true status; do not claim a v0.9.58 release.
-- Never copy private discussion or local archive text into this public repository, issue, PR or CI. Use invented synthetic test data only.
+- **Owner-approved weight training is implemented** (see [docs/WEIGHT_TRAINING.md](docs/WEIGHT_TRAINING.md), PR #88, issue #61). On 2026-11-08 the owner explicitly asked for XemAi to be able to change its weights. It runs **only** on owner-typed commands (`teach:`, `weights setup|train|use rN|rollback`), trains a 4-bit QLoRA adapter on the PC, and is offered only if a held-out loss gain **and** a general-skill drift limit both pass. The base Ollama model is never modified; tuned tags are never auto-selected.
+- Verified in CI: real CPU training of tiny Qwen3.5 models, gate failures, export fallbacks with a stand-in Ollama. **Not yet verified:** a real 9B run on the owner's RTX 5080 and Ollama accepting the tuned Qwen3.5 model. Read the first real `report.json` before claiming quality changes.
+- Drafts #62 (BF16 LoRA; 9B infeasible on 16 GB), #64 and #65 remain unmerged. #62's approach is superseded by #88. Do not merge #65 or bypass its earlier safety blocks.
+- Never copy private discussion, chats or archives into this public repository, issue, PR or CI. Use invented synthetic test data only. Changing the training gate, adding automatic (non-owner-triggered) training, or moving training data to any third party still needs separate owner approval.
 
 ## Private bridge dialogue (separate from coding)
 
