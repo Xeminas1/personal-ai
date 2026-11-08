@@ -145,6 +145,25 @@ class CommandTests(TeachAndCollectTests):
         self.assertEqual(ex.used, ["r1", None])
 
 
+class UploadLimitTests(unittest.TestCase):
+    def test_worker_upload_is_trimmed_below_request_limit_keeping_priority_order(self):
+        sent = {}
+
+        class Client:
+            def _request(self, path, payload=None, timeout=0):
+                sent["bytes"] = len(json.dumps(payload).encode())
+                sent["examples"] = payload["examples"]
+                return {"ok": True}
+
+        big = "x" * 5000
+        rows = [{"source": "teach" if i < 5 else "rated", "messages": [
+            {"role": "user", "content": f"q{i} {big}"}, {"role": "assistant", "content": big}]} for i in range(1500)]
+        wt.WorkerExecutor(Client()).train(rows, "")
+        self.assertLessEqual(sent["bytes"], wt.MAX_UPLOAD_BYTES + 100)
+        self.assertGreater(len(sent["examples"]), 100)
+        self.assertEqual([r["source"] for r in sent["examples"][:5]], ["teach"] * 5)
+
+
 class PinTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

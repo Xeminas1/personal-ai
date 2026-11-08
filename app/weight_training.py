@@ -34,6 +34,7 @@ TUNED_PREFIX = "xemai-qwen-tuned"
 MIN_EXAMPLES = 10
 MAX_EXAMPLES = 2000
 MAX_TEXT = 6000
+MAX_UPLOAD_BYTES = 7_000_000  # worker accepts at most 8 MB per request
 CONTEXT_TURNS = 6
 GOOD_RATING = 9
 _LOCK = threading.Lock()
@@ -461,6 +462,10 @@ class WorkerExecutor:
         return self.client._request("/api/weights/setup", payload={}, timeout=30)
 
     def train(self, examples: list[dict], base: str) -> dict:
+        # Stay under the worker's request limit; drop the lowest-priority (last) examples.
+        examples = list(examples)
+        while examples and len(json.dumps({"examples": examples}).encode()) > MAX_UPLOAD_BYTES:
+            examples = examples[: max(0, len(examples) - max(1, len(examples) // 10))]
         return self.client._request("/api/weights/train", payload={"examples": examples, "base": base}, timeout=60)
 
     def use(self, run: str | None) -> dict:
