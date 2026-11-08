@@ -459,10 +459,10 @@ def _tick(data_dir, *, client=None, llm_factory=None, logger=None, now=None):
     # weights or promote claims into XemAi's trusted memory.
     if st.get("learning_enabled") is True:
         try:
-            from .github_bridge_learning import append_candidate
+            from .github_bridge_learning import MAX_INPUT, append_candidate
             append_candidate(
                 data_dir, repo=repo, issue=issue, comment_id=latest_id,
-                question=str(newest.get("body") or "")[:1800],
+                question=str(newest.get("body") or "")[:MAX_INPUT + 1],
                 answer=result.strip(), provenance=actual,
                 timestamp=instant,
             )

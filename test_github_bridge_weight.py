@@ -145,6 +145,93 @@ class BridgeToWeightTests(unittest.TestCase):
             "bridge weight approve 1 deadbeef"))
         self.assertFalse((self.data / _EXPORT_DIR).exists())
 
+
+    def test_long_truncated_candidate_requires_owner_rewrite_and_exports_only_rewrite(self):
+        bridge_collection(self.data, "bridge learning on")
+        long_question = ("Discuss a fictional evaluation scenario, and do not invent "
+                         "missing facts. " * 24) + "The original is intentionally longer than archive limits."
+        self.assertGreater(len(long_question), 1800)
+        self.assertTrue(self.candidate(1, input_text=long_question))
+        archive = self.data / "github_bridge_training_candidates.jsonl"
+        original = json.loads(archive.read_text().splitlines()[0])
+        self.assertEqual(len(original["input_excerpt"]), 1800)
+        self.assertIs(original["input_was_truncated"], True)
+        self.assertIn("may be clipped", self.call(
+            "bridge weight draft 1: A fictional answer with valid source attribution."))
+        question = ("Given a version number present only in a comment, explain why "
+                    "we cannot assert the active project version from this alone.")
+        answer = ("A comment mentioning a version is evidence only that a comment "
+                  "contains that number, not that the running program has that version. "
+                  "Check a verified active manifest or configuration before asserting it.")
+        preview = self.call(f"bridge weight rewrite 1: {question} || {answer}")
+        self.assertIn("OWNER-REWRITTEN", preview)
+        self.assertIn(question, preview)
+        self.assertNotIn(original["input_excerpt"], preview)
+        code = re.search(r"bridge weight approve 1 ([a-f0-9]{8})", preview).group(1)
+        self.assertIn("approved for a future LOCAL training dataset", self.call(
+            f"bridge weight approve 1 {code}"))
+        self.assertIn("1 approved", self.call("bridge weight status"))
+        # Export minimum: add nine distinct, short fictional cases.
+        for i in range(2, 11):
+            self.assertTrue(self.candidate(i))
+            draft = self.call(f"bridge weight draft {i}: The correct response "
+                              f"for fictional case {i} must cite observed evidence.")
+            self.assertIn("PREVIEW ONLY", draft)
+            code2 = re.search(rf"bridge weight approve {i} ([a-f0-9]{{8}})", draft).group(1)
+            self.assertIn("approved", self.call(f"bridge weight approve {i} {code2}"))
+        label = self.call("bridge weight export")
+        code3 = re.search(r"bridge weight export ([a-f0-9]{8})", label).group(1)
+        self.assertIn("Local reviewed SFT", self.call(f"bridge weight export {code3}"))
+        source = next((self.data / _EXPORT_DIR).glob("bridge_reviewed_*.jsonl"))
+        rows = [json.loads(line) for line in source.read_text().splitlines()]
+        self.assertEqual(rows[0]["messages"][0]["content"], question)
+        self.assertEqual(rows[0]["messages"][1]["content"], answer)
+        self.assertFalse(any(original["input_excerpt"] in str(row) for row in rows))
+        self.assertFalse(any("first option must always be right" in str(row) for row in rows))
+
+    def test_rewritten_approval_code_is_bound_to_both_prompt_and_answer(self):
+        bridge_collection(self.data, "bridge learning on")
+        self.assertTrue(self.candidate(1))
+        a = self.call("bridge weight rewrite 1: Explain why the comment is not "
+                      "proof of the current build version. || "
+                      "The comment is not authoritative evidence of the active build version.")
+        key_a = re.search(r"approve 1 ([a-f0-9]{8})", a).group(1)
+        b = self.call("bridge weight rewrite 1: Explain how active version "
+                      "metadata differs from comments. || "
+                      "Comments can be stale; inspect verified active build metadata.")
+        key_b = re.search(r"approve 1 ([a-f0-9]{8})", b).group(1)
+        self.assertNotEqual(key_a, key_b)
+        self.assertIn("Approval refused", self.call(f"bridge weight approve 1 {key_a}"))
+        self.assertIn("approved", self.call(f"bridge weight approve 1 {key_b}"))
+        self.assertEqual(len(_journal(self.data).read_text().splitlines()), 3)
+
+    def test_rewrite_fails_closed_on_unreviewed_or_sensitive_pair(self):
+        self.assertIn("Unknown candidate", self.call(
+            "bridge weight rewrite 1: Explain evidence attribution. || "
+            "Do not infer a version absent from the source."))
+        bridge_collection(self.data, "bridge learning on")
+        self.assertTrue(self.candidate(1))
+        self.assertIn("Format:", self.call("bridge weight rewrite 1: No delimiter provided."))
+        self.assertIn("15-1600", self.call(
+            "bridge weight rewrite 1: My password: fakevalue || "
+            "Do not put secrets in training examples."))
+        self.assertIn("15-1600", self.call(
+            "bridge weight rewrite 1: Explain the difference. || "
+            "See https://example.org/private for details."))
+        self.assertIn("0 approved", self.call("bridge weight status"))
+        self.assertFalse((self.data / _EXPORT_DIR).exists())
+
+    def test_existing_approved_correction_is_preserved_without_rewrite(self):
+        self._prepare_approved(1)
+        self.assertIn("1 approved", self.call("bridge weight status"))
+        result = self.call("bridge weight rewrite 1: A new question about "
+                           "fake status. || A new answer that has not been reviewed.")
+        self.assertIn("PREVIEW ONLY", result)
+        # A new draft supersedes previous approval until it is reviewed;
+        # the already written historic approval remains in the append journal.
+        self.assertIn("0 approved", self.call("bridge weight status"))
+        self.assertEqual(len(_journal(self.data).read_text().splitlines()), 3)
+
     def test_review_one_candidate_is_never_training_consent(self):
         bridge_collection(self.data, "bridge learning on")
         self.assertTrue(self.candidate(1))

@@ -97,6 +97,7 @@ def append_candidate(
             "issue": int(issue),
             "comment_id": int(comment_id),
             "input_excerpt": str(question)[:MAX_INPUT],
+            "input_was_truncated": len(str(question)) > MAX_INPUT,
             "model_response": str(answer)[:MAX_OUTPUT],
             "model": str(provenance.get("model") or "unknown")[:84],
             "compute": str(provenance.get("compute") or "unknown")[:20],
