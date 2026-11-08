@@ -277,10 +277,10 @@ class RunTests(unittest.TestCase):
         self.addCleanup(self.ollama.close)
 
     def wait(self):
-        for _ in range(600):
+        for _ in range(1800):
             if not scoreboard.busy(self.data):
                 return
-            time.sleep(0.05)
+            time.sleep(0.1)
         self.fail("job did not finish")
 
     def test_full_run_scores_models_and_measures_xemai_prompt(self):
@@ -394,10 +394,11 @@ class WorkerEndpointTests(unittest.TestCase):
         self.assertIn("smart:1b", self.call("/api/scoreboard/models")[1]["models"])
         code, body = self.call("/api/scoreboard/run", {"models": ["dumb:1b"]})
         self.assertTrue(body["ok"], body)
-        for _ in range(400):
+        for _ in range(1200):  # Windows starts each sandboxed test process more slowly
             if self.call("/api/scoreboard/status")[1]["current"].get("stage") == "finished":
                 break
-            time.sleep(0.05)
+            time.sleep(0.1)
+        self.assertEqual(self.call("/api/scoreboard/status")[1]["current"].get("stage"), "finished")
         entries = self.call("/api/scoreboard/status")[1]["latest"]["entries"]
         self.assertEqual(entries[0]["model"], "dumb:1b")
         self.assertEqual(self.call("/api/scoreboard/run", {"models": "dumb"})[0], 400)
