@@ -247,10 +247,7 @@ class LocalTrainLaunchTests(unittest.TestCase):
         run_dir = self.dir / "weight_training" / "runs" / "r1"
         self.assertEqual(len((run_dir / "dataset.jsonl").read_text().splitlines()), 12)
         # The real trainer runs (in this interpreter without a GPU stack it stops cleanly).
-        for _ in range(200):
-            if json.loads((run_dir / "status.json").read_text() if (run_dir / "status.json").exists() else "{}").get("stage") in {"ready", "failed"}:
-                break
-            time.sleep(0.1)
+        self.wait_done(run_dir)
         status = wt.local_status(self.dir)
         self.assertEqual(status["runs"][0]["run"], "r1")
         self.assertIn(status["runs"][0]["stage"], {"failed", "ready"})
@@ -258,6 +255,16 @@ class LocalTrainLaunchTests(unittest.TestCase):
         self.assertEqual(wt.busy(self.dir), "")
         second = wt.local_train(self.dir, self.examples(12), "qwen3:8b", "http://127.0.0.1:9")
         self.assertEqual(second["run"], "r2")
+        self.wait_done(self.dir / "weight_training" / "runs" / "r2")
+
+    def wait_done(self, run_dir):
+        """Wait for the launched process to exit so Windows can delete its log."""
+        pid = json.loads((run_dir / "launch.json").read_text())["pid"]
+        for _ in range(300):
+            if not wt._pid_alive(pid):
+                return
+            time.sleep(0.1)
+        self.fail("training process did not exit")
 
 
 class WorkerEndpointTests(unittest.TestCase):
