@@ -4,7 +4,7 @@
 
 ## Current development / unreleased patch notes — 2026-10-12
 
-**Latest app release: XemAi v0.9.61 (see Releases below).** The draft entries below describe GitHub work **not included in any release or installed app**; v0.9.58 contains only changes already merged to `main`. For the verified full handoff, read [Bridge weight training: GPT/Codex handoff](docs/BRIDGE_WEIGHT_TRAINING_HANDOFF.md), followed by the latest public [issue #61](https://github.com/Xeminas1/personal-ai/issues/61) and open draft PRs.
+**Latest app release: XemAi v0.9.62 (see Releases below).** The draft entries below describe GitHub work **not included in any release or installed app**; v0.9.58 contains only changes already merged to `main`. For the verified full handoff, read [Bridge weight training: GPT/Codex handoff](docs/BRIDGE_WEIGHT_TRAINING_HANDOFF.md), followed by the latest public [issue #61](https://github.com/Xeminas1/personal-ai/issues/61) and open draft PRs.
 
 - **[Draft #64: owner-written standalone examples](https://github.com/Xeminas1/personal-ai/pull/64).** Fixes a 1,800-character archived bridge input vs. 1,600-character training review limit. Proposes an explicitly owner-written replacement question AND corrected answer tied to the original candidate and a fresh approval code. Synthetic Windows and Linux regression tests passed at the last code head; final version/release work **blocked**, unmerged, not installed. Existing approved examples remain unchanged.
 - **[Draft #65: private ChatGPT-proposal inbox research](https://github.com/Xeminas1/personal-ai/pull/65).** A GitHub-connected assistant can already access and respond within the owner-authorised separate private bridge, avoiding manual conversation relay. Early opt-in inbox source is **incomplete, untested, unmerged**; additional connection/polling work was blocked by platform safety checks. A separate private proposal issue exists, but nothing is automatically imported, approved, exported, trained or deployed. Do not circumvent those blocked operations.
@@ -12,6 +12,12 @@
 - **Review/release requirements:** Keep drafts separate; never expose private dialogue or model inputs in this public repository. Verify exact final-head Windows/Linux checks, authoritative release history, version and complete frozen SHA-256 manifest *before* announcing a new app release. Release-history and private-inbox updates encountered tool safety blocks. Do not bypass them via alternate tools or release routes.
 
 ## Releases
+
+## v0.9.62 — The PC worker updates itself
+
+- Previously the PC's hybrid worker kept running its old code after an update until the PC rebooted, so new features (like `weights setup`) answered "Unknown worker endpoint". The worker now checks every 30 seconds and, when it isn't mid-reply, restarts onto the newer files. If XemAi's own server isn't running on that PC, the worker downloads and verifies the update itself first.
+- If the laptop reaches an older PC worker, it now explains what's happening instead of showing a raw HTTP 404.
+- No new permissions or data changes. Chats, memories, credentials, `config.json` and hybrid pairing are preserved by the updater.
 
 ## v0.9.61 — XemAi can now change its own weights (owner-controlled)
 

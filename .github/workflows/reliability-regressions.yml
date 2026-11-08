@@ -10,6 +10,10 @@ on:
       - "test_chat_delete.py"
       - "mobile/**"
       - "test_notifications_browser.py"
+      - "app/worker_server.py"
+      - "app/restart_supervisor.py"
+      - "app/weight_training.py"
+      - "test_worker_self_update.py"
   workflow_dispatch:
 
 jobs:
@@ -25,7 +29,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Run previously untracked updater and reply HTTP tests
-        run: python -m unittest -v test_auto_updates test_reply_http
+        run: python -m unittest -v test_auto_updates test_reply_http test_worker_self_update
 
   reply-sound-browser:
     runs-on: ubuntu-latest
