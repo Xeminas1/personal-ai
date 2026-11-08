@@ -1182,7 +1182,7 @@ function showChatOptions() {
       button.addEventListener("click", () => {
         const enabled = !window.XemAiNotifications.isEnabled();
         window.XemAiNotifications.setEnabled(enabled);
-        if (enabled) window.XemAiNotifications.unlock();
+        if (enabled) (window.XemAiNotifications.preview || window.XemAiNotifications.unlock)();
         updateSoundButton();
       });
       actions.appendChild(button);
