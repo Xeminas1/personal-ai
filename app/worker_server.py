@@ -24,7 +24,7 @@ from .secrets import (
 )
 from .version import VERSION
 from .updater import is_newer_version
-from . import weight_training
+from . import scoreboard, weight_training
 from .vision import VisionService, is_vision_model
 
 MAX_BODY = 8_000_000
@@ -630,12 +630,21 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
                 self._json(weight_training.local_status(DATA_DIR))
                 return
 
+            if self.path == "/api/scoreboard/status":
+                self._json(scoreboard.status(DATA_DIR, client.base_url))
+                return
+
+            if self.path == "/api/scoreboard/models":
+                self._json({"ok": True, "models": scoreboard.chat_models(client.base_url)})
+                return
+
             if self.path == "/api/health":
-                job = weight_training.busy(DATA_DIR)
+                job = weight_training.busy(DATA_DIR) or (
+                    "scoreboard testing" if scoreboard.busy(DATA_DIR) == "run" else "")
                 if job:
                     # The GPU is in use; the host answers on its own model meanwhile.
                     self._error(
-                        f"This PC is busy with weight {job}; using the always-on host for now.",
+                        f"This PC is busy with {job if job.startswith('scoreboard') else 'weight ' + job}; using the always-on host for now.",
                         HTTPStatus.SERVICE_UNAVAILABLE,
                     )
                     return
@@ -725,6 +734,25 @@ class XemAiWorkerHandler(BaseHTTPRequestHandler):
             return
 
         if not self._require_auth():
+            return
+        if self.path in {"/api/scoreboard/run", "/api/scoreboard/pull"}:
+            try:
+                payload = self._read_json()
+                url = self.server.ollama_client.base_url
+                if self.path == "/api/scoreboard/run":
+                    models = payload.get("models")
+                    if models is not None and (not isinstance(models, list)
+                                               or not all(isinstance(m, str) for m in models)):
+                        raise ValueError("models must be a list of names")
+                    everyday, _, _ = _recommended_model(self.server.ollama_client)
+                    result = scoreboard.start_run(DATA_DIR, url, models, everyday)
+                else:
+                    result = scoreboard.start_pull(DATA_DIR, url, str(payload.get("model") or ""))
+                self._json(result)
+            except ValueError as e:
+                self._error(e, HTTPStatus.BAD_REQUEST)
+            except Exception as e:
+                self._error(e, HTTPStatus.INTERNAL_SERVER_ERROR)
             return
         if self.path in {"/api/weights/setup", "/api/weights/train", "/api/weights/use"}:
             try:
